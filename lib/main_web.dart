@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 
-// ── Placeholder screens (will be replaced in later phases) ──
+// ── Real screens ──
+import 'features/auth/screens/login_page.dart';
+import 'features/guest/screens/landing_page.dart';
 import 'shared_widgets/not_found_page.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
@@ -20,14 +22,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         name: 'landing',
-        builder: (context, state) => const _PlaceholderScreen(title: 'Landing Page'),
+        builder: (context, state) => const LandingPage(),
       ),
 
       // ── Auth ──
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const _PlaceholderScreen(title: 'Login'),
+        builder: (context, state) => const LoginPage(),
       ),
 
       // ── Admin Routes ──
