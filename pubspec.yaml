@@ -1,0 +1,57 @@
+name: siakad_app
+description: SIAKAD - Sistem Informasi Akademik SMA Negeri 1 Cikalong
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Design System
+  google_fonts: ^6.2.1
+  lucide_icons: ^0.257.0
+
+  # Routing
+  go_router: ^15.1.2
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Local Storage
+  shared_preferences: ^2.3.4
+
+  # Image Handling
+  cached_network_image: ^3.4.1
+
+  # Charts
+  fl_chart: ^0.70.2
+
+  # QR Scanner (Siswa module)
+  mobile_scanner: ^6.0.5
+
+  # PDF & Printing (Wali Kelas e-Rapor)
+  pdf: ^3.11.1
+  printing: ^5.13.4
+
+  # Date & Number Formatting
+  intl: ^0.20.2
+
+  # Cupertino Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
