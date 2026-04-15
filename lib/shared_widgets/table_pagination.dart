@@ -9,19 +9,23 @@ import '../core/theme/app_colors.dart';
 
 class TablePagination extends StatelessWidget {
   final int currentPage;
-  final int totalPages;
   final int totalItems;
   final int itemsPerPage;
-  final ValueChanged<int> onPageChanged;
+  final ValueChanged<int> onPageChange;
+  final ValueChanged<int>? onItemsPerPageChange;
+  final String itemName;
 
   const TablePagination({
     super.key,
     required this.currentPage,
-    required this.totalPages,
     required this.totalItems,
     required this.itemsPerPage,
-    required this.onPageChanged,
+    required this.onPageChange,
+    this.onItemsPerPageChange,
+    this.itemName = 'data',
   });
+
+  int get totalPages => (totalItems / itemsPerPage).ceil().clamp(1, 999);
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +40,7 @@ class TablePagination extends StatelessWidget {
         children: [
           // Item count info
           Text(
-            'Menampilkan $startItem-$endItem dari $totalItems data',
+            'Menampilkan $startItem-$endItem dari $totalItems $itemName',
             style: const TextStyle(
               fontSize: 14, // text-sm
               color: AppColors.textMuted,
@@ -49,7 +53,7 @@ class TablePagination extends StatelessWidget {
               // Previous
               _PageButton(
                 onPressed:
-                    currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+                    currentPage > 1 ? () => onPageChange(currentPage - 1) : null,
                 child: const Icon(Icons.chevron_left, size: 20),
               ),
               const SizedBox(width: 4),
@@ -78,7 +82,7 @@ class TablePagination extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: _PageButton(
                     isActive: isActive,
-                    onPressed: () => onPageChanged(page),
+                    onPressed: () => onPageChange(page),
                     child: Text(
                       '$page',
                       style: TextStyle(
@@ -96,7 +100,7 @@ class TablePagination extends StatelessWidget {
               // Next
               _PageButton(
                 onPressed: currentPage < totalPages
-                    ? () => onPageChanged(currentPage + 1)
+                    ? () => onPageChange(currentPage + 1)
                     : null,
                 child: const Icon(Icons.chevron_right, size: 20),
               ),

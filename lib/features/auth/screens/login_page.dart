@@ -139,10 +139,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                   ),
                   padding: const EdgeInsets.all(8), // p-2
-                  child: const Icon(
-                    Icons.school,
-                    size: 48,
-                    color: AppColors.primary,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
                   ),
                 ),
                 const SizedBox(height: 32), // mb-8
@@ -253,7 +252,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ],
                             ),
                             padding: const EdgeInsets.all(8),
-                            child: const Icon(Icons.school, size: 36, color: AppColors.primary),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 32), // mb-8
@@ -294,7 +296,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   ],
                                 ),
                                 padding: const EdgeInsets.all(8),
-                                child: const Icon(Icons.school, size: 48, color: AppColors.primary),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 24), // mb-6

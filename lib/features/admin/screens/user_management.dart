@@ -1,0 +1,729 @@
+// File: lib/features/admin/screens/user_management.dart
+// ===========================================
+// USER MANAGEMENT SCREEN
+// Translated from UserManagement.tsx
+// Data table with search, pagination, CRUD modals
+// ===========================================
+
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../shared_widgets/table_pagination.dart';
+import '../../../shared_widgets/delete_confirmation_modal.dart';
+import '../../../shared_widgets/success_toast.dart';
+
+class UserManagement extends StatefulWidget {
+  const UserManagement({super.key});
+
+  @override
+  State<UserManagement> createState() => _UserManagementState();
+}
+
+class _UserManagementState extends State<UserManagement> {
+  int _currentPage = 1;
+  int _itemsPerPage = 10;
+  String _searchQuery = '';
+  bool _showSuccessToast = false;
+  String _successMessage = '';
+
+  List<Map<String, dynamic>> get _filteredData {
+    if (_searchQuery.isEmpty) return _userData;
+    final q = _searchQuery.toLowerCase();
+    return _userData.where((u) =>
+        u['name'].toString().toLowerCase().contains(q) ||
+        u['idNumber'].toString().toLowerCase().contains(q) ||
+        u['email'].toString().toLowerCase().contains(q)).toList();
+  }
+
+  List<Map<String, dynamic>> get _paginatedData {
+    final start = (_currentPage - 1) * _itemsPerPage;
+    final end = (start + _itemsPerPage).clamp(0, _filteredData.length);
+    return _filteredData.sublist(start, end);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Top Action Bar ──
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Manajemen Pengguna',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Kelola akses siswa, guru mata pelajaran, wali kelas, dan kurikulum',
+                        style: TextStyle(color: AppColors.gray600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Import CSV
+                OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.upload_file, size: 20),
+                  label: const Text('Import CSV/Excel'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Add User
+                ElevatedButton.icon(
+                  onPressed: () {
+                    UserFormModal.show(context, onSave: (data) {
+                      setState(() {
+                         _successMessage = 'Pengguna berhasil ditambahkan.';
+                         _showSuccessToast = true;
+                      });
+                    });
+                  },
+                  icon: const Icon(Icons.add, size: 20),
+                  label: const Text('Tambah Pengguna'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── Search Bar ──
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 448),
+              child: TextField(
+                onChanged: (v) => setState(() {
+                  _searchQuery = v;
+                  _currentPage = 1;
+                }),
+                decoration: InputDecoration(
+                  hintText: 'Cari pengguna berdasarkan nama, ID, atau NIP...',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.gray300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.gray300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Data Table Card ──
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4)),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    // Table Header
+                    Container(
+                      color: AppColors.gray50,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      child: const Row(
+                        children: [
+                          Expanded(flex: 3, child: Text('Nama', style: _headerStyle)),
+                          Expanded(flex: 2, child: Text('ID / NIP', style: _headerStyle)),
+                          Expanded(flex: 2, child: Text('Peran', style: _headerStyle)),
+                          Expanded(flex: 1, child: Text('Status', style: _headerStyle)),
+                          SizedBox(width: 120, child: Text('Aksi', style: _headerStyle)),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.gray200),
+
+                    // Table Body
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: _paginatedData.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: AppColors.gray200),
+                        itemBuilder: (context, index) {
+                          final user = _paginatedData[index];
+                          return _UserRow(
+                            user: user,
+                            onEdit: () {
+                              UserFormModal.show(
+                                context,
+                                initialData: user.map((key, value) => MapEntry(key, value.toString())),
+                                onSave: (data) {
+                                  setState(() {
+                                    _successMessage = 'Pengguna berhasil diperbarui.';
+                                    _showSuccessToast = true;
+                                  });
+                                }
+                              );
+                            },
+                            onResetPassword: () {
+                               UserFormModal.show(
+                                context,
+                                initialData: user.map((key, value) => MapEntry(key, value.toString())),
+                                forcePasswordReset: true,
+                                onSave: (data) {
+                                  setState(() {
+                                    _successMessage = 'Kata sandi pengguna berhasil di-reset.';
+                                    _showSuccessToast = true;
+                                  });
+                                }
+                              );
+                            },
+                            onDelete: () {
+                              DeleteConfirmationModal.show(
+                                context,
+                                title: 'Konfirmasi Penghapusan Pengguna',
+                                message:
+                                    'Apakah Anda yakin ingin menghapus pengguna ini? Semua data terkait akan dihapus secara permanen dan tidak dapat dipulihkan.',
+                                itemName: user['name'],
+                                onConfirm: () {
+                                  setState(() {
+                                    _successMessage =
+                                        'Pengguna "${user['name']}" berhasil dihapus';
+                                    _showSuccessToast = true;
+                                  });
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Pagination
+                    TablePagination(
+                      currentPage: _currentPage,
+                      totalItems: _filteredData.length,
+                      itemsPerPage: _itemsPerPage,
+                      onPageChange: (p) => setState(() => _currentPage = p),
+                      onItemsPerPageChange: (n) =>
+                          setState(() {
+                            _itemsPerPage = n;
+                            _currentPage = 1;
+                          }),
+                      itemName: 'pengguna',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // Success Toast
+        if (_showSuccessToast)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: SuccessToast(
+              isVisible: true,
+              message: _successMessage,
+              onClose: () => setState(() => _showSuccessToast = false),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── User Row Widget ──
+class _UserRow extends StatelessWidget {
+  final Map<String, dynamic> user;
+  final VoidCallback onEdit;
+  final VoidCallback onResetPassword;
+  final VoidCallback onDelete;
+
+  const _UserRow({
+    required this.user,
+    required this.onEdit,
+    required this.onResetPassword,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = (user['name'] as String)
+        .split(' ')
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0] : '')
+        .join()
+        .toUpperCase();
+    final isActive = user['status'] == 'Aktif';
+
+    return InkWell(
+      onTap: () {},
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            // Name + Avatar
+            Expanded(
+              flex: 3,
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF2563EB)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(user['name'], style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.foreground)),
+                        Text(user['email'], style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ID Number
+            Expanded(
+              flex: 2,
+              child: Text(
+                user['idNumber'],
+                style: const TextStyle(fontFamily: 'monospace', color: AppColors.foreground),
+              ),
+            ),
+
+            // Role Badge
+            Expanded(
+              flex: 2,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getRoleBadgeColor(user['role']),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    user['role'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _getRoleBadgeTextColor(user['role']),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Status
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: isActive ? AppColors.green500 : AppColors.gray500,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    user['status'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isActive ? AppColors.green700 : AppColors.gray700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Action Buttons
+            SizedBox(
+              width: 120,
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600),
+                    tooltip: 'Edit',
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: onResetPassword,
+                    icon: const Icon(Icons.vpn_key_outlined, size: 18, color: AppColors.gray600),
+                    tooltip: 'Reset Password',
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600),
+                    tooltip: 'Hapus',
+                    splashRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getRoleBadgeColor(String role) {
+    switch (role) {
+      case 'Siswa': return const Color(0xFFDBEAFE);
+      case 'Guru Mata Pelajaran': return const Color(0xFFDCFCE7);
+      case 'Wali Kelas': return const Color(0xFFF3E8FF);
+      case 'Kurikulum': return const Color(0xFFFFF7ED);
+      default: return AppColors.gray100;
+    }
+  }
+
+  Color _getRoleBadgeTextColor(String role) {
+    switch (role) {
+      case 'Siswa': return const Color(0xFF1D4ED8);
+      case 'Guru Mata Pelajaran': return const Color(0xFF15803D);
+      case 'Wali Kelas': return const Color(0xFF7E22CE);
+      case 'Kurikulum': return const Color(0xFFC2410C);
+      default: return AppColors.gray700;
+    }
+  }
+}
+
+const _headerStyle = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w600,
+  color: AppColors.foreground,
+);
+
+// ═══════════════════════════════════════════════
+// SAMPLE DATA — Generated from React Array.from
+// ═══════════════════════════════════════════════
+final List<Map<String, dynamic>> _userData = List.generate(24, (i) {
+  final id = i + 1;
+  final roles = ['Siswa', 'Guru Mata Pelajaran', 'Wali Kelas', 'Kurikulum'];
+  final role = roles[i % roles.length];
+  final teachers = [
+    'Dr. Siti Nurhaliza, S.Pd',
+    'Budi Santoso, M.Pd',
+    'Prof. Dr. Ani Widiastuti',
+    'Ahmad Hidayat, S.Pd',
+    'Rina Kartika, S.Pd',
+    'Dedi Firmansyah, M.Pd',
+  ];
+
+  if (role == 'Siswa') {
+    return {
+      'id': id,
+      'name': 'Siswa $id',
+      'email': 'siswa$id@student.bfa.edu',
+      'idNumber': '202600${1000 + id}',
+      'role': role,
+      'status': i % 5 == 0 ? 'Tidak Aktif' : 'Aktif',
+    };
+  }
+  return {
+    'id': id,
+    'name': teachers[(id - 1) % teachers.length],
+    'email': 'guru$id@bfa.edu',
+    'idNumber': 'NIP19${80 + (id % 20)}0${id % 10}10${20 + (id % 10)}',
+    'role': role,
+    'status': i % 7 == 0 ? 'Tidak Aktif' : 'Aktif',
+  };
+});
+
+// ═══════════════════════════════════════════════
+// USER FORM MODAL
+// ═══════════════════════════════════════════════
+class UserFormModal extends StatefulWidget {
+  final Map<String, String>? initialData;
+  final bool forcePasswordReset;
+  final Function(Map<String, String>) onSave;
+
+  const UserFormModal({super.key, this.initialData, this.forcePasswordReset = false, required this.onSave});
+
+  static void show(BuildContext context, {Map<String, String>? initialData, bool forcePasswordReset = false, required Function(Map<String, String>) onSave}) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800, maxHeight: 800),
+          child: UserFormModal(initialData: initialData, forcePasswordReset: forcePasswordReset, onSave: onSave),
+        ),
+      ),
+    );
+  }
+
+  @override
+  State<UserFormModal> createState() => _UserFormModalState();
+}
+
+class _UserFormModalState extends State<UserFormModal> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _idNumberCtrl;
+  late TextEditingController _emailCtrl;
+  late TextEditingController _passwordCtrl;
+  String _role = '';
+  bool _isActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.initialData?['name']);
+    _idNumberCtrl = TextEditingController(text: widget.initialData?['idNumber']);
+    _emailCtrl = TextEditingController(text: widget.initialData?['email']);
+    _passwordCtrl = TextEditingController();
+    _role = widget.initialData?['role'] ?? '';
+    _isActive = widget.initialData?['status'] != 'Tidak Aktif';
+    
+    if (widget.forcePasswordReset) {
+      _generatePassword();
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _idNumberCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  void _generatePassword() {
+    setState(() {
+      _passwordCtrl.text = _idNumberCtrl.text.isNotEmpty 
+          ? '${_idNumberCtrl.text}@Siakad2026!' 
+          : 'User@Siakad2026!';
+    });
+  }
+
+  void _saveData() {
+    widget.onSave({
+      'name': _nameCtrl.text,
+      'idNumber': _idNumberCtrl.text,
+      'email': _emailCtrl.text,
+      'role': _role,
+      'password': _passwordCtrl.text,
+      'status': _isActive ? 'Aktif' : 'Tidak Aktif',
+    });
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                  widget.forcePasswordReset 
+                    ? 'Reset Kata Sandi' 
+                    : (widget.initialData == null ? 'Tambah Pengguna Baru' : 'Edit Pengguna'),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        // Body
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Nama Lengkap (Siswa/Guru)'),
+                          TextField(controller: _nameCtrl, decoration: _inputDecoration('contoh: Ahmad Fauzi'), enabled: !widget.forcePasswordReset),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Nomor ID (NISN / NIP)'),
+                          TextField(controller: _idNumberCtrl, decoration: _inputDecoration('Masukkan nomor ID terkait...'), enabled: !widget.forcePasswordReset),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Alamat Email'),
+                          TextField(controller: _emailCtrl, decoration: _inputDecoration('user@sekolah.edu'), enabled: !widget.forcePasswordReset),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Peran Pengguna'),
+                          DropdownButtonFormField<String>(
+                            initialValue: _role.isEmpty ? null : _role,
+                            hint: const Text('Pilih Peran...'),
+                            decoration: _inputDecoration(''),
+                            items: const [
+                              DropdownMenuItem(value: 'Siswa', child: Text('Siswa')),
+                              DropdownMenuItem(value: 'Guru Mata Pelajaran', child: Text('Guru Mata Pelajaran')),
+                              DropdownMenuItem(value: 'Wali Kelas', child: Text('Wali Kelas')),
+                              DropdownMenuItem(value: 'Kurikulum', child: Text('Kurikulum')),
+                            ],
+                            onChanged: widget.forcePasswordReset ? null : (v) => setState(() => _role = v ?? ''),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildLabel('Kata Sandi Akun'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _passwordCtrl,
+                        decoration: _inputDecoration('Masukkan kata sandi atau klik tombol...'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _generatePassword,
+                      icon: const Icon(Icons.key, size: 20),
+                      label: const Text('Opsional: Buat berdasarkan NIP/NISN'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.gray100,
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
+                if (!widget.forcePasswordReset) ...[
+                  const SizedBox(height: 24),
+                  _buildLabel('Status Akun'),
+                  Row(
+                    children: [
+                      Switch(
+                        value: _isActive,
+                        onChanged: (v) => setState(() => _isActive = v),
+                        activeThumbColor: AppColors.green500,
+                      ),
+                      Text(_isActive ? 'Akun Aktif' : 'Akun Tidak Aktif', style: TextStyle(color: _isActive ? AppColors.green700 : AppColors.gray600, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        // Footer
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16)),
+                child: const Text('Batal', style: TextStyle(color: AppColors.gray600, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _saveData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.forcePasswordReset ? Colors.red : AppColors.accent,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(widget.forcePasswordReset ? 'Simpan & Reset Sandi' : 'Simpan Pengguna', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _buildLabel(String text) => Padding(
+  padding: const EdgeInsets.only(bottom: 8),
+  child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.foreground)),
+);
+
+InputDecoration _inputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  );
+}

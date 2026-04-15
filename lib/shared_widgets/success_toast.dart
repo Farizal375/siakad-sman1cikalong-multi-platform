@@ -9,11 +9,15 @@ import '../core/theme/app_colors.dart';
 
 class SuccessToast extends StatefulWidget {
   final String message;
+  final bool isVisible;
+  final VoidCallback? onClose;
   final VoidCallback? onDismiss;
 
   const SuccessToast({
     super.key,
     required this.message,
+    this.isVisible = true,
+    this.onClose,
     this.onDismiss,
   });
 
@@ -37,6 +41,7 @@ class _SuccessToastState extends State<SuccessToast> {
         setState(() => _opacity = 0);
         Future.delayed(const Duration(milliseconds: 300), () {
           widget.onDismiss?.call();
+          widget.onClose?.call();
         });
       }
     });
@@ -44,6 +49,8 @@ class _SuccessToastState extends State<SuccessToast> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isVisible) return const SizedBox.shrink();
+
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: _opacity,
@@ -51,7 +58,7 @@ class _SuccessToastState extends State<SuccessToast> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
           color: AppColors.green500,
-          borderRadius: BorderRadius.circular(12), // rounded-xl
+          borderRadius: BorderRadius.circular(12),
           boxShadow: const [
             BoxShadow(
               color: Color(0x40000000),
@@ -65,14 +72,23 @@ class _SuccessToastState extends State<SuccessToast> {
           children: [
             const Icon(Icons.check_circle, color: Colors.white, size: 20),
             const SizedBox(width: 12),
-            Text(
-              widget.message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                widget.message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
+            if (widget.onClose != null) ...[
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: widget.onClose,
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ],
           ],
         ),
       ),

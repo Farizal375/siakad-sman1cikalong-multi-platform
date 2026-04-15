@@ -1,13 +1,20 @@
 // File: lib/main_mobile_siswa.dart
 // ===========================================
 // ENTRY POINT - Mobile (Siswa APK/IPA)
-// Only Auth + Siswa routes
+// Only Auth + Siswa routes with functional BottomNav
 // ===========================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_colors.dart';
+import 'features/auth/screens/login_page.dart';
+import 'features/siswa/screens/student_dashboard.dart';
+import 'features/siswa/screens/qr_scanner.dart';
+import 'features/siswa/screens/hasil_studi.dart';
+import 'features/siswa/screens/riwayat_kehadiran.dart';
+import 'features/siswa/screens/student_profile.dart';
 import 'shared_widgets/not_found_page.dart';
 
 final _mobileRouterProvider = Provider<GoRouter>((ref) {
@@ -18,50 +25,42 @@ final _mobileRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) =>
-            const _PlaceholderScreen(title: 'Login Siswa'),
+        builder: (context, state) => const LoginPage(),
       ),
 
-      // ── Siswa Routes (uses BottomNav layout on mobile) ──
+      // ── Siswa Routes (BottomNav layout) ──
       ShellRoute(
-        builder: (context, state, child) =>
-            _PlaceholderMobileLayout(child: child),
+        builder: (context, state, child) => StudentMobileLayout(child: child),
         routes: [
           GoRoute(
             path: '/siswa',
             name: 'siswa-home',
-            builder: (context, state) =>
-                const _PlaceholderScreen(title: 'Dashboard Siswa'),
+            builder: (context, state) => const StudentDashboard(),
             routes: [
               GoRoute(
                 path: 'dashboard',
                 name: 'siswa-dashboard',
-                builder: (context, state) =>
-                    const _PlaceholderScreen(title: 'Dashboard Siswa'),
+                builder: (context, state) => const StudentDashboard(),
               ),
               GoRoute(
                 path: 'absensi-qr',
                 name: 'siswa-qr',
-                builder: (context, state) =>
-                    const _PlaceholderScreen(title: 'Scan QR Absensi'),
+                builder: (context, state) => const QRScanner(),
               ),
               GoRoute(
                 path: 'hasil-studi',
                 name: 'siswa-hasil',
-                builder: (context, state) =>
-                    const _PlaceholderScreen(title: 'Hasil Studi'),
+                builder: (context, state) => const HasilStudi(),
               ),
               GoRoute(
                 path: 'riwayat-kehadiran',
                 name: 'siswa-kehadiran',
-                builder: (context, state) =>
-                    const _PlaceholderScreen(title: 'Riwayat Kehadiran'),
+                builder: (context, state) => const RiwayatKehadiran(),
               ),
               GoRoute(
                 path: 'profil',
                 name: 'siswa-profil',
-                builder: (context, state) =>
-                    const _PlaceholderScreen(title: 'Profil Siswa'),
+                builder: (context, state) => const StudentProfile(),
               ),
             ],
           ),
@@ -94,52 +93,69 @@ class SiakadMobileSiswa extends ConsumerWidget {
   }
 }
 
-// ── Temporary Placeholders ──
+// ══════════════════════════════════════════════════════
+// STUDENT MOBILE LAYOUT
+// Functional BottomNavigationBar with 5 tabs
+// ══════════════════════════════════════════════════════
+class StudentMobileLayout extends StatelessWidget {
+  final Widget child;
+  const StudentMobileLayout({super.key, required this.child});
 
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const _PlaceholderScreen({required this.title});
+  static const _tabs = [
+    (path: '/siswa/dashboard', icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Beranda'),
+    (path: '/siswa/absensi-qr', icon: Icons.qr_code_scanner_outlined, activeIcon: Icons.qr_code_scanner, label: 'Absensi'),
+    (path: '/siswa/hasil-studi', icon: Icons.school_outlined, activeIcon: Icons.school, label: 'Nilai'),
+    (path: '/siswa/riwayat-kehadiran', icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Kehadiran'),
+    (path: '/siswa/profil', icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
+  ];
+
+  int _getSelectedIndex(BuildContext context) {
+    final path = GoRouterState.of(context).uri.path;
+    for (int i = 0; i < _tabs.length; i++) {
+      if (path == _tabs[i].path || path.startsWith(_tabs[i].path)) {
+        return i;
+      }
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction, size: 64,
-              color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 16),
-          Text(title, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Will be implemented in Phase 8',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+    final selectedIndex = _getSelectedIndex(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        title: const Row(
+          children: [
+            Icon(Icons.school, color: Colors.white, size: 24),
+            SizedBox(width: 10),
+            Text('SIAKAD Siswa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
           ),
+          const SizedBox(width: 8),
         ],
       ),
-    );
-  }
-}
-
-class _PlaceholderMobileLayout extends StatelessWidget {
-  final Widget child;
-  const _PlaceholderMobileLayout({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Absensi'),
-          NavigationDestination(icon: Icon(Icons.school), label: 'Nilai'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'Kehadiran'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
-        ],
-        selectedIndex: 0,
+        selectedIndex: selectedIndex,
+        backgroundColor: Colors.white,
+        indicatorColor: AppColors.accent.withValues(alpha: 0.15),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        onDestinationSelected: (i) => context.go(_tabs[i].path),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: _tabs.map((tab) => NavigationDestination(
+          icon: Icon(tab.icon, color: AppColors.gray500),
+          selectedIcon: Icon(tab.activeIcon, color: AppColors.accent),
+          label: tab.label,
+        )).toList(),
       ),
     );
   }

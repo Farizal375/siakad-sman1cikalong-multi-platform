@@ -72,8 +72,9 @@ class _HeaderBar extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12), // rounded-xl
                     ),
+                    clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.all(4), // p-1
-                    child: const Icon(Icons.school, size: 32, color: AppColors.primary),
+                    child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
                   ),
                   const SizedBox(width: 12), // gap-3
                   const Expanded(
@@ -155,12 +156,11 @@ class _HeroSection extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           // Background image
-          CachedNetworkImage(
-            imageUrl:
-                'https://images.unsplash.com/photo-1759834687385-fc3a66687fb1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1920',
+          Image.asset(
+            'assets/images/heroImage.jpg',
             fit: BoxFit.cover,
-            placeholder: (_, __) => Container(color: AppColors.gray900),
-            errorWidget: (_, __, ___) => Container(color: AppColors.gray900),
+            width: double.infinity,
+            height: double.infinity,
           ),
 
           // Gradient overlay (from-black/70 to-black/40)
@@ -768,8 +768,9 @@ class _Footer extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
               ),
+              clipBehavior: Clip.antiAlias,
               padding: const EdgeInsets.all(4),
-              child: const Icon(Icons.school, size: 24, color: AppColors.primary),
+              child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
             ),
             const SizedBox(width: 8),
             Flexible(

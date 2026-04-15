@@ -54,8 +54,12 @@ class AppColors {
   static const Color chart5 = Color(0xFFC2410C);
 
   // ── Status Colors (for info cards) ──
+  static const Color green50 = Color(0xFFF0FDF4);
+  static const Color green100 = Color(0xFFDCFCE7);
   static const Color green500 = Color(0xFF22C55E);
   static const Color green600 = Color(0xFF16A34A);
+  static const Color green700 = Color(0xFF15803D);
+  static const Color red100 = Color(0xFFFEE2E2);
   static const Color blue500 = Color(0xFF3B82F6);
   static const Color blue600 = Color(0xFF2563EB);
   static const Color amber500 = Color(0xFFF59E0B);
