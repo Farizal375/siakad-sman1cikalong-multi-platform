@@ -7,8 +7,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:printing/printing.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared_widgets/success_toast.dart';
+import '../utils/report_card_pdf_generator.dart';
 
 class CetakRapor extends StatefulWidget {
   const CetakRapor({super.key});
@@ -194,7 +196,15 @@ class _CetakRaporState extends State<CetakRapor> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     _actionBtn(Icons.visibility_outlined, const Color(0xFF2563EB), () => context.go('/guru/rapor-detail/$id')),
-                                    _actionBtn(Icons.description_outlined, AppColors.accent, canPrint ? () {} : null),
+                                    _actionBtn(Icons.description_outlined, AppColors.accent, canPrint ? () async {
+                                      setState(() { _toastMsg = 'Membuka pratinjau rapor...'; _showToast = true; });
+                                      final pdfBytes = await ReportCardPdfGenerator.generateBulkReportCards(
+                                        students: [s],
+                                        semester: _semester,
+                                        digitalSignature: _digitalSignature,
+                                      );
+                                      await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
+                                    } : null),
                                     _actionBtn(Icons.restart_alt, AppColors.gray600, () {}),
                                   ],
                                 ),
@@ -362,16 +372,23 @@ class _CetakRaporState extends State<CetakRapor> {
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            final selectedStudents = _students.where((s) => _selected.contains(s['id'])).toList();
                             setState(() {
                               _showModal = false;
                               _selected = {};
-                              _toastMsg = 'Memproses e-Rapor dalam format ZIP...';
+                              _toastMsg = 'Memproses e-Rapor...';
                               _showToast = true;
                             });
+                            final pdfBytes = await ReportCardPdfGenerator.generateBulkReportCards(
+                              students: selectedStudents,
+                              semester: _semester,
+                              digitalSignature: _digitalSignature,
+                            );
+                            await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
                           },
-                          icon: const Icon(Icons.download, size: 18),
-                          label: const Text('Proses & Unduh ZIP'),
+                          icon: const Icon(Icons.print, size: 18),
+                          label: const Text('Proses & Cetak (PDF)'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
