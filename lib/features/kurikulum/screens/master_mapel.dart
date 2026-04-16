@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
 import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
@@ -24,6 +25,36 @@ class _MasterMapelState extends State<MasterMapel> {
   String _searchQuery = '';
   bool _showSuccessToast = false;
   String _successMessage = '';
+  bool _loading = true;
+  List<Map<String, String>> _subjectsData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final response = await ApiService.getMataPelajaran();
+      final items = response['data'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          _subjectsData = items.map<Map<String, String>>((item) => {
+            'id': (item['id'] ?? '').toString(),
+            'code': (item['kode'] ?? '').toString(),
+            'name': (item['nama'] ?? '').toString(),
+            'category': (item['kategori'] ?? 'Wajib').toString(),
+            'kkm': (item['kkm'] ?? '75').toString(),
+            'description': (item['deskripsi'] ?? '').toString(),
+          }).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   List<Map<String, String>> get _filteredData {
     if (_searchQuery.isEmpty) return _subjectsData;
@@ -60,17 +91,21 @@ class _MasterMapelState extends State<MasterMapel> {
     });
   }
 
-  void _handleDelete(String name) {
+  void _handleDelete(String id, String name) {
     DeleteConfirmationModal.show(
       context,
       title: 'Konfirmasi Penghapusan',
       message: 'Apakah Anda yakin ingin menghapus mata pelajaran ini? Tindakan ini tidak dapat dibatalkan.',
       itemName: name,
-      onConfirm: () {
-        setState(() {
-          _successMessage = 'Mata pelajaran "$name" berhasil dihapus';
-          _showSuccessToast = true;
-        });
+      onConfirm: () async {
+        try {
+          await ApiService.deleteMataPelajaran(id);
+          _loadData();
+          setState(() {
+            _successMessage = 'Mata pelajaran "$name" berhasil dihapus';
+            _showSuccessToast = true;
+          });
+        } catch (_) {}
       },
     );
   }
@@ -212,7 +247,7 @@ class _MasterMapelState extends State<MasterMapel> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600),
-                                        onPressed: () => _handleDelete(s['name']!),
+                                        onPressed: () => _handleDelete(s['id']!, s['name']!),
 
                                         tooltip: 'Hapus',
                                       ),
@@ -432,20 +467,5 @@ Color _categoryTextColor(String category) {
   }
 }
 
-// ═══════════════════════════════════════════════
-// STATIC DATA
-// ═══════════════════════════════════════════════
-final List<Map<String, String>> _subjectsData = [
-  {'code': 'MTK-01', 'name': 'Matematika Wajib', 'category': 'Wajib', 'kkm': '75', 'description': 'Matematika dasar untuk semua jurusan'},
-  {'code': 'MTK-02', 'name': 'Matematika Peminatan', 'category': 'Peminatan', 'kkm': '78', 'description': 'Matematika lanjutan untuk IPA'},
-  {'code': 'FIS-01', 'name': 'Fisika', 'category': 'Peminatan', 'kkm': '75', 'description': 'Ilmu fisika untuk jurusan IPA'},
-  {'code': 'KIM-01', 'name': 'Kimia', 'category': 'Peminatan', 'kkm': '75', 'description': 'Ilmu kimia untuk jurusan IPA'},
-  {'code': 'BIO-01', 'name': 'Biologi', 'category': 'Peminatan', 'kkm': '75', 'description': 'Ilmu biologi untuk jurusan IPA'},
-  {'code': 'BIN-01', 'name': 'Bahasa Indonesia', 'category': 'Wajib', 'kkm': '78', 'description': 'Bahasa Indonesia wajib'},
-  {'code': 'BIG-01', 'name': 'Bahasa Inggris', 'category': 'Wajib', 'kkm': '75', 'description': 'Bahasa Inggris wajib'},
-  {'code': 'SEJ-01', 'name': 'Sejarah Indonesia', 'category': 'Wajib', 'kkm': '75', 'description': 'Sejarah Indonesia wajib'},
-  {'code': 'PKN-01', 'name': 'Pendidikan Kewarganegaraan', 'category': 'Wajib', 'kkm': '78', 'description': 'PKN wajib'},
-  {'code': 'PAI-01', 'name': 'Pendidikan Agama Islam', 'category': 'Wajib', 'kkm': '78', 'description': 'Pendidikan agama'},
-  {'code': 'MUL-01', 'name': 'Bahasa Sunda', 'category': 'Muatan Lokal', 'kkm': '70', 'description': 'Bahasa daerah'},
-  {'code': 'EKS-01', 'name': 'Robotika', 'category': 'Ekstrakurikuler', 'kkm': '70', 'description': 'Kegiatan robotika'},
-];
+// Static data removed — loaded from API via _loadData()
+

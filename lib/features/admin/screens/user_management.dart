@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
 import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
@@ -24,21 +25,44 @@ class _UserManagementState extends State<UserManagement> {
   String _searchQuery = '';
   bool _showSuccessToast = false;
   String _successMessage = '';
+  bool _loading = true;
+  List<Map<String, dynamic>> _userData = [];
+  int _totalItems = 0;
 
-  List<Map<String, dynamic>> get _filteredData {
-    if (_searchQuery.isEmpty) return _userData;
-    final q = _searchQuery.toLowerCase();
-    return _userData.where((u) =>
-        u['name'].toString().toLowerCase().contains(q) ||
-        u['idNumber'].toString().toLowerCase().contains(q) ||
-        u['email'].toString().toLowerCase().contains(q)).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
   }
 
-  List<Map<String, dynamic>> get _paginatedData {
-    final start = (_currentPage - 1) * _itemsPerPage;
-    final end = (start + _itemsPerPage).clamp(0, _filteredData.length);
-    return _filteredData.sublist(start, end);
+  Future<void> _loadUsers() async {
+    setState(() => _loading = true);
+    try {
+      final response = await ApiService.getUsers(
+        page: _currentPage,
+        limit: _itemsPerPage,
+        search: _searchQuery,
+      );
+      final data = response['data'] as List? ?? [];
+      final pagination = response['pagination'] as Map<String, dynamic>? ?? {};
+      setState(() {
+        _userData = data.map<Map<String, dynamic>>((u) => {
+          'id': u['id'] ?? '',
+          'name': u['name'] ?? '',
+          'email': u['email'] ?? '',
+          'idNumber': u['idNumber'] ?? '-',
+          'role': u['role'] ?? 'Siswa',
+          'status': u['status'] ?? 'Aktif',
+        }).toList();
+        _totalItems = pagination['total'] ?? _userData.length;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+    }
   }
+
+  List<Map<String, dynamic>> get _paginatedData => _userData;
 
   @override
   Widget build(BuildContext context) {
@@ -112,10 +136,11 @@ class _UserManagementState extends State<UserManagement> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 448),
               child: TextField(
-                onChanged: (v) => setState(() {
+                onChanged: (v) {
                   _searchQuery = v;
                   _currentPage = 1;
-                }),
+                  _loadUsers();
+                },
                 decoration: InputDecoration(
                   hintText: 'Cari pengguna berdasarkan nama, ID, atau NIP...',
                   prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
@@ -170,7 +195,9 @@ class _UserManagementState extends State<UserManagement> {
 
                     // Table Body
                     Expanded(
-                      child: ListView.separated(
+                      child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ListView.separated(
                         itemCount: _paginatedData.length,
                         separatorBuilder: (_, __) =>
                             const Divider(height: 1, color: AppColors.gray200),
@@ -210,12 +237,16 @@ class _UserManagementState extends State<UserManagement> {
                                 message:
                                     'Apakah Anda yakin ingin menghapus pengguna ini? Semua data terkait akan dihapus secara permanen dan tidak dapat dipulihkan.',
                                 itemName: user['name'],
-                                onConfirm: () {
-                                  setState(() {
-                                    _successMessage =
-                                        'Pengguna "${user['name']}" berhasil dihapus';
-                                    _showSuccessToast = true;
-                                  });
+                                onConfirm: () async {
+                                  try {
+                                    await ApiService.deleteUser(user['id']);
+                                    _loadUsers();
+                                    setState(() {
+                                      _successMessage =
+                                          'Pengguna "${user['name']}" berhasil dihapus';
+                                      _showSuccessToast = true;
+                                    });
+                                  } catch (_) {}
                                 },
                               );
                             },
@@ -227,14 +258,19 @@ class _UserManagementState extends State<UserManagement> {
                     // Pagination
                     TablePagination(
                       currentPage: _currentPage,
-                      totalItems: _filteredData.length,
+                      totalItems: _totalItems,
                       itemsPerPage: _itemsPerPage,
-                      onPageChange: (p) => setState(() => _currentPage = p),
-                      onItemsPerPageChange: (n) =>
-                          setState(() {
-                            _itemsPerPage = n;
-                            _currentPage = 1;
-                          }),
+                      onPageChange: (p) {
+                        setState(() => _currentPage = p);
+                        _loadUsers();
+                      },
+                      onItemsPerPageChange: (n) {
+                        setState(() {
+                          _itemsPerPage = n;
+                          _currentPage = 1;
+                        });
+                        _loadUsers();
+                      },
                       itemName: 'pengguna',
                     ),
                   ],
@@ -438,41 +474,7 @@ const _headerStyle = TextStyle(
   color: AppColors.foreground,
 );
 
-// ═══════════════════════════════════════════════
-// SAMPLE DATA — Generated from React Array.from
-// ═══════════════════════════════════════════════
-final List<Map<String, dynamic>> _userData = List.generate(24, (i) {
-  final id = i + 1;
-  final roles = ['Siswa', 'Guru Mata Pelajaran', 'Wali Kelas', 'Kurikulum'];
-  final role = roles[i % roles.length];
-  final teachers = [
-    'Dr. Siti Nurhaliza, S.Pd',
-    'Budi Santoso, M.Pd',
-    'Prof. Dr. Ani Widiastuti',
-    'Ahmad Hidayat, S.Pd',
-    'Rina Kartika, S.Pd',
-    'Dedi Firmansyah, M.Pd',
-  ];
-
-  if (role == 'Siswa') {
-    return {
-      'id': id,
-      'name': 'Siswa $id',
-      'email': 'siswa$id@student.bfa.edu',
-      'idNumber': '202600${1000 + id}',
-      'role': role,
-      'status': i % 5 == 0 ? 'Tidak Aktif' : 'Aktif',
-    };
-  }
-  return {
-    'id': id,
-    'name': teachers[(id - 1) % teachers.length],
-    'email': 'guru$id@bfa.edu',
-    'idNumber': 'NIP19${80 + (id % 20)}0${id % 10}10${20 + (id % 10)}',
-    'role': role,
-    'status': i % 7 == 0 ? 'Tidak Aktif' : 'Aktif',
-  };
-});
+// Mock data removed — using real API data from _loadUsers()
 
 // ═══════════════════════════════════════════════
 // USER FORM MODAL

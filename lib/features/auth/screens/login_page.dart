@@ -54,16 +54,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _handleGoogleLogin() async {
-    // Simulate Google login as admin
-    final adminUser = const User(
-      id: '1',
-      email: 'admin@sman1cikalong.sch.id',
-      password: '',
-      name: 'Administrator',
-      role: UserRole.admin,
-    );
-    await ref.read(authProvider.notifier).loginAsUser(adminUser);
-    if (mounted) context.go('/dashboard');
+    // Quick login as admin using backend credentials
+    _emailController.text = 'admin@siakad.sch.id';
+    _passwordController.text = 'password123';
+    _handleLogin();
   }
 
   void _navigateByRole(UserRole role) {
@@ -438,10 +432,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   static const List<Map<String, String>> _demoAccounts = [
-    {'role': 'Admin', 'credentials': 'admin@sman1cikalong.sch.id / admin123'},
-    {'role': 'Kurikulum', 'credentials': 'kurikulum@sman1cikalong.sch.id / kurikulum123'},
-    {'role': 'Guru', 'credentials': 'guru@sman1cikalong.sch.id / guru123'},
-    {'role': 'Siswa', 'credentials': 'siswa@sman1cikalong.sch.id / siswa123'},
+    {'role': 'Admin', 'credentials': 'admin@siakad.sch.id / password123'},
+    {'role': 'Kurikulum', 'credentials': 'kurikulum@siakad.sch.id / password123'},
+    {'role': 'Guru', 'credentials': 'guru@siakad.sch.id / password123'},
+    {'role': 'Wali Kelas', 'credentials': 'walikelas@siakad.sch.id / password123'},
+    {'role': 'Siswa', 'credentials': 'siswa@siakad.sch.id / password123'},
   ];
 
   // ── Google SSO Button ──

@@ -8,6 +8,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
 import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
@@ -344,12 +345,41 @@ class _AcademicYearTable extends StatefulWidget {
 class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
-  final List<Map<String, dynamic>> _data = [
-    {'code': '2026/2027', 'description': 'Tahun Ajaran 2026/2027', 'isActive': true},
-    {'code': '2025/2026', 'description': 'Tahun Ajaran 2025/2026', 'isActive': false},
-    {'code': '2024/2025', 'description': 'Tahun Ajaran 2024/2025', 'isActive': false},
-    {'code': '2023/2024', 'description': 'Tahun Ajaran 2023/2024', 'isActive': false},
-  ];
+  List<Map<String, dynamic>> _data = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final response = await ApiService.getTahunAjaran();
+      final items = response['data'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          _data = items.map<Map<String, dynamic>>((item) => {
+            'id': item['id'] ?? '',
+            'code': item['kode'] ?? '',
+            'description': item['deskripsi'] ?? '',
+            'isActive': item['isActive'] ?? false,
+          }).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> row) async {
+    try {
+      await ApiService.toggleTahunAjaran(row['id']);
+      _loadData();
+    } catch (_) {}
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -357,6 +387,7 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (_loading) return const Center(child: CircularProgressIndicator());
     final total = _data.length;
     final start = (_currentPage - 1) * _itemsPerPage;
     final end = (start + _itemsPerPage).clamp(0, total);
@@ -453,12 +484,41 @@ class _SemesterTable extends StatefulWidget {
 class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
-  final List<Map<String, dynamic>> _data = [
-    {'name': 'Semester Ganjil', 'academicYear': '2026/2027', 'isActive': true},
-    {'name': 'Semester Genap', 'academicYear': '2025/2026', 'isActive': false},
-    {'name': 'Semester Ganjil', 'academicYear': '2025/2026', 'isActive': false},
-    {'name': 'Semester Genap', 'academicYear': '2024/2025', 'isActive': false},
-  ];
+  List<Map<String, dynamic>> _data = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final response = await ApiService.getSemester();
+      final items = response['data'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          _data = items.map<Map<String, dynamic>>((item) => {
+            'id': item['id'] ?? '',
+            'name': item['nama'] ?? '',
+            'academicYear': item['tahunAjaran'] ?? '',
+            'isActive': item['isActive'] ?? false,
+          }).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> row) async {
+    try {
+      await ApiService.toggleSemester(row['id']);
+      _loadData();
+    } catch (_) {}
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -520,7 +580,7 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
                           const SizedBox(width: 12),
                           _ToggleSwitch(
                             value: isActive,
-                            onChanged: (val) => setState(() => row['isActive'] = val),
+                            onChanged: (val) => _toggleActive(row),
                           ),
                         ],
                       ),
@@ -1114,36 +1174,10 @@ Widget _buildFormButtons(BuildContext context) {
 }
 
 // ═══════════════════════════════════════════════
-// STATIC DATA — From React source
+// STATIC DATA — Placeholder (loaded from API in production)
 // ═══════════════════════════════════════════════
-final List<List<String>> _classroomsData = [
-  ['R-101', 'Gedung A', '40', 'Aktif'],
-  ['R-102', 'Gedung A', '35', 'Aktif'],
-  ['R-201', 'Gedung B', '40', 'Aktif'],
-  ['R-202', 'Gedung B', '35', 'Aktif'],
-  ['LAB-01', 'Gedung C', '30', 'Aktif'],
-];
+final List<List<String>> _classroomsData = [];
+final List<List<String>> _masterClassesData = [];
+final List<List<String>> _studentsData = [];
+final List<List<String>> _teachersData = [];
 
-final List<List<String>> _masterClassesData = [
-  ['X IPA 1', '10', 'Dr. Siti Nurhaliza', 'R-101'],
-  ['X IPA 2', '10', 'Budi Santoso', 'R-102'],
-  ['XI IPA 1', '11', 'Ahmad Hidayat', 'R-201'],
-  ['XI IPS 1', '11', 'Rina Kartika', 'R-202'],
-  ['XII IPA 1', '12', 'Prof. Dr. Ani', 'LAB-01'],
-];
-
-final List<List<String>> _studentsData = [
-  ['2026001001', 'Ahmad Fauzi', 'L', 'ahmad@student.sch.id'],
-  ['2026001002', 'Siti Aisyah', 'P', 'siti@student.sch.id'],
-  ['2026001003', 'Budi Pratama', 'L', 'budi@student.sch.id'],
-  ['2026001004', 'Dewi Lestari', 'P', 'dewi@student.sch.id'],
-  ['2026001005', 'Rizki Hidayat', 'L', 'rizki@student.sch.id'],
-];
-
-final List<List<String>> _teachersData = [
-  ['NIP198501012020', 'Dr. Siti Nurhaliza, S.Pd', 'P', 'siti@sch.id'],
-  ['NIP198601022021', 'Budi Santoso, M.Pd', 'L', 'budi@sch.id'],
-  ['NIP197801032019', 'Prof. Dr. Ani Widiastuti', 'P', 'ani@sch.id'],
-  ['NIP199001042022', 'Ahmad Hidayat, S.Pd', 'L', 'ahmad@sch.id'],
-  ['NIP199201052023', 'Rina Kartika, S.Pd', 'P', 'rina@sch.id'],
-];
