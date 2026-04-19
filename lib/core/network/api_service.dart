@@ -4,7 +4,6 @@
 // All backend API calls in one place
 // ===========================================
 
-import 'package:dio/dio.dart';
 import 'api_client.dart';
 
 class ApiService {
@@ -55,9 +54,9 @@ class ApiService {
   // USER MANAGEMENT
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 10, String search = ''}) async {
+  static Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 10, String search = '', String role = ''}) async {
     final response = await _client.get('/users', queryParameters: {
-      'page': page, 'limit': limit, 'search': search,
+      'page': page, 'limit': limit, 'search': search, 'role': role,
     });
     return response.data;
   }
@@ -276,6 +275,12 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> getAvailableWali({String? currentRombelId}) async {
+    final params = currentRombelId != null ? {'currentRombelId': currentRombelId} : null;
+    final response = await _client.get('/rombel/available-wali', queryParameters: params);
+    return response.data;
+  }
+
   static Future<Map<String, dynamic>> getAvailableSiswa(String id) async {
     final response = await _client.get('/rombel/$id/available-siswa');
     return response.data;
@@ -450,6 +455,8 @@ class ApiService {
   static String getRaporPdfUrl(String siswaId, String semesterId) {
     return 'http://localhost:3001/api/rapor/$siswaId/$semesterId';
   }
+
+
 
   // ═══════════════════════════════════════════
   // CMS / KONTEN PUBLIK

@@ -2,11 +2,12 @@
 // ===========================================
 // CURRICULUM PROFILE
 // Translated from CurriculumProfile.tsx
-// Profile form with avatar, credentials, personal info, address
+// Connected to /profile API
 // ===========================================
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/success_toast.dart';
 
 class CurriculumProfile extends StatefulWidget {
@@ -19,25 +20,102 @@ class CurriculumProfile extends StatefulWidget {
 class _CurriculumProfileState extends State<CurriculumProfile> {
   bool _showSuccessToast = false;
   String _successMessage = '';
+  bool _loading = true;
+  bool _saving = false;
 
-  // Personal info controllers
-  final _fullNameCtrl = TextEditingController(text: 'Dr. Ahmad Ridwan, M.Pd');
-  final _nikCtrl = TextEditingController(text: '3201012345678901');
-  final _motherNameCtrl = TextEditingController(text: 'Siti Aminah');
-  final _birthPlaceCtrl = TextEditingController(text: 'Bandung');
+  final _fullNameCtrl = TextEditingController();
+  final _nikCtrl = TextEditingController();
+  final _motherNameCtrl = TextEditingController();
+  final _birthPlaceCtrl = TextEditingController();
   String _gender = 'Laki-laki';
   String _religion = 'Islam';
-  String _maritalStatus = 'Menikah';
+  String _maritalStatus = 'Belum Menikah';
 
-  // Address controllers
-  String _province = 'Jawa Barat';
-  String _city = 'Kab. Cianjur';
-  String _district = 'Cikalong';
-  String _subdistrict = 'Cikalong';
-  final _addressCtrl = TextEditingController(text: 'Jl. Raya Cikalong No. 45');
-  final _rtCtrl = TextEditingController(text: '003');
-  final _rwCtrl = TextEditingController(text: '005');
-  final _postalCtrl = TextEditingController(text: '43282');
+  String _province = '';
+  String _city = '';
+  String _district = '';
+  String _subdistrict = '';
+  final _addressCtrl = TextEditingController();
+  final _rtCtrl = TextEditingController();
+  final _rwCtrl = TextEditingController();
+  final _postalCtrl = TextEditingController();
+
+  String _email = '';
+  String _nip = '';
+  String _initials = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final response = await ApiService.getProfile();
+      final data = response['data'] ?? {};
+      if (mounted) {
+        setState(() {
+          _email = data['email'] ?? '';
+          _nip = data['nomorInduk'] ?? '';
+          _fullNameCtrl.text = data['namaLengkap'] ?? '';
+          _nikCtrl.text = data['nik'] ?? '';
+          _motherNameCtrl.text = data['namaIbuKandung'] ?? '';
+          _birthPlaceCtrl.text = data['tempatLahir'] ?? '';
+          _gender = data['jenisKelamin'] ?? 'Laki-laki';
+          _religion = data['agama'] ?? 'Islam';
+          _maritalStatus = data['statusPernikahan'] ?? 'Belum Menikah';
+          _province = data['provinsi'] ?? '';
+          _city = data['kota'] ?? '';
+          _district = data['kecamatan'] ?? '';
+          _subdistrict = data['kelurahan'] ?? '';
+          _addressCtrl.text = data['alamat'] ?? '';
+          _rtCtrl.text = data['rt'] ?? '';
+          _rwCtrl.text = data['rw'] ?? '';
+          _postalCtrl.text = data['kodePos'] ?? '';
+          final names = (data['namaLengkap'] ?? '').toString().split(' ');
+          _initials = names.length >= 2
+              ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+              : names.isNotEmpty && names[0].isNotEmpty ? names[0][0].toUpperCase() : '?';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _saving = true);
+    try {
+      await ApiService.updateProfile({
+        'namaLengkap': _fullNameCtrl.text,
+        'nik': _nikCtrl.text,
+        'namaIbuKandung': _motherNameCtrl.text,
+        'tempatLahir': _birthPlaceCtrl.text,
+        'jenisKelamin': _gender,
+        'agama': _religion,
+        'statusPernikahan': _maritalStatus,
+        'provinsi': _province,
+        'kota': _city,
+        'kecamatan': _district,
+        'kelurahan': _subdistrict,
+        'alamat': _addressCtrl.text,
+        'rt': _rtCtrl.text,
+        'rw': _rwCtrl.text,
+        'kodePos': _postalCtrl.text,
+      });
+      if (mounted) {
+        setState(() {
+          _successMessage = 'Profil berhasil diperbarui';
+          _showSuccessToast = true;
+          _saving = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -54,6 +132,8 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
     return Stack(
       children: [
         SingleChildScrollView(
@@ -92,14 +172,10 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
                               BoxShadow(color: Color(0x30000000), blurRadius: 12, offset: Offset(0, 4)),
                             ],
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
-                              'CM',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 40,
-                              ),
+                              _initials,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 40),
                             ),
                           ),
                         ),
@@ -132,9 +208,9 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
 
               // ── Credentials (read-only) ──
               _buildSection('Informasi Akun', [
-                _buildReadOnlyField('Email', 'ahmad.ridwan@edu.sch.id'),
+                _buildReadOnlyField('Email', _email),
                 const SizedBox(height: 16),
-                _buildReadOnlyField('NIP', 'NIP198001012010'),
+                _buildReadOnlyField('NIP', _nip),
               ]),
               const SizedBox(height: 32),
 
@@ -172,18 +248,15 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
                           TextField(
                             readOnly: true,
                             onTap: () async {
-                              final date = await showDatePicker(
+                              await showDatePicker(
                                 context: context,
                                 initialDate: DateTime(1980, 1, 1),
                                 firstDate: DateTime(1950),
                                 lastDate: DateTime.now(),
                               );
-                              if (date != null) {
-                                // Handle date selection
-                              }
                             },
                             decoration: InputDecoration(
-                              hintText: '01/01/1980',
+                              hintText: 'Pilih tanggal',
                               suffixIcon: const Icon(Icons.calendar_today, size: 18, color: AppColors.gray400),
                               filled: true, fillColor: AppColors.gray50,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
@@ -200,9 +273,9 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
 
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], _religion, (v) => setState(() => _religion = v!))),
+                    Expanded(child: _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], _religion.isEmpty ? 'Islam' : _religion, (v) => setState(() => _religion = v!))),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Status Pernikahan', ['Belum Menikah', 'Menikah', 'Cerai'], _maritalStatus, (v) => setState(() => _maritalStatus = v!))),
+                    Expanded(child: _buildDropdownField('Status Pernikahan', ['Belum Menikah', 'Menikah', 'Cerai'], _maritalStatus.isEmpty ? 'Belum Menikah' : _maritalStatus, (v) => setState(() => _maritalStatus = v!))),
                   ],
                 ),
               ]),
@@ -212,17 +285,17 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
               _buildSection('Alamat', [
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Provinsi', ['Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'DKI Jakarta'], _province, (v) => setState(() => _province = v!))),
+                    Expanded(child: _buildTextField('Provinsi', TextEditingController(text: _province), onChanged: (v) => _province = v)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kota/Kabupaten', ['Kab. Cianjur', 'Kab. Bandung', 'Kota Bandung'], _city, (v) => setState(() => _city = v!))),
+                    Expanded(child: _buildTextField('Kota/Kabupaten', TextEditingController(text: _city), onChanged: (v) => _city = v)),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Kecamatan', ['Cikalong', 'Cipanas', 'Cianjur'], _district, (v) => setState(() => _district = v!))),
+                    Expanded(child: _buildTextField('Kecamatan', TextEditingController(text: _district), onChanged: (v) => _district = v)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kelurahan/Desa', ['Cikalong', 'Cibeber', 'Sindangsari'], _subdistrict, (v) => setState(() => _subdistrict = v!))),
+                    Expanded(child: _buildTextField('Kelurahan/Desa', TextEditingController(text: _subdistrict), onChanged: (v) => _subdistrict = v)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -245,7 +318,7 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: () {},
+                    onPressed: _loadProfile,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.gray600,
                       side: const BorderSide(color: AppColors.gray300),
@@ -256,12 +329,7 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Profil berhasil diperbarui';
-                        _showSuccessToast = true;
-                      });
-                    },
+                    onPressed: _saving ? null : _saveProfile,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
@@ -269,7 +337,9 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       textStyle: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    child: const Text('Simpan Perubahan'),
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Simpan Perubahan'),
                   ),
                 ],
               ),
@@ -320,13 +390,13 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.gray200),
           ),
-          child: Text(value, style: const TextStyle(fontSize: 14, color: AppColors.gray600)),
+          child: Text(value.isEmpty ? '-' : value, style: const TextStyle(fontSize: 14, color: AppColors.gray600)),
         ),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController ctrl, {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController ctrl, {TextInputType keyboardType = TextInputType.text, int maxLines = 1, ValueChanged<String>? onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -336,6 +406,7 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
           controller: ctrl,
           maxLines: maxLines,
           keyboardType: keyboardType,
+          onChanged: onChanged,
           decoration: InputDecoration(
             filled: true, fillColor: AppColors.gray50,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
@@ -355,7 +426,7 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
         _buildLabel(label),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: value,
+          initialValue: items.contains(value) ? value : items.first,
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: onChanged,
           decoration: InputDecoration(

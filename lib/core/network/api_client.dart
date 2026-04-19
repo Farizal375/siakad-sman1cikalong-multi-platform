@@ -5,6 +5,7 @@
 // ===========================================
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
@@ -19,13 +20,12 @@ class ApiClient {
 
   ApiClient._internal() {
     // Detect platform for base URL
-    const baseUrl = bool.hasEnvironment('FLUTTER_WEB')
-        ? _webBaseUrl
-        : _defaultBaseUrl;
+    // kIsWeb is true when running in browser; 10.0.2.2 is only for Android emulator
+    final baseUrl = kIsWeb ? _webBaseUrl : _defaultBaseUrl;
 
     _dio = Dio(
       BaseOptions(
-        baseUrl: _webBaseUrl, // Default to web since this is a desktop/web app
+        baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -56,7 +56,7 @@ class ApiClient {
     _dio.interceptors.add(LogInterceptor(
       requestBody: true,
       responseBody: true,
-      logPrint: (obj) => print('[API] $obj'),
+      logPrint: (obj) => debugPrint('[API] $obj'),
     ));
   }
 

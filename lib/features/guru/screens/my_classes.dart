@@ -1,26 +1,83 @@
 // File: lib/features/guru/screens/my_classes.dart
 // ===========================================
 // MY CLASSES – Daftar Kelas Guru
-// Translated from MyClasses.tsx
+// Connected to /jadwal/by-guru API
 // ===========================================
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 
-class MyClasses extends StatelessWidget {
+class MyClasses extends StatefulWidget {
   const MyClasses({super.key});
 
   @override
+  State<MyClasses> createState() => _MyClassesState();
+}
+
+class _MyClassesState extends State<MyClasses> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _classes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    try {
+      final response = await ApiService.getGuruDashboard();
+      final data = response['data'] ?? {};
+      final jadwalList = data['jadwalHariIni'] as List? ?? [];
+      final mapelList = data['mapelDiampu'] as List? ?? [];
+
+      // Group jadwal by class+subject to build class cards
+      final Map<String, Map<String, dynamic>> classMap = {};
+      for (final j in jadwalList) {
+        final key = '${j['subject']}-${j['className']}';
+        if (!classMap.containsKey(key)) {
+          classMap[key] = {
+            'id': j['id'] ?? key,
+            'subject': j['subject'] ?? '-',
+            'class': j['className'] ?? '-',
+            'schedule': '${j['startTime'] ?? ''} - ${j['endTime'] ?? ''}',
+            'color': AppColors.primary,
+          };
+        }
+      }
+
+      // Also add from mapelDiampu
+      for (final m in mapelList) {
+        final subject = m['subject'] ?? '-';
+        final classes = m['classes'] ?? 0;
+        final key = '$subject-all';
+        if (!classMap.containsKey(key) && classes > 0) {
+          classMap[key] = {
+            'id': m['id'] ?? key,
+            'subject': subject,
+            'class': '$classes kelas',
+            'schedule': '${m['hoursPerWeek'] ?? 0} jam/minggu',
+            'color': const Color(0xFF7C3AED),
+          };
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _classes = classMap.values.toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final classes = [
-      {'id': 'mat-xi-1', 'subject': 'Matematika', 'class': 'Kelas XI-1', 'students': 36, 'schedule': 'Senin & Rabu', 'color': AppColors.primary},
-      {'id': 'mat-xi-2', 'subject': 'Matematika', 'class': 'Kelas XI-2', 'students': 34, 'schedule': 'Selasa & Kamis', 'color': AppColors.primary},
-      {'id': 'mat-xi-3', 'subject': 'Matematika', 'class': 'Kelas XI-3', 'students': 35, 'schedule': 'Rabu & Jumat', 'color': AppColors.primary},
-      {'id': 'fis-x-1', 'subject': 'Fisika', 'class': 'Kelas X-1', 'students': 32, 'schedule': 'Senin & Kamis', 'color': const Color(0xFF7C3AED)},
-      {'id': 'fis-x-2', 'subject': 'Fisika', 'class': 'Kelas X-2', 'students': 33, 'schedule': 'Selasa & Jumat', 'color': const Color(0xFF7C3AED)},
-      {'id': 'mat-x-1', 'subject': 'Matematika', 'class': 'Kelas X-1', 'students': 31, 'schedule': 'Rabu & Kamis', 'color': AppColors.primary},
-    ];
+    if (_loading) return const Center(child: CircularProgressIndicator());
 
     return SingleChildScrollView(
       child: Column(
@@ -38,30 +95,43 @@ class MyClasses extends StatelessWidget {
         ),
         const SizedBox(height: 24),
 
-        // Grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 380,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            mainAxisExtent: 220,
+        if (_classes.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 64),
+            alignment: Alignment.center,
+            child: const Column(
+              children: [
+                Icon(Icons.class_outlined, size: 64, color: AppColors.gray400),
+                SizedBox(height: 16),
+                Text('Belum ada kelas yang ditugaskan', style: TextStyle(color: AppColors.gray500, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          // Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 380,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              mainAxisExtent: 220,
+            ),
+            itemCount: _classes.length,
+            itemBuilder: (context, i) {
+              final c = _classes[i];
+              return _ClassCard(
+                id: c['id'] as String,
+                subject: c['subject'] as String,
+                className: c['class'] as String,
+                students: 0,
+                schedule: c['schedule'] as String,
+                accentColor: c['color'] as Color,
+                onTap: () => context.go('/guru/kelas/${c['id']}'),
+              );
+            },
           ),
-          itemCount: classes.length,
-          itemBuilder: (context, i) {
-            final c = classes[i];
-            return _ClassCard(
-              id: c['id'] as String,
-              subject: c['subject'] as String,
-              className: c['class'] as String,
-              students: c['students'] as int,
-              schedule: c['schedule'] as String,
-              accentColor: c['color'] as Color,
-              onTap: () => context.go('/guru/kelas/${c['id']}'),
-            );
-          },
-        ),
         ],
       ),
     );
@@ -134,14 +204,6 @@ class _ClassCardState extends State<_ClassCard> {
                     const SizedBox(height: 4),
                     Text(widget.className, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray600)),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.people_outline, size: 18, color: AppColors.accent),
-                        const SizedBox(width: 8),
-                        Text('${widget.students} Siswa', style: const TextStyle(fontSize: 13, color: AppColors.gray600)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(Icons.access_time_outlined, size: 18, color: AppColors.accent),

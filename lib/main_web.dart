@@ -25,6 +25,7 @@ import 'features/kurikulum/screens/manajemen_rombel.dart';
 import 'features/kurikulum/screens/jadwal_pelajaran.dart';
 import 'features/kurikulum/screens/curriculum_profile.dart';
 import 'features/kurikulum/screens/jadwal_overview.dart';
+import 'features/kurikulum/screens/master_akademik.dart';
 import 'features/guru/screens/teacher_layout.dart';
 import 'features/guru/screens/teacher_dashboard.dart';
 import 'features/guru/screens/my_classes.dart';
@@ -129,6 +130,12 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 name: 'curriculum-rombel',
                 builder: (context, state) =>
                     const ManajemenRombel(),
+              ),
+              GoRoute(
+                path: 'master-akademik',
+                name: 'curriculum-akademik',
+                builder: (context, state) =>
+                    const MasterAkademik(),
               ),
               GoRoute(
                 path: 'jadwal-pelajaran',

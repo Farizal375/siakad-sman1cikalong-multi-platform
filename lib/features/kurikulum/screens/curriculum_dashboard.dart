@@ -1,19 +1,57 @@
 // File: lib/features/kurikulum/screens/curriculum_dashboard.dart
 // ===========================================
 // CURRICULUM DASHBOARD
-// Translated from CurriculumDashboard.tsx
-// KPI Cards, Quick Actions, Recent Activity, Tasks
+// Connected to /dashboard/stats API
+// KPI Cards, Quick Actions
 // ===========================================
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 
-class CurriculumDashboard extends StatelessWidget {
+class CurriculumDashboard extends StatefulWidget {
   const CurriculumDashboard({super.key});
 
   @override
+  State<CurriculumDashboard> createState() => _CurriculumDashboardState();
+}
+
+class _CurriculumDashboardState extends State<CurriculumDashboard> {
+  bool _loading = true;
+  Map<String, dynamic> _stats = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final response = await ApiService.getDashboardStats();
+      if (mounted) {
+        setState(() {
+          _stats = response['data'] ?? {};
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    final kpiCards = [
+      {'title': 'Total Mata Pelajaran (Mapel)', 'value': '${_stats['totalMapel'] ?? 0}', 'icon': 'book', 'color': 'blue'},
+      {'title': 'Master Kelas', 'value': '${_stats['totalKelas'] ?? 0}', 'icon': 'users', 'color': 'green'},
+      {'title': 'Total Siswa Aktif', 'value': '${_stats['totalSiswa'] ?? 0}', 'icon': 'calendar', 'color': 'purple'},
+      {'title': 'Guru yang Ditugaskan', 'value': '${_stats['totalGuru'] ?? 0}', 'icon': 'user', 'color': 'orange'},
+    ];
+
     return SingleChildScrollView(
       child: AnimatedOpacity(
         opacity: 1,
@@ -48,7 +86,7 @@ class CurriculumDashboard extends StatelessWidget {
               return Wrap(
                 spacing: 24,
                 runSpacing: 24,
-                children: _kpiCards.map((card) {
+                children: kpiCards.map((card) {
                   final cardWidth =
                       (constraints.maxWidth - (crossAxisCount - 1) * 24) /
                           crossAxisCount;
@@ -130,8 +168,6 @@ class CurriculumDashboard extends StatelessWidget {
     ),
     );
   }
-
-
 }
 
 // ═══════════════════════════════════════════════
@@ -260,13 +296,6 @@ const Map<String, Color> _kpiBgColors = {
   'orange': Color(0xFFFFEDD5),
 };
 
-const List<Map<String, String>> _kpiCards = [
-  {'title': 'Total Mata Pelajaran (Mapel)', 'value': '42', 'icon': 'book', 'color': 'blue'},
-  {'title': 'Rombongan Belajar Aktif (Rombel)', 'value': '36', 'icon': 'users', 'color': 'green'},
-  {'title': 'Jadwal Tersusun', 'value': '85%', 'icon': 'calendar', 'color': 'purple'},
-  {'title': 'Guru yang Ditugaskan', 'value': '60', 'icon': 'user', 'color': 'orange'},
-];
-
 const Map<String, IconData> _quickActionIcons = {
   'plus': Icons.add_rounded,
   'settings': Icons.settings_rounded,
@@ -278,5 +307,3 @@ const List<Map<String, String>> _quickActions = [
   {'icon': 'settings', 'label': 'Atur Rombel', 'route': '/curriculum/manajemen-rombel'},
   {'icon': 'calendar', 'label': 'Kelola Jadwal', 'route': '/curriculum/jadwal-pelajaran'},
 ];
-
-

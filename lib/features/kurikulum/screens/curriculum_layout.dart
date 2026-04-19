@@ -40,6 +40,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
     if (r.contains('/manajemen-rombel')) return 'Manajemen Rombel';
     if (r.contains('/monitoring-jadwal')) return 'Monitoring Jadwal';
     if (r.contains('/jadwal-pelajaran')) return 'Jadwal Pelajaran';
+    if (r.contains('/master-akademik')) return 'Master Akademik';
     if (r.contains('/profile')) return 'Profil Pengguna';
     return 'Dashboard';
   }
@@ -60,6 +61,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
             controller: _sidebarController,
             menuItems: [
               SidebarMenuItem(icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/curriculum'),
+              SidebarMenuItem(icon: Icons.school_outlined, label: 'Master Akademik', route: '/curriculum/master-akademik'),
               SidebarMenuItem(icon: Icons.menu_book_outlined, label: 'Master Mapel', route: '/curriculum/master-mapel'),
               SidebarMenuItem(icon: Icons.people_outline, label: 'Manajemen Rombel', route: '/curriculum/manajemen-rombel'),
               SidebarMenuItem(icon: Icons.calendar_today_outlined, label: 'Jadwal Pelajaran', route: '/curriculum/jadwal-pelajaran'),

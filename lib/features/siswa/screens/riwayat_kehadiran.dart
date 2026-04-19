@@ -1,242 +1,109 @@
 // File: lib/features/siswa/screens/riwayat_kehadiran.dart
 // ===========================================
 // RIWAYAT KEHADIRAN & JURNAL – Siswa
-// Migrated from RiwayatKehadiran.tsx
+// Connected to /kehadiran/siswa/:id API
 // Pertemuan-based cards + dropdown filter + summary card
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class _Meeting {
-  final int pertemuan;
-  final String tanggal;
-  final String status; // HADIR | SAKIT | IZIN | ALPA
-  final String topik;
-  final String deskripsi;
-  final bool hasAttachment;
-  final String mataPelajaran;
-
-  const _Meeting({
-    required this.pertemuan,
-    required this.tanggal,
-    required this.status,
-    required this.topik,
-    required this.deskripsi,
-    required this.mataPelajaran,
-    this.hasAttachment = false,
-  });
-}
-
-class RiwayatKehadiran extends StatefulWidget {
+class RiwayatKehadiran extends ConsumerStatefulWidget {
   const RiwayatKehadiran({super.key});
 
   @override
-  State<RiwayatKehadiran> createState() => _RiwayatKehadiranState();
+  ConsumerState<RiwayatKehadiran> createState() => _RiwayatKehadiranState();
 }
 
-class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
-  String _selectedSubject = 'Matematika';
+class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran> {
+  String _selectedSubject = '';
+  bool _loading = true;
+  List<Map<String, dynamic>> _allMeetings = [];
+  List<String> _subjects = [];
 
-  static const _subjects = [
-    'Matematika',
-    'Fisika',
-    'Bahasa Indonesia',
-    'Bahasa Inggris',
-    'Kimia',
-    'Biologi',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadAttendance();
+  }
 
-  static const _allMeetings = <_Meeting>[
-    _Meeting(
-      pertemuan: 8,
-      tanggal: '10 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Matematika',
-      topik: 'Integral Tentu dan Tak Tentu',
-      deskripsi:
-          'Pembahasan konsep integral, contoh soal integral tentu dan tak tentu, serta aplikasi integral dalam kehidupan sehari-hari.',
-      hasAttachment: true,
-    ),
-    _Meeting(
-      pertemuan: 7,
-      tanggal: '8 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Matematika',
-      topik: 'Turunan Fungsi Trigonometri',
-      deskripsi:
-          'Pengenalan turunan fungsi trigonometri, rumus-rumus dasar, dan latihan soal halaman 45-50.',
-      hasAttachment: false,
-    ),
-    _Meeting(
-      pertemuan: 6,
-      tanggal: '5 April 2026',
-      status: 'SAKIT',
-      mataPelajaran: 'Matematika',
-      topik: 'Rumus Identitas Trigonometri',
-      deskripsi:
-          'Pembahasan soal latihan halaman 45-50 dan pengumpulan tugas kelompok tentang identitas trigonometri.',
-      hasAttachment: true,
-    ),
-    _Meeting(
-      pertemuan: 5,
-      tanggal: '3 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Matematika',
-      topik: 'Limit Fungsi Aljabar',
-      deskripsi:
-          'Penjelasan konsep limit, teknik menghitung limit fungsi aljabar, dan pengerjaan soal-soal limit.',
-      hasAttachment: false,
-    ),
-    _Meeting(
-      pertemuan: 4,
-      tanggal: '1 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Matematika',
-      topik: 'Fungsi Komposisi dan Invers',
-      deskripsi:
-          'Pembahasan fungsi komposisi, sifat-sifat fungsi invers, dan contoh aplikasi dalam soal.',
-      hasAttachment: true,
-    ),
-    _Meeting(
-      pertemuan: 3,
-      tanggal: '29 Maret 2026',
-      status: 'IZIN',
-      mataPelajaran: 'Matematika',
-      topik: 'Sistem Persamaan Linear',
-      deskripsi:
-          'Metode eliminasi, substitusi, dan determinan untuk menyelesaikan sistem persamaan linear tiga variabel.',
-      hasAttachment: false,
-    ),
-    // Fisika
-    _Meeting(
-      pertemuan: 6,
-      tanggal: '10 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Fisika',
-      topik: 'Gelombang Mekanik',
-      deskripsi:
-          'Memahami karakteristik gelombang mekanik dan persamaan gelombang berjalan.',
-      hasAttachment: true,
-    ),
-    _Meeting(
-      pertemuan: 5,
-      tanggal: '7 April 2026',
-      status: 'ALPA',
-      mataPelajaran: 'Fisika',
-      topik: 'Bunyi dan Intensitas',
-      deskripsi: 'Menganalisis intensitas bunyi dan faktor-faktor yang mempengaruhinya.',
-      hasAttachment: false,
-    ),
-    _Meeting(
-      pertemuan: 4,
-      tanggal: '3 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Fisika',
-      topik: 'Hukum Newton',
-      deskripsi: 'Penerapan hukum Newton pada gerak benda di berbagai kondisi.',
-      hasAttachment: true,
-    ),
-    // Bahasa Indonesia
-    _Meeting(
-      pertemuan: 5,
-      tanggal: '9 April 2026',
-      status: 'IZIN',
-      mataPelajaran: 'Bahasa Indonesia',
-      topik: 'Teks Argumentasi',
-      deskripsi: 'Menganalisis struktur dan kaidah kebahasaan teks argumentasi.',
-      hasAttachment: false,
-    ),
-    _Meeting(
-      pertemuan: 4,
-      tanggal: '5 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Bahasa Indonesia',
-      topik: 'Teks Eksplanasi',
-      deskripsi: 'Memahami struktur teks eksplanasi dan cara penulisannya.',
-      hasAttachment: true,
-    ),
-    // Kimia
-    _Meeting(
-      pertemuan: 5,
-      tanggal: '8 April 2026',
-      status: 'HADIR',
-      mataPelajaran: 'Kimia',
-      topik: 'Reaksi Redoks',
-      deskripsi:
-          'Mengidentifikasi reaksi oksidasi dan reduksi dalam kehidupan sehari-hari.',
-      hasAttachment: false,
-    ),
-    _Meeting(
-      pertemuan: 4,
-      tanggal: '4 April 2026',
-      status: 'SAKIT',
-      mataPelajaran: 'Kimia',
-      topik: 'Larutan Elektrolit',
-      deskripsi:
-          'Klasifikasi larutan berdasarkan daya hantar listrik dan uji larutan elektrolit.',
-      hasAttachment: true,
-    ),
-  ];
+  Future<void> _loadAttendance() async {
+    try {
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
+      final response = await ApiService.getKehadiranSiswa(userId);
+      final List data = response['data'] ?? [];
+      final meetings = data.cast<Map<String, dynamic>>();
 
-  // ── Status styling ────────────────────────────────────────────────────────
+      // Extract unique subjects
+      final subjectSet = <String>{};
+      for (final m in meetings) {
+        subjectSet.add(m['mapel'] ?? 'Lainnya');
+      }
+      final subjects = subjectSet.toList()..sort();
+
+      if (mounted) {
+        setState(() {
+          _allMeetings = meetings;
+          _subjects = subjects;
+          _selectedSubject = subjects.isNotEmpty ? subjects.first : '';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // ── Status styling ──
   ({Color bg, Color text, Color border, IconData icon}) _statusStyle(String status) {
-    switch (status) {
+    switch (status.toUpperCase()) {
       case 'HADIR':
-        return (
-          bg: const Color(0xFFDCFCE7),
-          text: const Color(0xFF15803D),
-          border: const Color(0xFF86EFAC),
-          icon: Icons.check_circle_outline,
-        );
+        return (bg: const Color(0xFFDCFCE7), text: const Color(0xFF15803D), border: const Color(0xFF86EFAC), icon: Icons.check_circle_outline);
       case 'SAKIT':
-        return (
-          bg: const Color(0xFFFEF3C7),
-          text: const Color(0xFFB45309),
-          border: const Color(0xFFFDE68A),
-          icon: Icons.cancel_outlined,
-        );
+        return (bg: const Color(0xFFFEF3C7), text: const Color(0xFFB45309), border: const Color(0xFFFDE68A), icon: Icons.cancel_outlined);
       case 'IZIN':
-        return (
-          bg: const Color(0xFFDBEAFE),
-          text: const Color(0xFF1D4ED8),
-          border: const Color(0xFFBFDBFE),
-          icon: Icons.watch_later_outlined,
-        );
+        return (bg: const Color(0xFFDBEAFE), text: const Color(0xFF1D4ED8), border: const Color(0xFFBFDBFE), icon: Icons.watch_later_outlined);
       case 'ALPA':
-        return (
-          bg: const Color(0xFFFEE2E2),
-          text: const Color(0xFFB91C1C),
-          border: const Color(0xFFFCA5A5),
-          icon: Icons.cancel_outlined,
-        );
+        return (bg: const Color(0xFFFEE2E2), text: const Color(0xFFB91C1C), border: const Color(0xFFFCA5A5), icon: Icons.cancel_outlined);
       default:
-        return (
-          bg: const Color(0xFFF3F4F6),
-          text: AppColors.gray600,
-          border: const Color(0xFFE5E7EB),
-          icon: Icons.help_outline,
-        );
+        return (bg: const Color(0xFFF3F4F6), text: AppColors.gray600, border: const Color(0xFFE5E7EB), icon: Icons.help_outline);
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return '-';
+    try {
+      final d = DateTime.parse(dateStr);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+      return '${d.day} ${months[d.month - 1]} ${d.year}';
+    } catch (_) {
+      return dateStr;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _allMeetings
-        .where((m) => m.mataPelajaran == _selectedSubject)
-        .toList()
-      ..sort((a, b) => b.pertemuan.compareTo(a.pertemuan));
+    if (_loading) return const Center(child: CircularProgressIndicator());
 
-    final hadir = filtered.where((m) => m.status == 'HADIR').length;
-    final sakit = filtered.where((m) => m.status == 'SAKIT').length;
-    final izin  = filtered.where((m) => m.status == 'IZIN').length;
-    final alpa  = filtered.where((m) => m.status == 'ALPA').length;
+    final filtered = _allMeetings
+        .where((m) => (m['mapel'] ?? '') == _selectedSubject)
+        .toList()
+      ..sort((a, b) => (b['pertemuanKe'] ?? 0).compareTo(a['pertemuanKe'] ?? 0));
+
+    final hadir = filtered.where((m) => (m['status'] as String).toUpperCase() == 'HADIR').length;
+    final sakit = filtered.where((m) => (m['status'] as String).toUpperCase() == 'SAKIT').length;
+    final izin  = filtered.where((m) => (m['status'] as String).toUpperCase() == 'IZIN').length;
+    final alpa  = filtered.where((m) => (m['status'] as String).toUpperCase() == 'ALPA').length;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Page Header ──────────────────────────────────────────────────
+          // ── Page Header ──
           const Text(
             'Riwayat Kehadiran & Jurnal',
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.primary),
@@ -248,7 +115,7 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
           ),
           const SizedBox(height: 24),
 
-          // ── Subject Dropdown ─────────────────────────────────────────────
+          // ── Subject Dropdown ──
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -259,45 +126,31 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Pilih Mata Pelajaran',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gray700),
-                ),
+                const Text('Pilih Mata Pelajaran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gray700)),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedSubject,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 2),
+                if (_subjects.isEmpty)
+                  const Text('Belum ada data mata pelajaran', style: TextStyle(color: AppColors.gray500))
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: _subjects.contains(_selectedSubject) ? _selectedSubject : (_subjects.isNotEmpty ? _subjects.first : null),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 2)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 2)),
+                      filled: true, fillColor: Colors.white,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.foreground),
+                    items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) { if (v != null) setState(() => _selectedSubject = v); },
                   ),
-                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.foreground),
-                  items: _subjects
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedSubject = v);
-                  },
-                ),
               ],
             ),
           ),
           const SizedBox(height: 20),
 
-          // ── Meeting Cards ─────────────────────────────────────────────────
+          // ── Meeting Cards ──
           if (filtered.isEmpty)
             Center(
               child: Padding(
@@ -317,7 +170,7 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
           else
             ...filtered.map((meeting) => _buildMeetingCard(meeting)),
 
-          // ── Summary Card ──────────────────────────────────────────────────
+          // ── Summary Card ──
           if (filtered.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
@@ -330,10 +183,7 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Ringkasan Kehadiran – $_selectedSubject',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
-                  ),
+                  Text('Ringkasan Kehadiran – $_selectedSubject', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -355,9 +205,14 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
     );
   }
 
-  // ── Meeting Card ─────────────────────────────────────────────────────────
-  Widget _buildMeetingCard(_Meeting meeting) {
-    final style = _statusStyle(meeting.status);
+  // ── Meeting Card ──
+  Widget _buildMeetingCard(Map<String, dynamic> meeting) {
+    final status = (meeting['status'] as String? ?? 'HADIR').toUpperCase();
+    final style = _statusStyle(status);
+    final pertemuan = meeting['pertemuanKe'] ?? 0;
+    final tanggal = _formatDate(meeting['tanggal'] as String?);
+    final topik = meeting['topik'] as String? ?? '-';
+    final keterangan = meeting['keterangan'] as String? ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -374,60 +229,29 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
           // ─ Gradient Header ─
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.80)],
-              ),
-            ),
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.80)])),
             child: Row(
               children: [
-                // Pertemuan + Tanggal
                 Expanded(
                   child: Row(
                     children: [
-                      Text(
-                        'Pertemuan ${meeting.pertemuan}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
+                      Text('Pertemuan $pertemuan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
                       const SizedBox(width: 10),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        color: Colors.white.withValues(alpha: 0.50),
-                      ),
+                      Container(width: 1, height: 16, color: Colors.white.withValues(alpha: 0.50)),
                       const SizedBox(width: 10),
-                      Text(
-                        meeting.tanggal,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
+                      Text(tanggal, style: const TextStyle(color: Colors.white70, fontSize: 13)),
                     ],
                   ),
                 ),
-                // Status Badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: style.bg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: style.border),
-                  ),
+                  decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: style.border)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(style.icon, size: 14, color: style.text),
                       const SizedBox(width: 5),
-                      Text(
-                        meeting.status,
-                        style: TextStyle(
-                          color: style.text,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
+                      Text(status, style: TextStyle(color: style.text, fontWeight: FontWeight.w700, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -435,75 +259,30 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
             ),
           ),
 
-          // ─ Body: Journal Section ─
+          // ─ Body ─
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // FileText icon box
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.description_outlined, size: 20, color: AppColors.primary),
-                    ),
-                    const SizedBox(width: 12),
-                    // Topic + Description
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Topik: ${meeting.topik}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.foreground,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            meeting.deskripsi,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.gray700,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.description_outlined, size: 20, color: AppColors.primary),
                 ),
-
-                // ─ Attachment ─
-                if (meeting.hasAttachment) ...[
-                  const Divider(height: 28, color: Color(0xFFF3F4F6)),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Row(
-                      children: [
-                        const Icon(Icons.attach_file, size: 16, color: AppColors.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Materi_Pertemuan_${meeting.pertemuan}.pdf',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
-                          ),
-                        ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Topik: $topik', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+                      if (keterangan.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(keterangan, style: const TextStyle(fontSize: 13, color: AppColors.gray700, height: 1.5)),
                       ],
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -512,16 +291,12 @@ class _RiwayatKehadiranState extends State<RiwayatKehadiran> {
     );
   }
 
-  // ── Summary Box ───────────────────────────────────────────────────────────
+  // ── Summary Box ──
   Widget _summaryBox(String label, int count, Color fg, Color bg, Color border) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: border),
-        ),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

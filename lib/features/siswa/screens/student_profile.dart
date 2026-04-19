@@ -1,11 +1,12 @@
 // File: lib/features/siswa/screens/student_profile.dart
 // ===========================================
 // STUDENT PROFILE – Profil Siswa
-// Pola sama dengan curriculum_profile.dart untuk Siswa
+// Connected to /profile API
 // ===========================================
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/success_toast.dart';
 
 class StudentProfile extends StatefulWidget {
@@ -17,26 +18,97 @@ class StudentProfile extends StatefulWidget {
 
 class _StudentProfileState extends State<StudentProfile> {
   bool _showSuccessToast = false;
+  bool _loading = true;
+  bool _saving = false;
 
-  final _fullNameCtrl = TextEditingController(text: 'Ahmad Fauzi');
-  final _nisnCtrl = TextEditingController(text: '2023001');
-  final _motherCtrl = TextEditingController(text: 'Siti Aminah');
-  final _birthPlaceCtrl = TextEditingController(text: 'Cianjur');
+  final _fullNameCtrl = TextEditingController();
+  final _motherCtrl = TextEditingController();
+  final _birthPlaceCtrl = TextEditingController();
   String _gender = 'Laki-laki';
   String _religion = 'Islam';
 
-  String _province = 'Jawa Barat';
-  String _city = 'Kab. Cianjur';
-  String _district = 'Cikalong';
-  String _subdistrict = 'Cikalong';
-  final _addressCtrl = TextEditingController(text: 'Jl. Raya Cikalong No. 5');
-  final _rtCtrl = TextEditingController(text: '002');
-  final _rwCtrl = TextEditingController(text: '004');
-  final _postalCtrl = TextEditingController(text: '43282');
+  String _province = '';
+  String _city = '';
+  String _district = '';
+  String _subdistrict = '';
+  final _addressCtrl = TextEditingController();
+  final _rtCtrl = TextEditingController();
+  final _rwCtrl = TextEditingController();
+  final _postalCtrl = TextEditingController();
+
+  // Read-only
+  String _email = '';
+  String _nisn = '';
+  String _kelas = '-';
+  String _initials = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final response = await ApiService.getProfile();
+      final data = response['data'] ?? {};
+      if (mounted) {
+        setState(() {
+          _email = data['email'] ?? '';
+          _nisn = data['nomorInduk'] ?? '';
+          _kelas = data['kelas'] ?? '-';
+          _fullNameCtrl.text = data['namaLengkap'] ?? '';
+          _motherCtrl.text = data['namaIbuKandung'] ?? '';
+          _birthPlaceCtrl.text = data['tempatLahir'] ?? '';
+          _gender = data['jenisKelamin'] ?? 'Laki-laki';
+          _religion = data['agama'] ?? 'Islam';
+          _province = data['provinsi'] ?? '';
+          _city = data['kota'] ?? '';
+          _district = data['kecamatan'] ?? '';
+          _subdistrict = data['kelurahan'] ?? '';
+          _addressCtrl.text = data['alamat'] ?? '';
+          _rtCtrl.text = data['rt'] ?? '';
+          _rwCtrl.text = data['rw'] ?? '';
+          _postalCtrl.text = data['kodePos'] ?? '';
+          final names = (data['namaLengkap'] ?? '').toString().split(' ');
+          _initials = names.length >= 2
+              ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+              : names.isNotEmpty && names[0].isNotEmpty ? names[0][0].toUpperCase() : '?';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _saving = true);
+    try {
+      await ApiService.updateProfile({
+        'namaLengkap': _fullNameCtrl.text,
+        'namaIbuKandung': _motherCtrl.text,
+        'tempatLahir': _birthPlaceCtrl.text,
+        'jenisKelamin': _gender,
+        'agama': _religion,
+        'provinsi': _province,
+        'kota': _city,
+        'kecamatan': _district,
+        'kelurahan': _subdistrict,
+        'alamat': _addressCtrl.text,
+        'rt': _rtCtrl.text,
+        'rw': _rwCtrl.text,
+        'kodePos': _postalCtrl.text,
+      });
+      if (mounted) setState(() { _showSuccessToast = true; _saving = false; });
+    } catch (e) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   void dispose() {
-    _fullNameCtrl.dispose(); _nisnCtrl.dispose(); _motherCtrl.dispose();
+    _fullNameCtrl.dispose(); _motherCtrl.dispose();
     _birthPlaceCtrl.dispose(); _addressCtrl.dispose();
     _rtCtrl.dispose(); _rwCtrl.dispose(); _postalCtrl.dispose();
     super.dispose();
@@ -44,6 +116,8 @@ class _StudentProfileState extends State<StudentProfile> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
     return Stack(
       children: [
         SingleChildScrollView(
@@ -67,7 +141,7 @@ class _StudentProfileState extends State<StudentProfile> {
                             gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: const Center(child: Text('AF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 40))),
+                          child: Center(child: Text(_initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 40))),
                         ),
                         Positioned(
                           bottom: 0, right: 0,
@@ -92,11 +166,11 @@ class _StudentProfileState extends State<StudentProfile> {
 
               // Credentials
               _buildSection('Informasi Akun', [
-                _buildReadOnlyField('Email', 'ahmad.fauzi@siswa.sman1cikalong.sch.id'),
+                _buildReadOnlyField('Email', _email),
                 const SizedBox(height: 16),
-                _buildReadOnlyField('NISN', '2023001'),
+                _buildReadOnlyField('NISN', _nisn),
                 const SizedBox(height: 16),
-                _buildReadOnlyField('Kelas', 'XII-1'),
+                _buildReadOnlyField('Kelas', _kelas),
               ]),
               const SizedBox(height: 32),
 
@@ -130,7 +204,7 @@ class _StudentProfileState extends State<StudentProfile> {
                             readOnly: true,
                             onTap: () async { await showDatePicker(context: context, initialDate: DateTime(2005), firstDate: DateTime(1995), lastDate: DateTime.now()); },
                             decoration: InputDecoration(
-                              hintText: '01/01/2005',
+                              hintText: 'Pilih tanggal',
                               suffixIcon: const Icon(Icons.calendar_today, size: 18, color: AppColors.gray400),
                               filled: true, fillColor: AppColors.gray50,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
@@ -144,7 +218,7 @@ class _StudentProfileState extends State<StudentProfile> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], _religion, (v) => setState(() => _religion = v!)),
+                _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], _religion.isEmpty ? 'Islam' : _religion, (v) => setState(() => _religion = v!)),
               ]),
               const SizedBox(height: 32),
 
@@ -152,17 +226,17 @@ class _StudentProfileState extends State<StudentProfile> {
               _buildSection('Alamat', [
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Provinsi', ['Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'DKI Jakarta'], _province, (v) => setState(() => _province = v!))),
+                    Expanded(child: _buildTextField('Provinsi', TextEditingController(text: _province), onChanged: (v) => _province = v)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kota/Kabupaten', ['Kab. Cianjur', 'Kab. Bandung', 'Kota Bandung'], _city, (v) => setState(() => _city = v!))),
+                    Expanded(child: _buildTextField('Kota/Kabupaten', TextEditingController(text: _city), onChanged: (v) => _city = v)),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Kecamatan', ['Cikalong', 'Cipanas', 'Cianjur'], _district, (v) => setState(() => _district = v!))),
+                    Expanded(child: _buildTextField('Kecamatan', TextEditingController(text: _district), onChanged: (v) => _district = v)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kelurahan/Desa', ['Cikalong', 'Cibeber', 'Sindangsari'], _subdistrict, (v) => setState(() => _subdistrict = v!))),
+                    Expanded(child: _buildTextField('Kelurahan/Desa', TextEditingController(text: _subdistrict), onChanged: (v) => _subdistrict = v)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -184,15 +258,17 @@ class _StudentProfileState extends State<StudentProfile> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: () {},
+                    onPressed: _loadProfile,
                     style: OutlinedButton.styleFrom(foregroundColor: AppColors.gray600, side: const BorderSide(color: AppColors.gray300), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: const Text('Batal'),
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() => _showSuccessToast = true),
+                    onPressed: _saving ? null : _saveProfile,
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Simpan Perubahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Simpan Perubahan', style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -224,21 +300,21 @@ class _StudentProfileState extends State<StudentProfile> {
   Widget _buildReadOnlyField(String label, String value) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _buildLabel(label), const SizedBox(height: 8),
-      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: AppColors.gray100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.gray200)), child: Text(value, style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
+      Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: AppColors.gray100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.gray200)), child: Text(value.isEmpty ? '-' : value, style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
     ]);
   }
 
-  Widget _buildTextField(String label, TextEditingController ctrl, {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController ctrl, {TextInputType keyboardType = TextInputType.text, int maxLines = 1, ValueChanged<String>? onChanged}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _buildLabel(label), const SizedBox(height: 8),
-      TextField(controller: ctrl, maxLines: maxLines, keyboardType: keyboardType, decoration: InputDecoration(filled: true, fillColor: AppColors.gray50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12))),
+      TextField(controller: ctrl, maxLines: maxLines, keyboardType: keyboardType, onChanged: onChanged, decoration: InputDecoration(filled: true, fillColor: AppColors.gray50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12))),
     ]);
   }
 
   Widget _buildDropdownField(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _buildLabel(label), const SizedBox(height: 8),
-      DropdownButtonFormField<String>(initialValue: value, items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onChanged, decoration: InputDecoration(filled: true, fillColor: AppColors.gray50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12))),
+      DropdownButtonFormField<String>(initialValue: items.contains(value) ? value : items.first, items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onChanged, decoration: InputDecoration(filled: true, fillColor: AppColors.gray50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12))),
     ]);
   }
 

@@ -28,7 +28,7 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -52,7 +52,7 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
     );
   }
 
-  void _showFormModal({String? mode, int? tabIndex}) {
+  void _showFormModal({String? mode, int? tabIndex, String? entityId}) {
     final tab = tabIndex ?? _tabController.index;
     final isEdit = mode == 'edit';
     final isView = mode == 'view';
@@ -60,22 +60,10 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
 
     switch (tab) {
       case 0:
-        modalContent = _AcademicYearFormModal(isEdit: isEdit);
+        modalContent = _StudentTeacherFormModal(isEdit: isEdit, isView: isView, isTeacher: false, entityId: entityId);
         break;
       case 1:
-        modalContent = _SemesterFormModal(isEdit: isEdit);
-        break;
-      case 2:
-        modalContent = _ClassroomFormModal(isEdit: isEdit);
-        break;
-      case 3:
-        modalContent = _MasterClassFormModal(isEdit: isEdit);
-        break;
-      case 4:
-        modalContent = _StudentTeacherFormModal(isEdit: isEdit, isView: isView, isTeacher: false);
-        break;
-      case 5:
-        modalContent = _StudentTeacherFormModal(isEdit: isEdit, isView: isView, isTeacher: true);
+        modalContent = _StudentTeacherFormModal(isEdit: isEdit, isView: isView, isTeacher: true, entityId: entityId);
         break;
       default:
         return;
@@ -104,17 +92,13 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
 
   String get _addButtonLabel {
     switch (_tabController.index) {
-      case 0: return 'Tambah Tahun Ajaran';
-      case 1: return 'Tambah Semester';
-      case 2: return 'Tambah Ruang Kelas';
-      case 3: return 'Tambah Master Kelas';
-      case 4: return 'Tambah Data Siswa';
-      case 5: return 'Tambah Data Guru';
+      case 0: return 'Tambah Data Siswa';
+      case 1: return 'Tambah Data Guru';
       default: return 'Tambah Data';
     }
   }
 
-  bool get _showImportExport => _tabController.index == 4 || _tabController.index == 5;
+  bool get _showImportExport => true;
 
   @override
   Widget build(BuildContext context) {
@@ -154,10 +138,6 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
                 dividerColor: Colors.transparent,
                 onTap: (_) => setState(() {}), // rebuild for button label
                 tabs: const [
-                  Tab(text: 'Tahun Ajaran'),
-                  Tab(text: 'Semester'),
-                  Tab(text: 'Ruang Kelas'),
-                  Tab(text: 'Master Kelas'),
                   Tab(text: 'Data Siswa'),
                   Tab(text: 'Data Guru'),
                 ],
@@ -272,12 +252,8 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _AcademicYearTable(onDelete: (name) => _handleDelete('Tahun Ajaran', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 0)),
-                    _SemesterTable(onDelete: (name) => _handleDelete('Semester', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 1)),
-                    _GenericTable(columns: const ['Kode Ruang', 'Gedung', 'Kapasitas', 'Status', 'Aksi'], data: _classroomsData, onDelete: (name) => _handleDelete('Ruang Kelas', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 2), itemName: 'ruang kelas'),
-                    _GenericTable(columns: const ['Nama Kelas', 'Tingkat', 'Wali Kelas', 'Ruangan', 'Aksi'], data: _masterClassesData, onDelete: (name) => _handleDelete('Master Kelas', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 3), itemName: 'master kelas'),
-                    _GenericTable(columns: const ['NISN', 'Nama Lengkap', 'Jenis Kelamin', 'Email', 'Aksi'], data: _studentsData, onDelete: (name) => _handleDelete('Data Siswa', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 4), onView: () => _showFormModal(mode: 'view', tabIndex: 4), itemName: 'siswa'),
-                    _GenericTable(columns: const ['NIP', 'Nama Lengkap', 'Jenis Kelamin', 'Email', 'Aksi'], data: _teachersData, onDelete: (name) => _handleDelete('Data Guru', name), onEdit: () => _showFormModal(mode: 'edit', tabIndex: 5), onView: () => _showFormModal(mode: 'view', tabIndex: 5), itemName: 'guru'),
+                    _UsersTable(onDelete: (name) => _handleDelete('Data Siswa', name), onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 0, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 0, entityId: id), itemName: 'siswa', roleFilter: 'Siswa', columns: const ['NISN', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
+                    _UsersTable(onDelete: (name) => _handleDelete('Data Guru', name), onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 1, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 1, entityId: id), itemName: 'guru', roleFilter: 'Guru Mapel', columns: const ['NIP', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
                   ],
                 ),
               ),
@@ -331,21 +307,34 @@ class _ToggleSwitch extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════
-// ACADEMIC YEAR TABLE — with Toggle Switch
+// USERS TABLE — API Connected (for Siswa & Guru tabs)
 // ═══════════════════════════════════════════════
-class _AcademicYearTable extends StatefulWidget {
+class _UsersTable extends StatefulWidget {
   final void Function(String name) onDelete;
-  final VoidCallback onEdit;
-  const _AcademicYearTable({required this.onDelete, required this.onEdit});
+  final void Function(String id) onEdit;
+  final void Function(String id)? onView;
+  final String itemName;
+  final String roleFilter;
+  final List<String> columns;
+
+  const _UsersTable({
+    required this.onDelete,
+    required this.onEdit,
+    this.onView,
+    required this.itemName,
+    required this.roleFilter,
+    required this.columns,
+  });
 
   @override
-  State<_AcademicYearTable> createState() => _AcademicYearTableState();
+  State<_UsersTable> createState() => _UsersTableState();
 }
 
-class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKeepAliveClientMixin {
+class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
+  int _total = 0;
   bool _loading = true;
 
   @override
@@ -356,16 +345,24 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
 
   Future<void> _loadData() async {
     try {
-      final response = await ApiService.getTahunAjaran();
+      final response = await ApiService.getUsers(
+        page: _currentPage,
+        limit: _itemsPerPage,
+        role: widget.roleFilter,
+      );
       final items = response['data'] as List? ?? [];
+      final pagination = response['pagination'] as Map<String, dynamic>? ?? {};
       if (mounted) {
         setState(() {
+          // Backend now filters by role
           _data = items.map<Map<String, dynamic>>((item) => {
             'id': item['id'] ?? '',
-            'code': item['kode'] ?? '',
-            'description': item['deskripsi'] ?? '',
-            'isActive': item['isActive'] ?? false,
+            'idNumber': item['idNumber'] ?? '-',
+            'name': item['name'] ?? '',
+            'email': item['email'] ?? '',
+            'status': item['status'] ?? 'Aktif',
           }).toList();
+          _total = pagination['total'] ?? _data.length;
           _loading = false;
         });
       }
@@ -374,9 +371,9 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
     }
   }
 
-  Future<void> _toggleActive(Map<String, dynamic> row) async {
+  Future<void> _deleteItem(Map<String, dynamic> row) async {
     try {
-      await ApiService.toggleTahunAjaran(row['id']);
+      await ApiService.deleteUser(row['id']);
       _loadData();
     } catch (_) {}
   }
@@ -388,508 +385,82 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
-    final total = _data.length;
-    final start = (_currentPage - 1) * _itemsPerPage;
-    final end = (start + _itemsPerPage).clamp(0, total);
-    final pageData = _data.sublist(start, end);
+    final dataCols = widget.columns.sublist(0, widget.columns.length - 1); // exclude 'Aksi'
 
     return Column(
       children: [
-        // Header
-        Container(
-          color: AppColors.gray50,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: const Row(
-            children: [
-              Expanded(child: Text('Kode Tahun', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Deskripsi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.gray200),
-        Expanded(
-          child: ListView.separated(
-            itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final row = pageData[i];
-              final isActive = row['isActive'] as bool;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(row['code'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                    Expanded(child: Text(row['description'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isActive ? AppColors.green100 : AppColors.gray100,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
-                                const SizedBox(width: 6),
-                                Text(isActive ? 'Aktif' : 'Tidak Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _ToggleSwitch(
-                            value: isActive,
-                            onChanged: (val) => setState(() => row['isActive'] = val),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 80,
-                      child: Row(
-                        children: [
-                          IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: widget.onEdit, splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code']), splashRadius: 18, tooltip: 'Hapus'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'tahun ajaran'),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// SEMESTER TABLE — with Toggle Switch
-// ═══════════════════════════════════════════════
-class _SemesterTable extends StatefulWidget {
-  final void Function(String name) onDelete;
-  final VoidCallback onEdit;
-  const _SemesterTable({required this.onDelete, required this.onEdit});
-
-  @override
-  State<_SemesterTable> createState() => _SemesterTableState();
-}
-
-class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveClientMixin {
-  int _currentPage = 1;
-  int _itemsPerPage = 10;
-  List<Map<String, dynamic>> _data = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final response = await ApiService.getSemester();
-      final items = response['data'] as List? ?? [];
-      if (mounted) {
-        setState(() {
-          _data = items.map<Map<String, dynamic>>((item) => {
-            'id': item['id'] ?? '',
-            'name': item['nama'] ?? '',
-            'academicYear': item['tahunAjaran'] ?? '',
-            'isActive': item['isActive'] ?? false,
-          }).toList();
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _toggleActive(Map<String, dynamic> row) async {
-    try {
-      await ApiService.toggleSemester(row['id']);
-      _loadData();
-    } catch (_) {}
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    final total = _data.length;
-    final start = (_currentPage - 1) * _itemsPerPage;
-    final end = (start + _itemsPerPage).clamp(0, total);
-    final pageData = _data.sublist(start, end);
-
-    return Column(
-      children: [
-        Container(
-          color: AppColors.gray50,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: const Row(
-            children: [
-              Expanded(child: Text('Nama Semester', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Tahun Ajaran Terkait', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.gray200),
-        Expanded(
-          child: ListView.separated(
-            itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final row = pageData[i];
-              final isActive = row['isActive'] as bool;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(row['name'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                    Expanded(child: Text(row['academicYear'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isActive ? AppColors.green100 : AppColors.gray100,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
-                                const SizedBox(width: 6),
-                                Text(isActive ? 'Aktif' : 'Tidak Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _ToggleSwitch(
-                            value: isActive,
-                            onChanged: (val) => _toggleActive(row),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 80,
-                      child: Row(
-                        children: [
-                          IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: widget.onEdit, splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete('${row['name']} ${row['academicYear']}'), splashRadius: 18, tooltip: 'Hapus'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'semester'),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// GENERIC TABLE WIDGET — for tabs without toggle
-// ═══════════════════════════════════════════════
-class _GenericTable extends StatefulWidget {
-  final List<String> columns;
-  final List<List<String>> data;
-  final void Function(String name) onDelete;
-  final VoidCallback onEdit;
-  final VoidCallback? onView;
-  final String itemName;
-
-  const _GenericTable({
-    required this.columns,
-    required this.data,
-    required this.onDelete,
-    required this.onEdit,
-    this.onView,
-    required this.itemName,
-  });
-
-  @override
-  State<_GenericTable> createState() => _GenericTableState();
-}
-
-class _GenericTableState extends State<_GenericTable> with AutomaticKeepAliveClientMixin {
-  int _currentPage = 1;
-  int _itemsPerPage = 10;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    final total = widget.data.length;
-    final start = (_currentPage - 1) * _itemsPerPage;
-    final end = (start + _itemsPerPage).clamp(0, total);
-    final pageData = widget.data.sublist(start, end);
-
-    final hasActions = widget.columns.last == 'Aksi';
-    final dataCols = hasActions ? widget.columns.sublist(0, widget.columns.length - 1) : widget.columns;
-
-    return Column(
-      children: [
-        // Header
         Container(
           color: AppColors.gray50,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
             children: [
               ...dataCols.map((c) => Expanded(child: Text(c, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground)))),
-              if (hasActions) SizedBox(width: widget.onView != null ? 120 : 80, child: const Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              SizedBox(width: widget.onView != null ? 120 : 80, child: const Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.gray200),
-
-        // Rows
         Expanded(
-          child: ListView.separated(
-            itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final row = pageData[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                child: Row(
-                  children: [
-                    ...List.generate(dataCols.length, (ci) {
-                      if (ci < row.length) {
-                        // Check if it's a status column
-                        if (dataCols[ci] == 'Status') {
-                          final isActive = row[ci] == 'Aktif';
-                          return Expanded(
+          child: _data.isEmpty
+              ? Center(child: Text('Belum ada data ${widget.itemName}', style: const TextStyle(color: AppColors.gray500)))
+              : ListView.separated(
+                  itemCount: _data.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+                  itemBuilder: (_, i) {
+                    final row = _data[i];
+                    final cells = [row['idNumber'], row['name'], row['email'], row['status']];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      child: Row(
+                        children: [
+                          ...List.generate(dataCols.length, (ci) {
+                            final val = ci < cells.length ? cells[ci] ?? '' : '';
+                            if (dataCols[ci] == 'Status') {
+                              final isActive = val == 'Aktif';
+                              return Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
+                                    const SizedBox(width: 6),
+                                    Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
+                                  ],
+                                ),
+                              );
+                            }
+                            return Expanded(
+                              child: Text(
+                                val,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.foreground,
+                                  fontWeight: ci == 0 ? FontWeight.w600 : FontWeight.w400,
+                                  fontFamily: ci == 0 ? 'monospace' : null,
+                                ),
+                              ),
+                            );
+                          }),
+                          SizedBox(
+                            width: widget.onView != null ? 120 : 80,
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
-                                const SizedBox(width: 6),
-                                Text(row[ci], style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
+                                if (widget.onView != null) IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onView!(row['id']), splashRadius: 18, tooltip: 'Lihat Detail'),
+                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row['id']), splashRadius: 18, tooltip: 'Edit'),
+                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () {
+                                  widget.onDelete(row['name']);
+                                  _deleteItem(row);
+                                }, splashRadius: 18, tooltip: 'Hapus'),
                               ],
                             ),
-                          );
-                        }
-                        return Expanded(
-                          child: Text(
-                            row[ci],
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.foreground,
-                              fontWeight: ci == 0 ? FontWeight.w600 : FontWeight.w400,
-                              fontFamily: (dataCols[ci].contains('NIP') || dataCols[ci].contains('NISN')) ? 'monospace' : null,
-                            ),
                           ),
-                        );
-                      }
-                      return const Expanded(child: SizedBox());
-                    }),
-                    if (hasActions)
-                      SizedBox(
-                        width: widget.onView != null ? 120 : 80,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (widget.onView != null) IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: widget.onView, splashRadius: 18, tooltip: 'Lihat Detail'),
-                            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: widget.onEdit, splashRadius: 18, tooltip: 'Edit'),
-                            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row[0]), splashRadius: 18, tooltip: 'Hapus'),
-                          ],
-                        ),
+                        ],
                       ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
-
-        // Pagination
-        TablePagination(
-          currentPage: _currentPage,
-          totalItems: total,
-          itemsPerPage: _itemsPerPage,
-          onPageChange: (p) => setState(() => _currentPage = p),
-          onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }),
-          itemName: widget.itemName,
-        ),
+        TablePagination(currentPage: _currentPage, totalItems: _total, itemsPerPage: _itemsPerPage, onPageChange: (p) { setState(() => _currentPage = p); _loadData(); }, onItemsPerPageChange: (n) { setState(() { _itemsPerPage = n; _currentPage = 1; }); _loadData(); }, itemName: widget.itemName),
       ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// FORM MODALS — Academic Year
-// ═══════════════════════════════════════════════
-class _AcademicYearFormModal extends StatelessWidget {
-  final bool isEdit;
-  const _AcademicYearFormModal({this.isEdit = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(isEdit ? 'Edit Tahun Ajaran' : 'Tambah Tahun Ajaran', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildField('Nama Tahun Ajaran', 'Contoh: 2026/2027'),
-          const SizedBox(height: 16),
-          _buildField('Deskripsi', 'Deskripsi tahun ajaran'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Status Aktif', style: TextStyle(fontWeight: FontWeight.w500)),
-              const Spacer(),
-              Switch(value: !isEdit, onChanged: (_) {}, activeThumbColor: AppColors.green500),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildFormButtons(context),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// FORM MODALS — Semester
-// ═══════════════════════════════════════════════
-class _SemesterFormModal extends StatelessWidget {
-  final bool isEdit;
-  const _SemesterFormModal({this.isEdit = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(isEdit ? 'Edit Semester' : 'Tambah Semester', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildDropdownField('Tipe Semester', ['Semester Ganjil', 'Semester Genap']),
-          const SizedBox(height: 16),
-          _buildDropdownField('Tahun Ajaran', ['2026/2027', '2025/2026', '2024/2025']),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Status Aktif', style: TextStyle(fontWeight: FontWeight.w500)),
-              const Spacer(),
-              Switch(value: !isEdit, onChanged: (_) {}, activeThumbColor: AppColors.green500),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildFormButtons(context),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// FORM MODALS — Classroom
-// ═══════════════════════════════════════════════
-class _ClassroomFormModal extends StatelessWidget {
-  final bool isEdit;
-  const _ClassroomFormModal({this.isEdit = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(isEdit ? 'Edit Ruang Kelas' : 'Tambah Ruang Kelas', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildField('Kode Ruang', 'Contoh: R-101'),
-          const SizedBox(height: 16),
-          _buildField('Gedung', 'Contoh: Gedung A'),
-          const SizedBox(height: 16),
-          _buildField('Kapasitas', 'Contoh: 40', isNumber: true),
-          const SizedBox(height: 24),
-          _buildFormButtons(context),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// FORM MODALS — Master Class
-// ═══════════════════════════════════════════════
-class _MasterClassFormModal extends StatelessWidget {
-  final bool isEdit;
-  const _MasterClassFormModal({this.isEdit = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(isEdit ? 'Edit Master Kelas' : 'Tambah Master Kelas', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildField('Nama Kelas', 'Contoh: X IPA 1'),
-          const SizedBox(height: 16),
-          _buildDropdownField('Tingkat', ['10', '11', '12']),
-          const SizedBox(height: 16),
-          _buildDropdownField('Wali Kelas', ['Dr. Siti Nurhaliza', 'Budi Santoso, M.Pd', 'Ahmad Hidayat, S.Pd', 'Rina Kartika, S.Pd']),
-          const SizedBox(height: 16),
-          _buildDropdownField('Ruangan', ['R-101', 'R-102', 'R-201', 'R-202', 'LAB-01']),
-          const SizedBox(height: 24),
-          _buildFormButtons(context),
-        ],
-      ),
     );
   }
 }
@@ -897,17 +468,129 @@ class _MasterClassFormModal extends StatelessWidget {
 // ═══════════════════════════════════════════════
 // FORM MODALS — Student / Teacher Profile
 // ═══════════════════════════════════════════════
-class _StudentTeacherFormModal extends StatelessWidget {
+class _StudentTeacherFormModal extends StatefulWidget {
   final bool isEdit;
   final bool isView;
   final bool isTeacher;
-  const _StudentTeacherFormModal({this.isEdit = false, this.isView = false, required this.isTeacher});
+  final String? entityId;
+  const _StudentTeacherFormModal({this.isEdit = false, this.isView = false, required this.isTeacher, this.entityId});
+
+  @override
+  State<_StudentTeacherFormModal> createState() => _StudentTeacherFormModalState();
+}
+
+class _StudentTeacherFormModalState extends State<_StudentTeacherFormModal> {
+  bool _loading = false;
+  final _idController = TextEditingController();
+  final _nikController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _tempatLahirController = TextEditingController();
+  final _tanggalLahirController = TextEditingController();
+  final _ibuController = TextEditingController(); // for Siswa
+  final _alamatController = TextEditingController();
+  final _rtController = TextEditingController();
+  final _rwController = TextEditingController();
+  final _kodePosController = TextEditingController();
+
+  String? _statusPegawai = 'ASN/PNS';
+  String? _golongan = 'III/a';
+  String? _angkatan = '2026';
+  String? _jk = 'Laki-laki';
+  String? _agama = 'Islam';
+  String? _statusPerkawinan = 'Belum Menikah';
+  String? _provinsi = 'Jawa Barat';
+  String? _kota = 'Kab. Cianjur';
+  String? _kecamatan = 'Cikalong';
+  String? _kelurahan = 'Sukamaju';
+
+  @override
+  void initState() {
+    super.initState();
+    if ((widget.isEdit || widget.isView) && widget.entityId != null) {
+      _fetchData();
+    }
+  }
+
+  Future<void> _fetchData() async {
+    setState(() => _loading = true);
+    try {
+      final res = await ApiService.getUserById(widget.entityId!);
+      if (res['data'] != null) {
+        final d = res['data'];
+        final p = d['profile'] ?? {};
+        setState(() {
+          _idController.text = d['idNumber'] ?? '';
+          _nameController.text = d['name'] ?? '';
+          _emailController.text = d['email'] ?? '';
+          _jk = p['jenis_kelamin'] == 'P' ? 'Perempuan' : 'Laki-laki';
+          _agama = p['agama'] ?? 'Islam';
+          _tempatLahirController.text = p['tempat_lahir'] ?? '';
+          _tanggalLahirController.text = p['tanggal_lahir'] ?? '';
+          _nikController.text = p['nik'] ?? '';
+          _alamatController.text = p['detail_alamat'] ?? '';
+          _rtController.text = p['rt'] ?? '';
+          _rwController.text = p['rw'] ?? '';
+          _kodePosController.text = p['kode_pos'] ?? '';
+          _provinsi = p['provinsi'] ?? 'Jawa Barat';
+          _kota = p['kota_kabupaten'] ?? 'Kab. Cianjur';
+          _kecamatan = p['kecamatan'] ?? 'Cikalong';
+          _kelurahan = p['kelurahan'] ?? 'Sukamaju';
+        });
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    // Collect data to send
+    final payload = {
+      'name': _nameController.text,
+      'email': _emailController.text,
+      'idNumber': _idController.text,
+      'role': widget.isTeacher ? 'Guru Mapel' : 'Siswa',
+      'password': 'password123', // default password for creation
+      'status': 'Aktif',
+      'profile': {
+        'nik': _nikController.text,
+        'jenis_kelamin': _jk == 'Perempuan' ? 'P' : 'L',
+        'agama': _agama,
+        'tempat_lahir': _tempatLahirController.text,
+        'tanggal_lahir': _tanggalLahirController.text,
+        'detail_alamat': _alamatController.text,
+        'rt': _rtController.text,
+        'rw': _rwController.text,
+        'kode_pos': _kodePosController.text,
+        'provinsi': _provinsi,
+        'kota_kabupaten': _kota,
+        'kecamatan': _kecamatan,
+        'kelurahan': _kelurahan,
+      }
+    };
+    
+    setState(() => _loading = true);
+    try {
+      if (widget.isEdit && widget.entityId != null) {
+        await ApiService.updateUser(widget.entityId!, payload);
+      } else {
+        await ApiService.createUser(payload);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final type = isTeacher ? 'Guru' : 'Siswa';
-    final idLabel = isTeacher ? 'NIP/ID Staf' : 'NISN';
-    final title = isView ? 'Detail Data $type' : (isEdit ? 'Edit Data $type' : 'Tambah Data $type');
+    if (_loading && widget.isView) return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+    
+    final type = widget.isTeacher ? 'Guru' : 'Siswa';
+    final idLabel = widget.isTeacher ? 'NIP/ID Staf' : 'NISN';
+    final title = widget.isView ? 'Detail Data $type' : (widget.isEdit ? 'Edit Data $type' : 'Tambah Data $type');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -941,7 +624,7 @@ class _StudentTeacherFormModal extends StatelessWidget {
                         backgroundColor: AppColors.gray200,
                         child: Icon(Icons.person, size: 40, color: AppColors.gray400),
                       ),
-                      if (!isView)
+                      if (!widget.isView)
                         Positioned(
                           bottom: 0, right: 0,
                           child: Container(
@@ -960,30 +643,30 @@ class _StudentTeacherFormModal extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _buildField(idLabel, 'Masukkan $idLabel', isReadOnly: isView, styleAsMono: true)),
+                    Expanded(child: _buildField(idLabel, 'Masukkan $idLabel', isReadOnly: widget.isView, styleAsMono: true, controller: _idController)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildField('NIK (16 Digit)', 'KTP / KK', isReadOnly: isView, styleAsMono: true, maxLength: 16)),
+                    Expanded(child: _buildField('NIK (16 Digit)', 'KTP / KK', isReadOnly: widget.isView, styleAsMono: true, maxLength: 16, controller: _nikController)),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField('Nama Lengkap', 'Beserta gelar jika ada', isReadOnly: isView),
+                _buildField('Nama Lengkap', 'Beserta gelar jika ada', isReadOnly: widget.isView, controller: _nameController),
                 const SizedBox(height: 16),
                 
                 // Fields that differ by Role
-                if (isTeacher) ...[
+                if (widget.isTeacher) ...[
                   Row(
                     children: [
-                      Expanded(child: _buildDropdownField('Status Pegawai', ['ASN/PNS', 'PPPK', 'Honorer', 'GTY'], isReadOnly: isView)),
+                      Expanded(child: _buildDropdownField('Status Pegawai', ['ASN/PNS', 'PPPK', 'Honorer', 'GTY'], isReadOnly: widget.isView, value: _statusPegawai, onChanged: (v) => setState(() => _statusPegawai = v))),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildDropdownField('Golongan', ['-', 'III/a', 'III/b', 'IV/a', 'Non-Golongan'], isReadOnly: isView)),
+                      Expanded(child: _buildDropdownField('Golongan', ['-', 'III/a', 'III/b', 'IV/a', 'Non-Golongan'], isReadOnly: widget.isView, value: _golongan, onChanged: (v) => setState(() => _golongan = v))),
                     ],
                   ),
                 ] else ...[
                   Row(
                     children: [
-                      Expanded(child: _buildDropdownField('Angkatan', ['2024', '2025', '2026'], isReadOnly: isView)),
+                      Expanded(child: _buildDropdownField('Angkatan', ['2024', '2025', '2026'], isReadOnly: widget.isView, value: _angkatan, onChanged: (v) => setState(() => _angkatan = v))),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildField('Nama Ibu Kandung', 'Wajib diisi', isReadOnly: isView)),
+                      Expanded(child: _buildField('Nama Ibu Kandung', 'Wajib diisi', isReadOnly: widget.isView, controller: _ibuController)),
                     ],
                   ),
                 ],
@@ -994,31 +677,31 @@ class _StudentTeacherFormModal extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Jenis Kelamin', ['Laki-laki', 'Perempuan'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Jenis Kelamin', ['Laki-laki', 'Perempuan'], isReadOnly: widget.isView, value: _jk, onChanged: (v) => setState(() => _jk = v))),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], isReadOnly: widget.isView, value: _agama, onChanged: (v) => setState(() => _agama = v))),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildField('Tempat Lahir', 'Kota kelahiran', isReadOnly: isView)),
+                    Expanded(child: _buildField('Tempat Lahir', 'Kota kelahiran', isReadOnly: widget.isView, controller: _tempatLahirController)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildField('Tanggal Lahir', 'DD/MM/YYYY', isReadOnly: isView)),
+                    Expanded(child: _buildField('Tanggal Lahir', 'DD/MM/YYYY', isReadOnly: widget.isView, controller: _tanggalLahirController)),
                   ],
                 ),
-                if (isTeacher) ...[
+                if (widget.isTeacher) ...[
                    const SizedBox(height: 16),
                    Row(
                     children: [
-                      Expanded(child: _buildDropdownField('Status Perkawinan', ['Belum Menikah', 'Menikah', 'Cerai Hidup', 'Cerai Mati'], isReadOnly: isView)),
+                      Expanded(child: _buildDropdownField('Status Perkawinan', ['Belum Menikah', 'Menikah', 'Cerai Hidup', 'Cerai Mati'], isReadOnly: widget.isView, value: _statusPerkawinan, onChanged: (v) => setState(() => _statusPerkawinan = v))),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildField('Email', 'Alamat email aktif', isReadOnly: isView)),
+                      Expanded(child: _buildField('Email', 'Alamat email aktif', isReadOnly: widget.isView, controller: _emailController)),
                     ],
                   ),
                 ] else ...[
                    const SizedBox(height: 16),
-                   _buildField('Email', 'Alamat email aktif', isReadOnly: isView),
+                   _buildField('Email', 'Alamat email aktif', isReadOnly: widget.isView, controller: _emailController),
                 ],
                 const SizedBox(height: 24),
 
@@ -1027,29 +710,29 @@ class _StudentTeacherFormModal extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Provinsi', ['DKI Jakarta', 'Jawa Barat', 'Jawa Tengah'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Provinsi', ['DKI Jakarta', 'Jawa Barat', 'Jawa Tengah'], isReadOnly: widget.isView, value: _provinsi, onChanged: (v) => setState(() => _provinsi = v))),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kota/Kabupaten', ['Jakarta Selatan', 'Jakarta Utara'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Kota/Kabupaten', ['Jakarta Selatan', 'Jakarta Utara', 'Kab. Cianjur', 'Kota Padang'], isReadOnly: widget.isView, value: _kota, onChanged: (v) => setState(() => _kota = v))),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildDropdownField('Kecamatan', ['Kebayoran Baru', 'Kebayoran Lama'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Kecamatan', ['Kebayoran Baru', 'Kebayoran Lama', 'Cikalong'], isReadOnly: widget.isView, value: _kecamatan, onChanged: (v) => setState(() => _kecamatan = v))),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildDropdownField('Kelurahan', ['Senayan', 'Melawai'], isReadOnly: isView)),
+                    Expanded(child: _buildDropdownField('Kelurahan', ['Senayan', 'Melawai', 'Sukamaju'], isReadOnly: widget.isView, value: _kelurahan, onChanged: (v) => setState(() => _kelurahan = v))),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField('Alamat Lengkap', 'Jl. Nama Jalan, Nama Gedung/Komplek', maxLines: 2, isReadOnly: isView),
+                _buildField('Alamat Lengkap', 'Jl. Nama Jalan, Nama Gedung/Komplek', maxLines: 2, isReadOnly: widget.isView, controller: _alamatController),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                     Expanded(child: _buildField('RT', '001', isNumber: true, maxLength: 3, isReadOnly: isView)),
+                     Expanded(child: _buildField('RT', '001', isNumber: true, maxLength: 3, isReadOnly: widget.isView, controller: _rtController)),
                      const SizedBox(width: 16),
-                     Expanded(child: _buildField('RW', '002', isNumber: true, maxLength: 3, isReadOnly: isView)),
+                     Expanded(child: _buildField('RW', '002', isNumber: true, maxLength: 3, isReadOnly: widget.isView, controller: _rwController)),
                      const SizedBox(width: 16),
-                     Expanded(child: _buildField('Kode Pos', '10270', isNumber: true, maxLength: 5, isReadOnly: isView)),
+                     Expanded(child: _buildField('Kode Pos', '10270', isNumber: true, maxLength: 5, isReadOnly: widget.isView, controller: _kodePosController)),
                   ],
                 ),
               ],
@@ -1058,11 +741,37 @@ class _StudentTeacherFormModal extends StatelessWidget {
         ),
         
         // Footer (Only if not viewing)
-        if (!isView) ...[
+        if (!widget.isView) ...[
           const Divider(height: 1, thickness: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: _buildFormButtons(context),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gray600,
+                    side: const BorderSide(color: AppColors.gray300),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Batal'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _loading ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  child: _loading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Simpan'),
+                ),
+              ],
+            ),
           ),
         ] else ...[
           const Divider(height: 1, thickness: 1),
@@ -1093,13 +802,15 @@ class _StudentTeacherFormModal extends StatelessWidget {
 // ═══════════════════════════════════════════════
 // SHARED FORM HELPERS
 // ═══════════════════════════════════════════════
-Widget _buildField(String label, String hint, {bool isNumber = false, int maxLines = 1, bool isReadOnly = false, bool styleAsMono = false, int? maxLength}) {
+Widget _buildField(String label, String hint, {bool isNumber = false, int maxLines = 1, bool isReadOnly = false, bool styleAsMono = false, int? maxLength, TextEditingController? controller, String? initialValue}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
       const SizedBox(height: 8),
-      TextField(
+      TextFormField(
+        controller: controller,
+        initialValue: controller == null ? initialValue : null,
         maxLines: maxLines,
         maxLength: maxLength,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
@@ -1120,15 +831,20 @@ Widget _buildField(String label, String hint, {bool isNumber = false, int maxLin
   );
 }
 
-Widget _buildDropdownField(String label, List<String> items, {bool isReadOnly = false}) {
+Widget _buildDropdownField(String label, List<String> items, {bool isReadOnly = false, String? value, ValueChanged<String?>? onChanged}) {
+  final safeItems = <String>{...items};
+  if (value != null && value.isNotEmpty) safeItems.add(value);
+  final itemList = safeItems.toList();
+
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: isReadOnly ? null : (_) {},
+        value: (value != null && value.isNotEmpty) ? value : (itemList.isNotEmpty ? itemList.first : null),
+        items: itemList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        onChanged: isReadOnly ? null : (onChanged ?? (_) {}),
         icon: isReadOnly ? const SizedBox.shrink() : null, // Hide internal icon if readonly
         style: TextStyle(color: isReadOnly ? AppColors.gray600 : AppColors.foreground),
         decoration: InputDecoration(
@@ -1172,12 +888,4 @@ Widget _buildFormButtons(BuildContext context) {
     ],
   );
 }
-
-// ═══════════════════════════════════════════════
-// STATIC DATA — Placeholder (loaded from API in production)
-// ═══════════════════════════════════════════════
-final List<List<String>> _classroomsData = [];
-final List<List<String>> _masterClassesData = [];
-final List<List<String>> _studentsData = [];
-final List<List<String>> _teachersData = [];
 

@@ -1,12 +1,13 @@
 // File: lib/features/admin/screens/public_cms.dart
 // ===========================================
 // PUBLIC CMS SCREEN
-// Translated from PublicCMS.tsx
+// Connected to /cms API endpoints
 // Tabbed interface: News, Achievements, Videos tables
 // ===========================================
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
 import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
@@ -87,7 +88,6 @@ class _PublicCMSState extends State<PublicCMS> with SingleTickerProviderStateMix
             // ── Action Bar ──
             Row(
               children: [
-                // Search
                 Expanded(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 448),
@@ -97,18 +97,9 @@ class _PublicCMSState extends State<PublicCMS> with SingleTickerProviderStateMix
                         prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
                         filled: true,
                         fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.gray300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.gray300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
                         contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
@@ -119,11 +110,11 @@ class _PublicCMSState extends State<PublicCMS> with SingleTickerProviderStateMix
                   onPressed: () {
                     final index = _tabController.index;
                     if (index == 0) {
-                      NewsFormModal.show(context);
+                      NewsFormModal.show(context, onSaved: () => setState(() {}));
                     } else if (index == 1) {
-                      AchievementFormModal.show(context);
+                      AchievementFormModal.show(context, onSaved: () => setState(() {}));
                     } else if (index == 2) {
-                      VideoFormModal.show(context);
+                      VideoFormModal.show(context, onSaved: () => setState(() {}));
                     }
                   },
                   icon: const Icon(Icons.add, size: 20),
@@ -154,9 +145,9 @@ class _PublicCMSState extends State<PublicCMS> with SingleTickerProviderStateMix
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _NewsTab(onDelete: (name) => _handleDelete('Berita', name)),
-                    _AchievementsTab(onDelete: (name) => _handleDelete('Prestasi', name)),
-                    _VideosTab(onDelete: (name) => _handleDelete('Video', name)),
+                    _CmsContentTab(type: 'BERITA', onDelete: (id, name) => _handleDelete(id, 'Berita', name)),
+                    _CmsContentTab(type: 'PRESTASI', onDelete: (id, name) => _handleDelete(id, 'Prestasi', name)),
+                    _CmsContentTab(type: 'VIDEO', onDelete: (id, name) => _handleDelete(id, 'Video', name)),
                   ],
                 ),
               ),
@@ -178,47 +169,96 @@ class _PublicCMSState extends State<PublicCMS> with SingleTickerProviderStateMix
     );
   }
 
-  void _handleDelete(String type, String name) {
+  void _handleDelete(String id, String type, String name) {
     DeleteConfirmationModal.show(
       context,
       title: 'Konfirmasi Penghapusan Konten',
       message: 'Apakah Anda yakin ingin menghapus konten ini? Konten yang dihapus tidak dapat dipulihkan.',
       itemName: name,
-      onConfirm: () {
-        setState(() {
-          _successMessage = '$type "$name" berhasil dihapus';
-          _showSuccessToast = true;
-        });
+      onConfirm: () async {
+        try {
+          await ApiService.deleteContent(id);
+          setState(() {
+            _successMessage = '$type "$name" berhasil dihapus';
+            _showSuccessToast = true;
+          });
+        } catch (_) {}
       },
     );
   }
 }
 
 // ═══════════════════════════════════════════════
-// NEWS TAB
+// UNIFIED CMS CONTENT TAB — connected to API
 // ═══════════════════════════════════════════════
-class _NewsTab extends StatefulWidget {
-  final void Function(String name) onDelete;
-  const _NewsTab({required this.onDelete});
+class _CmsContentTab extends StatefulWidget {
+  final String type;
+  final void Function(String id, String name) onDelete;
+  const _CmsContentTab({required this.type, required this.onDelete});
 
   @override
-  State<_NewsTab> createState() => _NewsTabState();
+  State<_CmsContentTab> createState() => _CmsContentTabState();
 }
 
-class _NewsTabState extends State<_NewsTab> with AutomaticKeepAliveClientMixin {
+class _CmsContentTabState extends State<_CmsContentTab> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
+  bool _loading = true;
+  List<Map<String, dynamic>> _data = [];
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final response = await ApiService.getAllContent(tipe: widget.type);
+      final items = response['data'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          _data = items.map<Map<String, dynamic>>((item) => {
+            'id': item['id'] ?? '',
+            'title': item['title'] ?? '-',
+            'content': item['content'] ?? '',
+            'imageUrl': item['imageUrl'] ?? '',
+            'videoUrl': item['videoUrl'] ?? '',
+            'isActive': item['isActive'] ?? false,
+            'createdAt': item['createdAt'] ?? '',
+            'type': item['type'] ?? widget.type,
+          }).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
-    final totalItems = _newsData.length;
-    final start = (_currentPage - 1) * _itemsPerPage;
+
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    final totalItems = _data.length;
+    final start = ((_currentPage - 1) * _itemsPerPage).clamp(0, totalItems);
     final end = (start + _itemsPerPage).clamp(0, totalItems);
-    final pageData = _newsData.sublist(start, end);
+    final pageData = _data.sublist(start, end);
 
     return Column(
       children: [
@@ -226,85 +266,104 @@ class _NewsTabState extends State<_NewsTab> with AutomaticKeepAliveClientMixin {
         Container(
           color: AppColors.gray50,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: const Row(
+          child: Row(
             children: [
-              SizedBox(width: 80, child: Text('Thumbnail', style: _hdrStyle)),
-              Expanded(flex: 3, child: Text('Judul Berita', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Kategori', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Tanggal', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Status', style: _hdrStyle)),
-              SizedBox(width: 100, child: Text('Aksi', style: _hdrStyle)),
+              const SizedBox(width: 80, child: Text('Media', style: _hdrStyle)),
+              const Expanded(flex: 3, child: Text('Judul', style: _hdrStyle)),
+              const Expanded(flex: 2, child: Text('Konten', style: _hdrStyle)),
+              const Expanded(flex: 1, child: Text('Tanggal', style: _hdrStyle)),
+              const Expanded(flex: 1, child: Text('Status', style: _hdrStyle)),
+              const SizedBox(width: 120, child: Text('Aksi', style: _hdrStyle)),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.gray200),
         Expanded(
-          child: ListView.separated(
-            itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final n = pageData[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Row(
-                  children: [
-                    // Thumbnail
-                    Container(
-                      width: 64, height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.gray200,
-                        borderRadius: BorderRadius.circular(8),
+          child: pageData.isEmpty
+            ? const Center(child: Text('Belum ada konten', style: TextStyle(color: AppColors.gray500)))
+            : ListView.separated(
+              itemCount: pageData.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+              itemBuilder: (_, i) {
+                final item = pageData[i];
+                final isActive = item['isActive'] == true;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Row(
+                    children: [
+                      // Media icon
+                      Container(
+                        width: 64, height: 64,
+                        decoration: BoxDecoration(
+                          color: AppColors.gray200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          widget.type == 'VIDEO' ? Icons.play_circle_fill_rounded :
+                          widget.type == 'PRESTASI' ? Icons.emoji_events :
+                          Icons.article,
+                          color: AppColors.gray400, size: 28,
+                        ),
                       ),
-                      child: const Icon(Icons.image, color: AppColors.gray400),
-                    ),
-                    const SizedBox(width: 16),
-                    // Title + Excerpt
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(n['title']!, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.foreground)),
-                          const SizedBox(height: 4),
-                          Text(n['excerpt']!, style: const TextStyle(fontSize: 13, color: AppColors.gray500), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        ],
+                      const SizedBox(width: 16),
+                      // Title
+                      Expanded(
+                        flex: 3,
+                        child: Text(item['title'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.foreground)),
                       ),
-                    ),
-                    // Category
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(999)),
-                        child: Text(n['category']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1D4ED8))),
+                      // Content excerpt
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          item['content'] ?? '-',
+                          style: const TextStyle(fontSize: 13, color: AppColors.gray500),
+                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    // Date
-                    Expanded(flex: 1, child: Text(n['date']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    // Status
-                    Expanded(
-                      flex: 1,
-                      child: _StatusBadge(
-                        label: n['status'] == 'Published' ? 'Terpublikasi' : 'Draft',
-                        isActive: n['status'] == 'Published',
+                      // Date
+                      Expanded(flex: 1, child: Text(_formatDate(item['createdAt'] ?? ''), style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                      // Status
+                      Expanded(
+                        flex: 1,
+                        child: _StatusBadge(
+                          label: isActive ? 'Terpublikasi' : 'Draft',
+                          isActive: isActive,
+                        ),
                       ),
-                    ),
-                    // Actions
-                    SizedBox(
-                      width: 100,
-                      child: Row(
-                        children: [
-                          IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () {}, splashRadius: 18, tooltip: 'Lihat'),
-                          IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => NewsFormModal.show(context, initialData: n), splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(n['title']!), splashRadius: 18, tooltip: 'Hapus'),
-                        ],
+                      // Actions
+                      SizedBox(
+                        width: 120,
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18, color: AppColors.gray600),
+                              onPressed: () async {
+                                try {
+                                  await ApiService.toggleContent(item['id']);
+                                  _loadData();
+                                } catch (_) {}
+                              },
+                              splashRadius: 18,
+                              tooltip: isActive ? 'Nonaktifkan' : 'Aktifkan',
+                            ),
+                            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () {}, splashRadius: 18, tooltip: 'Edit'),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600),
+                              onPressed: () {
+                                widget.onDelete(item['id'], item['title'] ?? '-');
+                                Future.delayed(const Duration(seconds: 1), () => _loadData());
+                              },
+                              splashRadius: 18,
+                              tooltip: 'Hapus',
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                    ],
+                  ),
+                );
+              },
+            ),
         ),
         TablePagination(
           currentPage: _currentPage,
@@ -312,173 +371,8 @@ class _NewsTabState extends State<_NewsTab> with AutomaticKeepAliveClientMixin {
           itemsPerPage: _itemsPerPage,
           onPageChange: (p) => setState(() => _currentPage = p),
           onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }),
-          itemName: 'berita',
+          itemName: 'konten',
         ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// ACHIEVEMENTS TAB (simplified)
-// ═══════════════════════════════════════════════
-class _AchievementsTab extends StatefulWidget {
-  final void Function(String name) onDelete;
-  const _AchievementsTab({required this.onDelete});
-
-  @override
-  State<_AchievementsTab> createState() => _AchievementsTabState();
-}
-
-class _AchievementsTabState extends State<_AchievementsTab> with AutomaticKeepAliveClientMixin {
-  int _currentPage = 1;
-  int _itemsPerPage = 10;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Column(
-      children: [
-        Container(
-          color: AppColors.gray50,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: const Row(
-            children: [
-              SizedBox(width: 60, child: Text('Ikon', style: _hdrStyle)),
-              Expanded(flex: 3, child: Text('Nama Prestasi', style: _hdrStyle)),
-              Expanded(flex: 2, child: Text('Penerima', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Tahun', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Status', style: _hdrStyle)),
-              SizedBox(width: 100, child: Text('Aksi', style: _hdrStyle)),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.gray200),
-        Expanded(
-          child: ListView.separated(
-            itemCount: _achievementsData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final a = _achievementsData[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48, height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppColors.accent, AppColors.accentHover]),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.emoji_events, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(a['title']!, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.foreground)),
-                      Text(a['description']!, style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
-                    ])),
-                    Expanded(flex: 2, child: Text(a['recipient']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    Expanded(flex: 1, child: Text(a['year']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    const Expanded(flex: 1, child: _StatusBadge(label: 'Terpublikasi', isActive: true)),
-                    SizedBox(
-                      width: 100,
-                      child: Row(children: [
-                        IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () {}, splashRadius: 18),
-                        IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => AchievementFormModal.show(context, initialData: a), splashRadius: 18),
-                        IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(a['title']!), splashRadius: 18),
-                      ]),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        TablePagination(currentPage: _currentPage, totalItems: _achievementsData.length, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'prestasi'),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// VIDEOS TAB (simplified)
-// ═══════════════════════════════════════════════
-class _VideosTab extends StatefulWidget {
-  final void Function(String name) onDelete;
-  const _VideosTab({required this.onDelete});
-
-  @override
-  State<_VideosTab> createState() => _VideosTabState();
-}
-
-class _VideosTabState extends State<_VideosTab> with AutomaticKeepAliveClientMixin {
-  int _currentPage = 1;
-  int _itemsPerPage = 10;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Column(
-      children: [
-        Container(
-          color: AppColors.gray50,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: const Row(
-            children: [
-              SizedBox(width: 110, child: Text('Thumbnail', style: _hdrStyle)),
-              Expanded(flex: 2, child: Text('Judul Video', style: _hdrStyle)),
-              Expanded(flex: 2, child: Text('YouTube URL', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Tanggal', style: _hdrStyle)),
-              Expanded(flex: 1, child: Text('Status', style: _hdrStyle)),
-              SizedBox(width: 100, child: Text('Aksi', style: _hdrStyle)),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.gray200),
-        Expanded(
-          child: ListView.separated(
-            itemCount: _videosData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
-            itemBuilder: (_, i) {
-              final v = _videosData[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 96, height: 64,
-                      decoration: BoxDecoration(color: AppColors.gray200, borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.play_circle_fill_rounded, size: 32, color: AppColors.gray400),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(v['title']!, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(v['duration']!, style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
-                    ])),
-                    Expanded(flex: 2, child: Text(v['url']!, style: const TextStyle(fontSize: 13, fontFamily: 'monospace', color: AppColors.primary))),
-                    Expanded(flex: 1, child: Text(v['date']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                    const Expanded(flex: 1, child: _StatusBadge(label: 'Terpublikasi', isActive: true)),
-                    SizedBox(
-                      width: 100,
-                      child: Row(children: [
-                        IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () {}, splashRadius: 18),
-                        IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => VideoFormModal.show(context, initialData: v), splashRadius: 18),
-                        IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(v['title']!), splashRadius: 18),
-                      ]),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        TablePagination(currentPage: _currentPage, totalItems: _videosData.length, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'video'),
       ],
     );
   }
@@ -518,43 +412,22 @@ class _StatusBadge extends StatelessWidget {
 const _hdrStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground);
 
 // ═══════════════════════════════════════════════
-// STATIC DATA
-// ═══════════════════════════════════════════════
-const List<Map<String, String>> _newsData = [
-  {'title': 'Pemenang Pameran Sains Tahunan Diumumkan', 'excerpt': 'Selamat kepada siswa-siswa berbakat kami yang menampilkan proyek-proyek inovatif...', 'category': 'Prestasi', 'date': '28 Mar 2026', 'status': 'Published'},
-  {'title': 'Laboratorium STEM Baru Dibuka', 'excerpt': 'Laboratorium STEM berteknologi canggih kini terbuka untuk siswa...', 'category': 'Fasilitas', 'date': '15 Mar 2026', 'status': 'Published'},
-  {'title': 'Hasil Kejuaraan Olahraga Musim Semi', 'excerpt': 'Tim atletik kami telah membawa pulang berbagai kejuaraan musim ini...', 'category': 'Olahraga', 'date': '5 Mar 2026', 'status': 'Published'},
-];
-
-const List<Map<String, String>> _achievementsData = [
-  {'title': 'Olimpiade Sains Nasional', 'description': 'Juara pertama dalam kompetisi Olimpiade Sains Nasional', 'recipient': 'Ahmad Fauzi (Kelas 12A)', 'year': '2026'},
-  {'title': 'Penghargaan Keunggulan Akademik', 'description': 'Sekolah berprestasi terbaik di wilayah', 'recipient': 'SMA Negeri 1 Cikalong', 'year': '2025-2026'},
-  {'title': 'Kejuaraan Robotika', 'description': 'Juara regional dalam kompetisi robotika tahunan', 'recipient': 'Tim Robotika', 'year': '2026'},
-  {'title': 'Sertifikasi Sekolah Hijau', 'description': 'Penghargaan keunggulan praktik keberlanjutan', 'recipient': 'SMA Negeri 1 Cikalong', 'year': '2025'},
-];
-
-const List<Map<String, String>> _videosData = [
-  {'title': 'Sorotan Hari Olahraga Tahunan', 'url': 'https://youtube.com/watch?v=example1', 'duration': '5:32', 'date': '20 Mar 2026'},
-  {'title': 'Pameran Sains 2026 - Inovasi Siswa', 'url': 'https://youtube.com/watch?v=example2', 'duration': '8:15', 'date': '15 Mar 2026'},
-  {'title': 'Tur Kampus - Panduan Virtual', 'url': 'https://youtube.com/watch?v=example3', 'duration': '12:40', 'date': '10 Mar 2026'},
-];
-
-// ═══════════════════════════════════════════════
-// MODAL COMPONENTS
+// MODAL COMPONENTS — connected to API
 // ═══════════════════════════════════════════════
 
 class NewsFormModal extends StatefulWidget {
-  final Map<String, String>? initialData;
-  const NewsFormModal({super.key, this.initialData});
+  final Map<String, dynamic>? initialData;
+  final VoidCallback? onSaved;
+  const NewsFormModal({super.key, this.initialData, this.onSaved});
 
-  static void show(BuildContext context, {Map<String, String>? initialData}) {
+  static void show(BuildContext context, {Map<String, dynamic>? initialData, VoidCallback? onSaved}) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800, maxHeight: 800),
-          child: NewsFormModal(initialData: initialData),
+          child: NewsFormModal(initialData: initialData, onSaved: onSaved),
         ),
       ),
     );
@@ -567,16 +440,13 @@ class NewsFormModal extends StatefulWidget {
 class _NewsFormModalState extends State<NewsFormModal> {
   late TextEditingController _titleCtrl;
   late TextEditingController _contentCtrl;
-  String _category = '';
-  String _status = 'draft';
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialData?['title']);
-    _contentCtrl = TextEditingController(text: widget.initialData?['excerpt'] ?? '');
-    _category = widget.initialData?['category'] ?? '';
-    _status = widget.initialData?['status']?.toLowerCase() == 'published' ? 'published' : 'draft';
+    _contentCtrl = TextEditingController(text: widget.initialData?['content'] ?? '');
   }
 
   @override
@@ -586,13 +456,33 @@ class _NewsFormModalState extends State<NewsFormModal> {
     super.dispose();
   }
 
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'type': 'BERITA',
+        'title': _titleCtrl.text,
+        'content': _contentCtrl.text,
+        'isActive': true,
+      };
+      if (widget.initialData != null) {
+        await ApiService.updateContent(widget.initialData!['id'], data);
+      } else {
+        await ApiService.createContent(data);
+      }
+      widget.onSaved?.call();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Row(
@@ -605,7 +495,6 @@ class _NewsFormModalState extends State<NewsFormModal> {
           ),
         ),
         const Divider(height: 1),
-        // Body
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -613,56 +502,15 @@ class _NewsFormModalState extends State<NewsFormModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildLabel('Judul Berita'),
-                TextField(
-                  controller: _titleCtrl,
-                  decoration: _inputDecoration('Masukkan judul berita...'),
-                ),
-                const SizedBox(height: 20),
-                _buildLabel('Kategori'),
-                DropdownButtonFormField<String>(
-                  initialValue: _category.isEmpty ? null : _category,
-                  hint: const Text('Pilih kategori...'),
-                  decoration: _inputDecoration(''),
-                  items: const [
-                    DropdownMenuItem(value: 'Berita', child: Text('Berita')),
-                    DropdownMenuItem(value: 'Prestasi', child: Text('Prestasi')),
-                    DropdownMenuItem(value: 'Pengumuman', child: Text('Pengumuman')),
-                    DropdownMenuItem(value: 'Fasilitas', child: Text('Fasilitas')),
-                    DropdownMenuItem(value: 'Olahraga', child: Text('Olahraga')),
-                  ],
-                  onChanged: (v) => setState(() => _category = v ?? ''),
-                ),
+                TextField(controller: _titleCtrl, decoration: _inputDecoration('Masukkan judul berita...')),
                 const SizedBox(height: 20),
                 _buildLabel('Konten Berita'),
-                TextField(
-                  controller: _contentCtrl,
-                  maxLines: 6,
-                  decoration: _inputDecoration('Tulis konten berita...'),
-                ),
-                const SizedBox(height: 20),
-                _buildLabel('Status Publikasi'),
-                Row(
-                  children: [
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'draft', label: Text('Draft')),
-                        ButtonSegment(value: 'published', label: Text('Terpublikasi')),
-                      ],
-                      selected: {_status},
-                      onSelectionChanged: (v) => setState(() => _status = v.first),
-                      style: SegmentedButton.styleFrom(
-                        selectedBackgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        selectedForegroundColor: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
+                TextField(controller: _contentCtrl, maxLines: 6, decoration: _inputDecoration('Tulis konten berita...')),
               ],
             ),
           ),
         ),
         const Divider(height: 1),
-        // Footer
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Row(
@@ -675,13 +523,13 @@ class _NewsFormModalState extends State<NewsFormModal> {
               ),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Simpan & Publikasikan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(_saving ? 'Menyimpan...' : 'Simpan & Publikasikan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -692,17 +540,18 @@ class _NewsFormModalState extends State<NewsFormModal> {
 }
 
 class AchievementFormModal extends StatefulWidget {
-  final Map<String, String>? initialData;
-  const AchievementFormModal({super.key, this.initialData});
+  final Map<String, dynamic>? initialData;
+  final VoidCallback? onSaved;
+  const AchievementFormModal({super.key, this.initialData, this.onSaved});
 
-  static void show(BuildContext context, {Map<String, String>? initialData}) {
+  static void show(BuildContext context, {Map<String, dynamic>? initialData, VoidCallback? onSaved}) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: AchievementFormModal(initialData: initialData),
+          child: AchievementFormModal(initialData: initialData, onSaved: onSaved),
         ),
       ),
     );
@@ -714,26 +563,42 @@ class AchievementFormModal extends StatefulWidget {
 
 class _AchievementFormModalState extends State<AchievementFormModal> {
   late TextEditingController _titleCtrl;
-  late TextEditingController _recipientCtrl;
-  late TextEditingController _yearCtrl;
   late TextEditingController _descCtrl;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialData?['title']);
-    _recipientCtrl = TextEditingController(text: widget.initialData?['recipient']);
-    _yearCtrl = TextEditingController(text: widget.initialData?['year']);
-    _descCtrl = TextEditingController(text: widget.initialData?['description']);
+    _descCtrl = TextEditingController(text: widget.initialData?['content'] ?? '');
   }
 
   @override
   void dispose() {
     _titleCtrl.dispose();
-    _recipientCtrl.dispose();
-    _yearCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'type': 'PRESTASI',
+        'title': _titleCtrl.text,
+        'content': _descCtrl.text,
+        'isActive': true,
+      };
+      if (widget.initialData != null) {
+        await ApiService.updateContent(widget.initialData!['id'], data);
+      } else {
+        await ApiService.createContent(data);
+      }
+      widget.onSaved?.call();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -763,12 +628,6 @@ class _AchievementFormModalState extends State<AchievementFormModal> {
                 _buildLabel('Nama Prestasi'),
                 TextField(controller: _titleCtrl, decoration: _inputDecoration('Contoh: Olimpiade Sains Nasional')),
                 const SizedBox(height: 20),
-                _buildLabel('Penerima / Individu Terkait'),
-                TextField(controller: _recipientCtrl, decoration: _inputDecoration('Contoh: Ahmad Fauzi (Kelas 12A)')),
-                const SizedBox(height: 20),
-                _buildLabel('Tahun Prestasi'),
-                TextField(controller: _yearCtrl, decoration: _inputDecoration('Contoh: 2026')),
-                const SizedBox(height: 20),
                 _buildLabel('Deskripsi Singkat'),
                 TextField(controller: _descCtrl, maxLines: 3, decoration: _inputDecoration('Keterangan singkat...')),
               ],
@@ -783,9 +642,9 @@ class _AchievementFormModalState extends State<AchievementFormModal> {
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: AppColors.gray600, fontWeight: FontWeight.bold))),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _saving ? null : _save,
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: const Text('Simpan Data', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(_saving ? 'Menyimpan...' : 'Simpan Data', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -797,17 +656,18 @@ class _AchievementFormModalState extends State<AchievementFormModal> {
 }
 
 class VideoFormModal extends StatefulWidget {
-  final Map<String, String>? initialData;
-  const VideoFormModal({super.key, this.initialData});
+  final Map<String, dynamic>? initialData;
+  final VoidCallback? onSaved;
+  const VideoFormModal({super.key, this.initialData, this.onSaved});
 
-  static void show(BuildContext context, {Map<String, String>? initialData}) {
+  static void show(BuildContext context, {Map<String, dynamic>? initialData, VoidCallback? onSaved}) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: VideoFormModal(initialData: initialData),
+          child: VideoFormModal(initialData: initialData, onSaved: onSaved),
         ),
       ),
     );
@@ -820,12 +680,13 @@ class VideoFormModal extends StatefulWidget {
 class _VideoFormModalState extends State<VideoFormModal> {
   late TextEditingController _titleCtrl;
   late TextEditingController _urlCtrl;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialData?['title']);
-    _urlCtrl = TextEditingController(text: widget.initialData?['url']);
+    _urlCtrl = TextEditingController(text: widget.initialData?['videoUrl'] ?? '');
   }
 
   @override
@@ -833,6 +694,27 @@ class _VideoFormModalState extends State<VideoFormModal> {
     _titleCtrl.dispose();
     _urlCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'type': 'VIDEO',
+        'title': _titleCtrl.text,
+        'videoUrl': _urlCtrl.text,
+        'isActive': true,
+      };
+      if (widget.initialData != null) {
+        await ApiService.updateContent(widget.initialData!['id'], data);
+      } else {
+        await ApiService.createContent(data);
+      }
+      widget.onSaved?.call();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -876,9 +758,9 @@ class _VideoFormModalState extends State<VideoFormModal> {
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: AppColors.gray600, fontWeight: FontWeight.bold))),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _saving ? null : _save,
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: const Text('Simpan Video', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(_saving ? 'Menyimpan...' : 'Simpan Video', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

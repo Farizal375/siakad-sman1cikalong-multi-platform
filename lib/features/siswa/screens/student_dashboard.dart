@@ -1,35 +1,91 @@
 // File: lib/features/siswa/screens/student_dashboard.dart
 // ===========================================
 // STUDENT DASHBOARD
-// Translated from StudentDashboard.tsx
+// Connected to /dashboard/siswa API
 // Jadwal hari ini + pengumuman + info cepat
 // ===========================================
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 
-class StudentDashboard extends StatelessWidget {
+class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final todaySchedule = [
-      {'id': 1, 'jam': '07:30 - 09:00', 'mapel': 'Matematika', 'guru': 'Drs. Ahmad Hidayat', 'ruang': 'XII-1', 'isActive': false},
-      {'id': 2, 'jam': '09:15 - 10:45', 'mapel': 'Fisika', 'guru': 'Dr. Siti Nurhaliza, M.Pd', 'ruang': 'Lab Fisika', 'isActive': true},
-      {'id': 3, 'jam': '11:00 - 12:30', 'mapel': 'Bahasa Inggris', 'guru': 'Sarah Johnson, S.Pd', 'ruang': 'XII-1', 'isActive': false},
-      {'id': 4, 'jam': '13:00 - 14:30', 'mapel': 'Kimia', 'guru': 'Prof. Dr. Budi Santoso', 'ruang': 'Lab Kimia', 'isActive': false},
-    ];
+  State<StudentDashboard> createState() => _StudentDashboardState();
+}
 
-    final announcements = [
-      {'id': 1, 'title': 'Ujian Tengah Semester - Jadwal Terbaru', 'date': '8 April 2026', 'preview': 'Jadwal UTS telah diperbarui. Mohon perhatikan perubahan waktu untuk mata pelajaran Matematika dan Fisika.'},
-      {'id': 2, 'title': 'Libur Hari Raya Idul Fitri', 'date': '5 April 2026', 'preview': 'Sekolah akan libur mulai tanggal 15-25 April 2026. Pembelajaran online akan dimulai tanggal 26 April.'},
-      {'id': 3, 'title': 'Pengumpulan Tugas Proyek Akhir', 'date': '3 April 2026', 'preview': 'Batas akhir pengumpulan tugas proyek semester adalah 20 April 2026 pukul 23:59 WIB.'},
-    ];
+class _StudentDashboardState extends State<StudentDashboard> {
+  bool _loading = true;
+  Map<String, dynamic> _data = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
+
+  Future<void> _loadDashboard() async {
+    try {
+      final response = await ApiService.getSiswaDashboard();
+      if (mounted) {
+        setState(() {
+          _data = response['data'] ?? {};
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    final kelas = _data['kelas'] ?? '-';
+    final hari = _data['hari'] ?? '-';
+    final todaySchedule = (_data['jadwalHariIni'] as List? ?? []).map<Map<String, dynamic>>((j) => {
+      'id': j['id'] ?? '',
+      'jam': '${j['startTime'] ?? ''} - ${j['endTime'] ?? ''}',
+      'mapel': j['subject'] ?? '-',
+      'guru': j['teacher'] ?? '-',
+      'ruang': j['room'] ?? '-',
+      'isActive': false,
+    }).toList();
+
+    // Mark first upcoming as active
+    if (todaySchedule.isNotEmpty) {
+      todaySchedule[0]['isActive'] = true;
+    }
+
+    final announcements = (_data['pengumuman'] as List? ?? []).map<Map<String, dynamic>>((a) {
+      final createdAt = a['createdAt'] ?? '';
+      String dateStr = '';
+      try {
+        final dt = DateTime.parse(createdAt);
+        dateStr = '${dt.day} ${_monthName(dt.month)} ${dt.year}';
+      } catch (_) {
+        dateStr = createdAt;
+      }
+      return {
+        'id': a['id'] ?? '',
+        'title': a['title'] ?? '-',
+        'date': dateStr,
+        'preview': a['content'] ?? '',
+      };
+    }).toList();
+
+    final kehadiran = _data['kehadiran'] as Map<String, dynamic>? ?? {};
+    final totalHadir = kehadiran['hadir'] ?? 0;
+    final totalAll = totalHadir + (kehadiran['sakit'] ?? 0) + (kehadiran['izin'] ?? 0) + (kehadiran['alpa'] ?? 0);
+    final attendanceRate = totalAll > 0 ? ((totalHadir / totalAll) * 100).round() : 100;
 
     final quickInfo = [
-      {'title': 'Rata-rata Smt Terakhir', 'value': '88.5', 'icon': Icons.trending_up, 'color': const Color(0xFF059669), 'cardColor': const Color(0xFFECFDF5)},
-      {'title': 'Total Kehadiran', 'value': '95%', 'icon': Icons.calendar_today, 'color': const Color(0xFF2563EB), 'cardColor': const Color(0xFFEFF6FF)},
-      {'title': 'Tugas Tertunda', 'value': '2', 'subtitle': 'Tugas', 'icon': Icons.menu_book, 'color': const Color(0xFFD97706), 'cardColor': const Color(0xFFFFFBEB)},
+      {'title': 'Total Kehadiran', 'value': '$attendanceRate%', 'icon': Icons.calendar_today, 'color': const Color(0xFF2563EB), 'cardColor': const Color(0xFFEFF6FF)},
+      {'title': 'Hadir', 'value': '$totalHadir', 'subtitle': 'Sesi', 'icon': Icons.check_circle, 'color': const Color(0xFF059669), 'cardColor': const Color(0xFFECFDF5)},
+      {'title': 'Tidak Hadir', 'value': '${(kehadiran['alpa'] ?? 0)}', 'subtitle': 'Sesi', 'icon': Icons.cancel, 'color': const Color(0xFFD97706), 'cardColor': const Color(0xFFFFFBEB)},
     ];
 
     return SingleChildScrollView(
@@ -37,9 +93,9 @@ class StudentDashboard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Greeting
-          const Text('Selamat Datang, Ahmad!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          const Text('Selamat Datang, Siswa!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary)),
         const SizedBox(height: 8),
-        const Text('Kelas XII-1 • NISN: 2023001', style: TextStyle(color: AppColors.gray600)),
+        Text('Kelas $kelas • Hari: $hari', style: const TextStyle(color: AppColors.gray600)),
         const SizedBox(height: 24),
 
         // Jadwal Hari Ini
@@ -48,14 +104,20 @@ class StudentDashboard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Jadwal Pelajaran Hari Ini', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary)),
               const SizedBox(height: 20),
-              ...todaySchedule.map((s) => _buildScheduleItem(s)),
+              if (todaySchedule.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: Text('Tidak ada jadwal hari ini', style: TextStyle(color: AppColors.gray500))),
+                )
+              else
+                ...todaySchedule.map((s) => _buildScheduleItem(s)),
             ],
           ),
         ),
@@ -73,39 +135,45 @@ class StudentDashboard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Pengumuman', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary)),
                     const SizedBox(height: 20),
-                    ...announcements.map((a) => Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: Text(a['title'] as String, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.foreground))),
-                              Text(a['date'] as String, style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(a['preview'] as String, style: const TextStyle(fontSize: 13, color: AppColors.gray600)),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () {},
-                            child: const Text('Baca Selengkapnya →', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                          ),
-                        ],
-                      ),
-                    )),
+                    if (announcements.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: Text('Belum ada pengumuman', style: TextStyle(color: AppColors.gray500))),
+                      )
+                    else
+                      ...announcements.map((a) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: Text(a['title'] as String, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.foreground))),
+                                Text(a['date'] as String, style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(a['preview'] as String, style: const TextStyle(fontSize: 13, color: AppColors.gray600), maxLines: 3, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () {},
+                              child: const Text('Baca Selengkapnya →', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                            ),
+                          ],
+                        ),
+                      )),
                   ],
                 ),
               ),
@@ -126,7 +194,7 @@ class StudentDashboard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
                     ),
                     child: Row(
                       children: [
@@ -168,6 +236,11 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 
+  String _monthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+    return months[month - 1];
+  }
+
   Widget _buildScheduleItem(Map<String, dynamic> s) {
     final isActive = s['isActive'] as bool;
     return Container(
@@ -185,7 +258,7 @@ class StudentDashboard extends StatelessWidget {
             children: [
               // Time
               SizedBox(
-                width: 110,
+                width: 130,
                 child: Row(
                   children: [
                     const Icon(Icons.access_time, size: 16, color: AppColors.primary),
@@ -196,16 +269,6 @@ class StudentDashboard extends StatelessWidget {
               ),
               // Subject
               Expanded(child: Text(s['mapel'] as String, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.foreground))),
-              // Teacher
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 14, color: AppColors.gray500),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(s['guru'] as String, style: const TextStyle(fontSize: 13, color: AppColors.gray700), overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ),
               // Room
               Row(
                 children: [

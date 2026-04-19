@@ -2,13 +2,43 @@
 // ===========================================
 // TEACHER DASHBOARD
 // Translated from TeacherDashboard.tsx
+// Connected to /dashboard/guru API
 // ===========================================
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 
-class TeacherDashboard extends StatelessWidget {
+class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
+
+  @override
+  State<TeacherDashboard> createState() => _TeacherDashboardState();
+}
+
+class _TeacherDashboardState extends State<TeacherDashboard> {
+  bool _loading = true;
+  Map<String, dynamic> _dashboardData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
+
+  Future<void> _loadDashboard() async {
+    try {
+      final response = await ApiService.getGuruDashboard();
+      if (mounted) {
+        setState(() {
+          _dashboardData = response['data'] ?? {};
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -20,39 +50,32 @@ class TeacherDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final todaySchedule = [
-      {
-        'id': 1,
-        'time': '07:00 - 08:30',
-        'subject': 'Matematika',
-        'class': 'Kelas XI-1',
-        'room': 'Lab Komputer 1',
-        'isActive': true,
-        'canStart': true,
-      },
-      {
-        'id': 2,
-        'time': '09:00 - 10:30',
-        'subject': 'Fisika',
-        'class': 'Kelas XI-2',
-        'room': 'Ruang 204',
-        'isActive': false,
-        'canStart': false,
-      },
-      {
-        'id': 3,
-        'time': '13:00 - 14:30',
-        'subject': 'Matematika',
-        'class': 'Kelas XI-3',
-        'room': 'Ruang 301',
-        'isActive': false,
-        'canStart': false,
-      },
-    ];
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final todaySchedule = (_dashboardData['jadwalHariIni'] as List? ?? []).map<Map<String, dynamic>>((j) => {
+      'id': j['id'] ?? '',
+      'time': '${j['startTime'] ?? ''} - ${j['endTime'] ?? ''}',
+      'subject': j['subject'] ?? '',
+      'class': j['className'] ?? '',
+      'room': j['room'] ?? '-',
+      'isActive': false,
+      'canStart': false,
+    }).toList();
+
+    // Mark the first schedule as active if within time
+    if (todaySchedule.isNotEmpty) {
+      todaySchedule[0]['isActive'] = true;
+      todaySchedule[0]['canStart'] = true;
+    }
+
+    final totalKelas = _dashboardData['totalKelas'] ?? 0;
+    final totalJadwal = _dashboardData['totalJadwal'] ?? 0;
 
     final kpiData = [
-      {'title': 'Kelas Hari Ini', 'value': '3', 'subtitle': 'Pertemuan', 'color1': const Color(0xFF3B82F6), 'color2': const Color(0xFF2563EB), 'icon': Icons.calendar_today},
-      {'title': 'Siswa Diajar', 'value': '142', 'subtitle': 'Siswa', 'color1': const Color(0xFF10B981), 'color2': const Color(0xFF059669), 'icon': Icons.people},
+      {'title': 'Kelas Hari Ini', 'value': '${todaySchedule.length}', 'subtitle': 'Pertemuan', 'color1': const Color(0xFF3B82F6), 'color2': const Color(0xFF2563EB), 'icon': Icons.calendar_today},
+      {'title': 'Total Kelas Diampu', 'value': '$totalKelas', 'subtitle': 'Kelas', 'color1': const Color(0xFF10B981), 'color2': const Color(0xFF059669), 'icon': Icons.people},
     ];
 
     return SingleChildScrollView(
@@ -61,17 +84,16 @@ class TeacherDashboard extends StatelessWidget {
         children: [
           // ── Greeting ──
         Text(
-          '${_getGreeting()}, Ibu Siti!',
+          '${_getGreeting()}, Guru!',
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.foreground),
         ),
         const SizedBox(height: 8),
-        const Text('Berikut adalah ringkasan jadwal dan tugas Anda hari ini.', style: TextStyle(color: AppColors.gray600)),
+        Text('Hari ini: ${_dashboardData['hari'] ?? '-'} • Total jadwal: $totalJadwal sesi/minggu', style: const TextStyle(color: AppColors.gray600)),
         const SizedBox(height: 24),
 
         // ── KPI Cards ──
         Row(
           children: kpiData.map((kpi) {
-            final highlight = kpi['highlight'] as bool? ?? false;
             return Expanded(
               child: Container(
                 margin: const EdgeInsets.only(right: 16),
@@ -79,7 +101,7 @@ class TeacherDashboard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
                 child: Row(
                   children: [
@@ -95,11 +117,7 @@ class TeacherDashboard extends StatelessWidget {
                             children: [
                               Text(
                                 kpi['value'] as String,
-                                style: TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w700,
-                                  color: highlight ? AppColors.accent : AppColors.foreground,
-                                ),
+                                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.foreground),
                               ),
                               const SizedBox(width: 6),
                               Text(kpi['subtitle'] as String, style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
@@ -109,12 +127,10 @@ class TeacherDashboard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 48, height: 48,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
                           colors: [kpi['color1'] as Color, kpi['color2'] as Color],
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -144,7 +160,7 @@ class TeacherDashboard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,12 +168,12 @@ class TeacherDashboard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Jadwal Mengajar Hari Ini', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.foreground)),
-                                SizedBox(height: 4),
-                                Text('Senin, 13 April 2026', style: TextStyle(fontSize: 13, color: AppColors.gray600)),
+                                const Text('Jadwal Mengajar Hari Ini', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+                                const SizedBox(height: 4),
+                                Text('${_dashboardData['hari'] ?? '-'}, ${DateTime.now().day} ${_monthName(DateTime.now().month)} ${DateTime.now().year}', style: const TextStyle(fontSize: 13, color: AppColors.gray600)),
                               ],
                             ),
                             Row(
@@ -173,7 +189,13 @@ class TeacherDashboard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        ...todaySchedule.map((s) => _buildScheduleCard(s)),
+                        if (todaySchedule.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32),
+                            child: Center(child: Text('Tidak ada jadwal hari ini', style: TextStyle(color: AppColors.gray500))),
+                          )
+                        else
+                          ...todaySchedule.map((s) => _buildScheduleCard(s)),
                       ],
                     ),
                   ),
@@ -187,13 +209,13 @@ class TeacherDashboard extends StatelessWidget {
               flex: 3,
               child: Column(
                 children: [
-                  // Pengumuman
+                  // Jurnal Terbaru
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,16 +228,23 @@ class TeacherDashboard extends StatelessWidget {
                                 color: AppColors.accent.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.campaign, color: AppColors.accent, size: 18),
+                              child: const Icon(Icons.menu_book, color: AppColors.accent, size: 18),
                             ),
                             const SizedBox(width: 10),
-                            const Text('Pengumuman Sekolah', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.foreground)),
+                            const Text('Jurnal Terbaru', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.foreground)),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildAnnouncement('1. Rapat Pleno Guru', 'Jumat, 13:00 WIB', const Color(0xFF3B82F6), const Color(0xFFEFF6FF)),
-                        const SizedBox(height: 8),
-                        _buildAnnouncement('2. Batas Pengisian Nilai UTS', 'Deadline: 15 April 2026', const Color(0xFFF59E0B), const Color(0xFFFFFBEB)),
+                        ...(_dashboardData['jurnalTerbaru'] as List? ?? []).take(3).map((j) =>
+                          _buildJournalItem(
+                            j['judulMateri'] ?? '-',
+                            '${j['mapel'] ?? ''} • ${j['kelas'] ?? ''}',
+                            const Color(0xFF3B82F6),
+                            const Color(0xFFEFF6FF),
+                          ),
+                        ),
+                        if ((_dashboardData['jurnalTerbaru'] as List? ?? []).isEmpty)
+                          const Text('Belum ada jurnal', style: TextStyle(fontSize: 13, color: AppColors.gray500)),
                       ],
                     ),
                   ),
@@ -227,6 +256,11 @@ class TeacherDashboard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _monthName(int month) {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return months[month - 1];
   }
 
   Widget _buildScheduleCard(Map<String, dynamic> s) {
@@ -327,10 +361,9 @@ class TeacherDashboard extends StatelessWidget {
     );
   }
 
-
-
-  Widget _buildAnnouncement(String title, String sub, Color accent, Color bg) {
+  Widget _buildJournalItem(String title, String sub, Color accent, Color bg) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: bg,
@@ -347,5 +380,4 @@ class TeacherDashboard extends StatelessWidget {
       ),
     );
   }
-
 }

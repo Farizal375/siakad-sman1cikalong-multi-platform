@@ -6,6 +6,7 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
@@ -40,19 +41,22 @@ class _MasterMapelState extends State<MasterMapel> {
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _subjectsData = items.map<Map<String, String>>((item) => {
+          _subjectsData = items.map<Map<String, String>>((item) => ({
             'id': (item['id'] ?? '').toString(),
-            'code': (item['kode'] ?? '').toString(),
-            'name': (item['nama'] ?? '').toString(),
-            'category': (item['kategori'] ?? 'Wajib').toString(),
+            'code': (item['code'] ?? '').toString(),
+            'name': (item['name'] ?? '').toString(),
+            'category': (item['category'] ?? 'Wajib').toString(),
             'kkm': (item['kkm'] ?? '75').toString(),
-            'description': (item['deskripsi'] ?? '').toString(),
-          }).toList();
+            'description': (item['description'] ?? '').toString(),
+          })).toList();
           _loading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Load Mapel error: $e'), backgroundColor: Colors.red));
+      }
     }
   }
 
@@ -81,11 +85,15 @@ class _MasterMapelState extends State<MasterMapel> {
       ),
     ).then((result) {
       if (result == true) {
+        _loadData();
         setState(() {
           _successMessage = isEdit
               ? 'Mata pelajaran berhasil diperbarui'
               : 'Mata pelajaran baru berhasil ditambahkan';
           _showSuccessToast = true;
+        });
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showSuccessToast = false);
         });
       }
     });
@@ -112,6 +120,8 @@ class _MasterMapelState extends State<MasterMapel> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
     final filtered = _filteredData;
     final total = filtered.length;
     final start = (_currentPage - 1) * _itemsPerPage;
@@ -196,6 +206,7 @@ class _MasterMapelState extends State<MasterMapel> {
                           Expanded(flex: 3, child: Text('Nama Mapel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
                           Expanded(flex: 2, child: Text('Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
                           Expanded(flex: 1, child: Text('KKM', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+                          Expanded(flex: 3, child: Text('Deskripsi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
                           SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
                         ],
                       ),
@@ -235,6 +246,7 @@ class _MasterMapelState extends State<MasterMapel> {
                                   ),
                                 ),
                                 Expanded(flex: 1, child: Text(s['kkm']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                                Expanded(flex: 3, child: Text(s['description'] ?? '-', style: const TextStyle(fontSize: 14, color: AppColors.gray600), overflow: TextOverflow.ellipsis, maxLines: 1)),
                                 SizedBox(
                                   width: 80,
                                   child: Row(
@@ -303,6 +315,7 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
   late TextEditingController _kkmCtrl;
   late TextEditingController _descCtrl;
   String? _selectedCategory;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -321,6 +334,34 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
     _kkmCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _loading = true);
+    final payload = {
+      'code': _codeCtrl.text,
+      'name': _nameCtrl.text,
+      'category': _selectedCategory ?? 'Wajib',
+      'kkm': _kkmCtrl.text,
+      'description': _descCtrl.text,
+    };
+    try {
+      if (widget.isEdit && widget.initialData != null) {
+        await ApiService.updateMataPelajaran(widget.initialData!['id']!, payload);
+      } else {
+        await ApiService.createMataPelajaran(payload);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        String msg = 'Terjadi kesalahan';
+        if (e is DioException && e.response?.data != null) {
+          msg = e.response!.data['message'] ?? msg;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+      }
+    }
   }
 
   @override
@@ -414,7 +455,7 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
               ),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: _loading ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.white,
@@ -422,7 +463,9 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   textStyle: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-                child: Text(widget.isEdit ? 'Simpan Perubahan' : 'Tambah Mapel'),
+                child: _loading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(widget.isEdit ? 'Simpan Perubahan' : 'Tambah Mapel'),
               ),
             ],
           ),

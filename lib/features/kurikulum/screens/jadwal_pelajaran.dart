@@ -1,4 +1,4 @@
-﻿// File: lib/features/kurikulum/screens/jadwal_pelajaran.dart
+// File: lib/features/kurikulum/screens/jadwal_pelajaran.dart
 // ===========================================
 // JADWAL PELAJARAN (Schedule Management)
 // Features: Guru-Mapel mapping with quota tracking,
@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
 import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
@@ -72,9 +73,9 @@ class TeacherMapping {
   });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// SHARED STATE â€” Schedule Data accessible across tabs
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════════════════════
+// SHARED STATE – loaded from API
+// ════════════════════════════════════════════════════════════════════════════════
 // Key: '{slotIndex}_{dayIndex}'
 final Map<String, ScheduleEntry> _globalScheduleData = {
   '0_0': ScheduleEntry(subject: 'Matematika', teacher: 'Dr. Siti N.', room: 'R-101', startTime: const TimeOfDay(hour: 7, minute: 0), endTime: const TimeOfDay(hour: 7, minute: 45)),
@@ -97,6 +98,9 @@ final Map<String, ScheduleEntry> _globalScheduleData = {
   '2_4': ScheduleEntry(subject: 'Olahraga', teacher: 'Pak Deni', room: 'Lapangan', startTime: const TimeOfDay(hour: 8, minute: 30), endTime: const TimeOfDay(hour: 9, minute: 15)),
 };
 
+// Jadwal IDs mapped to same keys for CRUD
+final Map<String, String> _globalScheduleIds = {};
+
 final List<TeacherMapping> _globalTeacherMappings = [
   TeacherMapping(teacher: 'Dr. Siti Nurhaliza, S.Pd', subject: 'Matematika Wajib', classes: 'X IPA 1, X IPA 2, XI IPA 1', hoursPerWeek: 12),
   TeacherMapping(teacher: 'Budi Santoso, M.Pd', subject: 'Fisika', classes: 'X IPA 1, XI IPA 1', hoursPerWeek: 8),
@@ -106,6 +110,9 @@ final List<TeacherMapping> _globalTeacherMappings = [
   TeacherMapping(teacher: 'Drs. Hendra Gunawan', subject: 'Bahasa Inggris', classes: 'XI IPS 1, XII IPA 1', hoursPerWeek: 8),
   TeacherMapping(teacher: 'Ir. Subekti, M.Si', subject: 'Matematika Peminatan', classes: 'XI IPA 1, XII IPA 1', hoursPerWeek: 8),
 ];
+
+// Guru-mapel IDs for CRUD
+final List<String> _globalTeacherMappingIds = [];
 
 // Helper: count scheduled hours for a teacher (simplified: each slot = ~0.75h â‰ˆ 1 jam pelajaran)
 int _countScheduledSlots(String teacherShortName) {
@@ -135,7 +142,64 @@ class _JadwalPelajaranState extends State<JadwalPelajaran> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadAllData();
   }
+
+  Future<void> _loadAllData() async {
+    try {
+      // Load guru-mapel mappings
+      final gmResponse = await ApiService.getGuruMapel();
+      final List gmData = gmResponse['data'] ?? [];
+      _globalTeacherMappings.clear();
+      _globalTeacherMappingIds.clear();
+      for (final gm in gmData) {
+        _globalTeacherMappings.add(TeacherMapping(
+          teacher: gm['teacher'] ?? '-',
+          subject: gm['subject'] ?? '-',
+          classes: gm['classes'] ?? '-',
+          hoursPerWeek: (gm['hoursPerWeek'] as num?)?.toInt() ?? 8,
+        ));
+        _globalTeacherMappingIds.add((gm['id'] ?? '').toString());
+      }
+
+      // Load jadwal
+      final jResponse = await ApiService.getJadwal();
+      final List jData = jResponse['data'] ?? [];
+      _globalScheduleData.clear();
+      _globalScheduleIds.clear();
+      final dayMap = {'Senin': 0, 'Selasa': 1, 'Rabu': 2, 'Kamis': 3, 'Jumat': 4};
+      for (final j in jData) {
+        final hari = j['hari'] ?? 'Senin';
+        final dayIdx = dayMap[hari] ?? 0;
+        final jamMulai = j['jamMulai'] ?? '07:00';
+        final jamSelesai = j['jamSelesai'] ?? '07:45';
+        final slotIdx = _timeStringToSlotIndex(jamMulai);
+        final key = '${slotIdx}_$dayIdx';
+        _globalScheduleData[key] = ScheduleEntry(
+          subject: j['mataPelajaran'] ?? j['mapel'] ?? '-',
+          teacher: j['guru'] ?? j['guruName'] ?? '-',
+          room: j['ruang'] ?? '',
+          startTime: _parseTime(jamMulai),
+          endTime: _parseTime(jamSelesai),
+        );
+        _globalScheduleIds[key] = (j['id'] ?? '').toString();
+      }
+
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  static TimeOfDay _parseTime(String t) {
+    final parts = t.split(':');
+    return TimeOfDay(hour: int.tryParse(parts[0]) ?? 7, minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0);
+  }
+
+  static int _timeStringToSlotIndex(String t) {
+    final slotStarts = ['07:00', '07:45', '08:30', '09:30', '10:15', '11:00', '13:00', '13:45'];
+    final idx = slotStarts.indexOf(t);
+    return idx >= 0 ? idx : 0;
+  }
+
 
   @override
   void dispose() {
