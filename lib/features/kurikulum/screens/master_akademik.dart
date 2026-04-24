@@ -39,16 +39,21 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
     super.dispose();
   }
 
-  void _handleDelete(String type, String name) {
+  void _handleDelete(String type, String name, Future<void> Function() action) {
     DeleteConfirmationModal.show(
       context,
       title: 'Konfirmasi Penghapusan Data Master',
       message: 'Apakah Anda yakin ingin menghapus data master ini? Data yang dihapus tidak dapat dipulihkan.',
       itemName: name,
-      onConfirm: () {
+      onConfirm: () async {
+        await action();
         setState(() {
           _successMessage = '$type "$name" berhasil dihapus';
           _showSuccessToast = true;
+          _refreshKey++;
+        });
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showSuccessToast = false);
         });
       },
     );
@@ -268,10 +273,10 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _AcademicYearTable(key: ValueKey('academic_$_refreshKey'), onDelete: (name) => _handleDelete('Tahun Ajaran', name), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 0, initialData: row)),
-                    _SemesterTable(key: ValueKey('semester_$_refreshKey'), onDelete: (name) => _handleDelete('Semester', name), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 1, initialData: row)),
-                    _RuangKelasTable(key: ValueKey('ruang_$_refreshKey'), onDelete: (name) => _handleDelete('Ruang Kelas', name), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 2, initialData: row)),
-                    _MasterKelasTable(key: ValueKey('master_$_refreshKey'), onDelete: (name) => _handleDelete('Master Kelas', name), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 3, initialData: row)),
+                    _AcademicYearTable(key: ValueKey('academic_$_refreshKey'), onDelete: (name, action) => _handleDelete('Tahun Ajaran', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 0, initialData: row)),
+                    _SemesterTable(key: ValueKey('semester_$_refreshKey'), onDelete: (name, action) => _handleDelete('Semester', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 1, initialData: row)),
+                    _RuangKelasTable(key: ValueKey('ruang_$_refreshKey'), onDelete: (name, action) => _handleDelete('Ruang Kelas', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 2, initialData: row)),
+                    _MasterKelasTable(key: ValueKey('master_$_refreshKey'), onDelete: (name, action) => _handleDelete('Master Kelas', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 3, initialData: row)),
                   ],
                 ),
               ),
@@ -328,7 +333,7 @@ class _ToggleSwitch extends StatelessWidget {
 // ACADEMIC YEAR TABLE — with Toggle Switch
 // ═══════════════════════════════════════════════
 class _AcademicYearTable extends StatefulWidget {
-  final void Function(String name) onDelete;
+  final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
   const _AcademicYearTable({super.key, required this.onDelete, required this.onEdit});
 
@@ -373,6 +378,10 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
       await ApiService.toggleTahunAjaran(row['id']);
       _loadData();
     } catch (_) {}
+  }
+
+  Future<void> _deleteItem(Map<String, dynamic> row) async {
+    await ApiService.deleteTahunAjaran(row['id']);
   }
 
   @override
@@ -447,7 +456,7 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
                       child: Row(
                         children: [
                           IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code']), splashRadius: 18, tooltip: 'Hapus'),
+                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
                         ],
                       ),
                     ),
@@ -467,7 +476,7 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
 // SEMESTER TABLE — with Toggle Switch
 // ═══════════════════════════════════════════════
 class _SemesterTable extends StatefulWidget {
-  final void Function(String name) onDelete;
+  final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
   const _SemesterTable({super.key, required this.onDelete, required this.onEdit});
 
@@ -512,6 +521,10 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
       await ApiService.toggleSemester(row['id']);
       _loadData();
     } catch (_) {}
+  }
+
+  Future<void> _deleteItem(Map<String, dynamic> row) async {
+    await ApiService.deleteSemester(row['id']);
   }
 
   @override
@@ -585,7 +598,7 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
                       child: Row(
                         children: [
                           IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete('${row['name']} ${row['academicYear']}'), splashRadius: 18, tooltip: 'Hapus'),
+                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete('${row['name']} ${row['academicYear']}', () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
                         ],
                       ),
                     ),
@@ -605,7 +618,7 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
 // RUANG KELAS TABLE — API Connected
 // ═══════════════════════════════════════════════
 class _RuangKelasTable extends StatefulWidget {
-  final void Function(String name) onDelete;
+  final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
   const _RuangKelasTable({super.key, required this.onDelete, required this.onEdit});
 
@@ -646,10 +659,7 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
   }
 
   Future<void> _deleteItem(Map<String, dynamic> row) async {
-    try {
-      await ApiService.deleteRuangKelas(row['id']);
-      _loadData();
-    } catch (_) {}
+    await ApiService.deleteRuangKelas(row['id']);
   }
 
   @override
@@ -699,10 +709,7 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
                             child: Row(
                               children: [
                                 IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () {
-                                  widget.onDelete(row['code']);
-                                  _deleteItem(row);
-                                }, splashRadius: 18, tooltip: 'Hapus'),
+                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
                               ],
                             ),
                           ),
@@ -722,7 +729,7 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
 // MASTER KELAS TABLE — API Connected
 // ═══════════════════════════════════════════════
 class _MasterKelasTable extends StatefulWidget {
-  final void Function(String name) onDelete;
+  final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
   const _MasterKelasTable({super.key, required this.onDelete, required this.onEdit});
 
@@ -764,10 +771,7 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
   }
 
   Future<void> _deleteItem(Map<String, dynamic> row) async {
-    try {
-      await ApiService.deleteMasterKelas(row['id']);
-      _loadData();
-    } catch (_) {}
+    await ApiService.deleteMasterKelas(row['id']);
   }
 
   @override
@@ -819,10 +823,7 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
                             child: Row(
                               children: [
                                 IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () {
-                                  widget.onDelete(row['name']);
-                                  _deleteItem(row);
-                                }, splashRadius: 18, tooltip: 'Hapus'),
+                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['name'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
                               ],
                             ),
                           ),
@@ -1199,7 +1200,7 @@ class _SemesterFormModalState extends State<_SemesterFormModal> {
             const Text('Tahun Ajaran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _academicYearId,
+              initialValue: _academicYearId,
               items: yearList.map((e) => DropdownMenuItem(value: e, child: Text(yearMap[e]!))).toList(),
               onChanged: (v) => setState(() => _academicYearId = v),
               decoration: InputDecoration(
@@ -1425,9 +1426,12 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
             // Guru dropdown
             const Text('Wali Kelas (Opsional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _homeroomTeacherId,
-              items: _guruOptions.map((e) => DropdownMenuItem(value: e['id'] as String, child: Text(e['name'] as String))).toList(),
+            DropdownButtonFormField<String?>(
+              initialValue: _homeroomTeacherId,
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('Belum ada wali kelas')),
+                ..._guruOptions.map((e) => DropdownMenuItem<String?>(value: e['id'] as String, child: Text(e['name'] as String))),
+              ],
               onChanged: (v) => setState(() => _homeroomTeacherId = v),
               decoration: InputDecoration(
                 filled: true, fillColor: AppColors.gray50,
@@ -1442,9 +1446,12 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
             // Ruangan dropdown
             const Text('Ruangan (Opsional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _classroomId,
-              items: _ruangOptions.map((e) => DropdownMenuItem(value: e['id'] as String, child: Text(e['code'] as String))).toList(),
+            DropdownButtonFormField<String?>(
+              initialValue: _classroomId,
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('Belum ditentukan')),
+                ..._ruangOptions.map((e) => DropdownMenuItem<String?>(value: e['id'] as String, child: Text(e['code'] as String))),
+              ],
               onChanged: (v) => setState(() => _classroomId = v),
               decoration: InputDecoration(
                 filled: true, fillColor: AppColors.gray50,

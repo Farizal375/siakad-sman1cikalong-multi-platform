@@ -226,6 +226,7 @@ class ApiService {
   // GURU - MAPEL MAPPING
   // ═══════════════════════════════════════════
 
+
   static Future<Map<String, dynamic>> getGuruMapel({String search = ''}) async {
     final response = await _client.get('/guru-mapel', queryParameters: {'search': search});
     return response.data;
@@ -293,6 +294,25 @@ class ApiService {
 
   static Future<Map<String, dynamic>> removeSiswaFromRombel(String rombelId, String siswaId) async {
     final response = await _client.delete('/rombel/$rombelId/siswa/$siswaId');
+    return response.data;
+  }
+
+  // ═══════════════════════════════════════════
+  // KENAIKAN KELAS (PROMOSI)
+  // ═══════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> getSiswaPromosi(String rombelId) async {
+    final response = await _client.get('/promosi/rombel/$rombelId');
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> lockPromosi(Map<String, dynamic> data) async {
+    final response = await _client.post('/promosi/lock', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> executePromosi(Map<String, dynamic> data) async {
+    final response = await _client.post('/promosi/execute', data: data);
     return response.data;
   }
 

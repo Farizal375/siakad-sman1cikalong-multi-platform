@@ -26,12 +26,14 @@ import 'features/kurikulum/screens/jadwal_pelajaran.dart';
 import 'features/kurikulum/screens/curriculum_profile.dart';
 import 'features/kurikulum/screens/jadwal_overview.dart';
 import 'features/kurikulum/screens/master_akademik.dart';
+import 'features/kurikulum/screens/migrasi_kelas_wizard.dart';
 import 'features/guru/screens/teacher_layout.dart';
 import 'features/guru/screens/teacher_dashboard.dart';
 import 'features/guru/screens/my_classes.dart';
 import 'features/guru/screens/class_detail.dart';
 import 'features/guru/screens/teacher_profile.dart';
 import 'features/guru/screens/homeroom_dashboard.dart';
+import 'features/guru/screens/wali_kelas/penentuan_promosi_screen.dart';
 import 'features/guru/screens/monitoring_kehadiran.dart';
 import 'features/guru/screens/catatan_akademik.dart';
 import 'features/guru/screens/cetak_rapor.dart';
@@ -155,6 +157,12 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) =>
                     const JadwalOverview(),
               ),
+              GoRoute(
+                path: 'migrasi-kelas',
+                name: 'curriculum-migrasi',
+                builder: (context, state) =>
+                    const MigrasiKelasWizard(),
+              ),
             ],
           ),
         ],
@@ -215,6 +223,11 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 path: 'cetak-rapor',
                 name: 'guru-rapor',
                 builder: (context, state) => const CetakRapor(),
+              ),
+              GoRoute(
+                path: 'penentuan-promosi',
+                name: 'guru-promosi',
+                builder: (context, state) => const PenentuanPromosiScreen(),
               ),
               GoRoute(
                 path: 'rapor-detail/:studentId',

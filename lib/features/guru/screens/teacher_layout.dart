@@ -78,6 +78,7 @@ class _TeacherLayoutState extends State<TeacherLayout> {
               SidebarMenuItem(icon: Icons.assignment, label: 'Dashboard Kelas', route: '/guru/kelas-wali', sectionLabel: 'WALI KELAS'),
               SidebarMenuItem(icon: Icons.how_to_reg, label: 'Monitoring Kehadiran', route: '/guru/monitoring-kehadiran'),
               SidebarMenuItem(icon: Icons.description, label: 'Catatan Akademik', route: '/guru/catatan-akademik'),
+              SidebarMenuItem(icon: Icons.verified_user, label: 'Penentuan Promosi', route: '/guru/penentuan-promosi'),
               SidebarMenuItem(icon: Icons.print, label: 'Cetak e-Rapor', route: '/guru/cetak-rapor'),
             ],
             bottomMenuItems: [

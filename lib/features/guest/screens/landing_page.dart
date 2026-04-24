@@ -1,8 +1,8 @@
 // File: lib/features/guest/screens/landing_page.dart
 // ===========================================
 // LANDING PAGE (Guest / Public)
-// Exact translation from LandingPage.tsx
 // Sections: Header, Hero, News, Achievements, Videos, Footer
+// With working navbar, card animations, and consistent card sizes
 // ===========================================
 
 import 'package:flutter/material.dart';
@@ -10,27 +10,65 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 
-class LandingPage extends StatelessWidget {
+class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
+
+  @override
+  State<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _heroKey = GlobalKey();
+  final GlobalKey _newsKey = GlobalKey();
+  final GlobalKey _achievementsKey = GlobalKey();
+  final GlobalKey _videoKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSection(GlobalKey key) {
+    final ctx = key.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background, // bg-[#F8FAFC]
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Sticky Header ──
-          _HeaderBar(onLoginTap: () => context.go('/login')),
-
-          // ── Scrollable Content ──
+          _HeaderBar(
+            onLoginTap: () => context.go('/login'),
+            onNavTap: (index) {
+              switch (index) {
+                case 0: _scrollToSection(_heroKey); break;
+                case 1: _scrollToSection(_newsKey); break;
+                case 2: _scrollToSection(_newsKey); break;
+                case 3: _scrollToSection(_newsKey); break;
+                case 4: _scrollToSection(_achievementsKey); break;
+              }
+            },
+          ),
           Expanded(
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 children: [
-                  _HeroSection(onLearnMore: () {}),
-                  const _NewsSection(),
-                  const _AchievementsSection(),
-                  const _VideoSection(),
+                  _HeroSection(
+                    key: _heroKey,
+                    onLearnMore: () => _scrollToSection(_newsKey),
+                  ),
+                  _NewsSection(key: _newsKey),
+                  _AchievementsSection(key: _achievementsKey),
+                  _VideoSection(key: _videoKey),
                   const _Footer(),
                 ],
               ),
@@ -43,92 +81,12 @@ class LandingPage extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════
-// HEADER BAR — sticky top, bg-[#1E3A8A], h-16
+// HEADER BAR — sticky top with working nav & mobile drawer
 // ═══════════════════════════════════════════════
 class _HeaderBar extends StatelessWidget {
   final VoidCallback onLoginTap;
-  const _HeaderBar({required this.onLoginTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Container(
-      color: AppColors.primary, // bg-[#1E3A8A]
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1280), // max-w-7xl
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16), // px-4
-            child: SizedBox(
-              height: 64, // h-16
-              child: Row(
-                children: [
-                  // Logo + School Name
-                  Container(
-                    width: 48, // w-12
-                    height: 48, // h-12
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12), // rounded-xl
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    padding: const EdgeInsets.all(4), // p-1
-                    child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
-                  ),
-                  const SizedBox(width: 12), // gap-3
-                  const Expanded(
-                    child: Text(
-                      'SMA NEGERI 1 CIKALONG',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20, // text-lg sm:text-xl
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  // Nav Links (hidden on mobile, md:flex)
-                  if (screenWidth >= 768) ...[
-                    const SizedBox(width: 32),
-                    ..._navLinks.map(
-                      (link) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16), // gap-8
-                        child: Text(
-                          link,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(width: 16),
-
-                  // Login Button
-                  OutlinedButton(
-                    onPressed: onLoginTap,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white, width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), // px-6 py-2
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8), // rounded-lg
-                      ),
-                    ),
-                    child: const Text(
-                      'Login Akademik',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  final void Function(int index) onNavTap;
+  const _HeaderBar({required this.onLoginTap, required this.onNavTap});
 
   static const List<String> _navLinks = [
     'Beranda',
@@ -137,6 +95,156 @@ class _HeaderBar extends StatelessWidget {
     'Berita & Acara',
     'Prestasi',
   ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      color: AppColors.primary,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    padding: const EdgeInsets.all(4),
+                    child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'SMA NEGERI 1 CIKALONG',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  // Desktop nav links with hover
+                  if (screenWidth >= 768) ...[
+                    const SizedBox(width: 32),
+                    ...List.generate(_navLinks.length, (i) => _NavLinkButton(
+                      label: _navLinks[i],
+                      onTap: () => onNavTap(i),
+                    )),
+                  ],
+
+                  // Mobile hamburger
+                  if (screenWidth < 768)
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: AppColors.primary,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (_) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 8),
+                                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 16),
+                                ...List.generate(_navLinks.length, (i) => ListTile(
+                                  title: Text(_navLinks[i], style: const TextStyle(color: Colors.white, fontSize: 16)),
+                                  leading: const Icon(Icons.chevron_right, color: AppColors.accent),
+                                  onTap: () { Navigator.pop(context); onNavTap(i); },
+                                )),
+                                const Divider(color: Colors.white24),
+                                ListTile(
+                                  title: const Text('Login Akademik', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 16)),
+                                  leading: const Icon(Icons.login, color: AppColors.accent),
+                                  onTap: () { Navigator.pop(context); onLoginTap(); },
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                  if (screenWidth >= 768) ...[
+                    const SizedBox(width: 16),
+                    OutlinedButton(
+                      onPressed: onLoginTap,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white, width: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Login Akademik', style: TextStyle(fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Nav link with hover underline effect
+class _NavLinkButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _NavLinkButton({required this.label, required this.onTap});
+
+  @override
+  State<_NavLinkButton> createState() => _NavLinkButtonState();
+}
+
+class _NavLinkButtonState extends State<_NavLinkButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(widget.label, style: TextStyle(
+                color: _hovered ? AppColors.accent : Colors.white,
+                fontSize: 14, fontWeight: _hovered ? FontWeight.w600 : FontWeight.w400,
+              )),
+              const SizedBox(height: 2),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 2,
+                width: _hovered ? 24 : 0,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -144,7 +252,7 @@ class _HeaderBar extends StatelessWidget {
 // ═══════════════════════════════════════════════
 class _HeroSection extends StatelessWidget {
   final VoidCallback onLearnMore;
-  const _HeroSection({required this.onLearnMore});
+  const _HeroSection({super.key, required this.onLearnMore});
 
   @override
   Widget build(BuildContext context) {
@@ -268,288 +376,7 @@ class _HeroSection extends StatelessWidget {
 // NEWS SECTION — py-20, 3-column grid
 // ═══════════════════════════════════════════════
 class _NewsSection extends StatelessWidget {
-  const _NewsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background, // bg-[#F8FAFC]
-      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 16), // py-20 px-4
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1280), // max-w-7xl
-          child: Column(
-            children: [
-              const Text(
-                'Berita & Pengumuman Terbaru',
-                style: TextStyle(
-                  fontSize: 36, // text-3xl sm:text-4xl
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48), // mb-12
-
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024
-                      ? 3
-                      : constraints.maxWidth >= 768
-                          ? 2
-                          : 1;
-                  return Wrap(
-                    spacing: 32, // gap-8
-                    runSpacing: 32,
-                    children: _newsData.map((news) {
-                      final cardWidth = (constraints.maxWidth -
-                              (crossAxisCount - 1) * 32) /
-                          crossAxisCount;
-                      return SizedBox(
-                        width: cardWidth,
-                        child: _NewsCard(news: news),
-                      );
-                    }).toList(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewsCard extends StatelessWidget {
-  final Map<String, String> news;
-  const _NewsCard({required this.news});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16), // rounded-2xl
-        boxShadow: const [
-          BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4)),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image (h-48)
-          SizedBox(
-            height: 192,
-            width: double.infinity,
-            child: CachedNetworkImage(
-              imageUrl: news['image']!,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: AppColors.gray200),
-              errorWidget: (_, __, ___) => Container(
-                color: AppColors.gray200,
-                child: const Icon(Icons.image, size: 48, color: AppColors.gray400),
-              ),
-            ),
-          ),
-          // Content (p-6)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  news['title']!,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20, // text-xl
-                    color: AppColors.foreground,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8), // mb-2
-                Text(
-                  news['excerpt']!,
-                  style: const TextStyle(fontSize: 14, color: AppColors.gray600),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 16), // mb-4
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      news['date']!,
-                      style: const TextStyle(fontSize: 14, color: AppColors.gray500),
-                    ),
-                    InkWell(
-                      onTap: () {},
-                      child: const Row(
-                        children: [
-                          Text(
-                            'Baca Selengkapnya',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.accent,
-                              fontSize: 14,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Text('→', style: TextStyle(color: AppColors.accent)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// ACHIEVEMENTS SECTION — py-20, 4-column grid
-// ═══════════════════════════════════════════════
-class _AchievementsSection extends StatelessWidget {
-  const _AchievementsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white, // bg-white
-      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1280),
-          child: Column(
-            children: [
-              const Text(
-                'Prestasi yang Membanggakan',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024
-                      ? 4
-                      : constraints.maxWidth >= 768
-                          ? 2
-                          : 1;
-                  return Wrap(
-                    spacing: 24, // gap-6
-                    runSpacing: 24,
-                    children: _achievementsData.map((achievement) {
-                      final cardWidth =
-                          (constraints.maxWidth - (crossAxisCount - 1) * 24) /
-                              crossAxisCount;
-                      return SizedBox(
-                        width: cardWidth,
-                        child: _AchievementCard(data: achievement),
-                      );
-                    }).toList(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AchievementCard extends StatelessWidget {
-  final Map<String, String> data;
-  const _AchievementCard({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24), // p-6
-      decoration: BoxDecoration(
-        color: AppColors.background, // bg-[#F8FAFC]
-        borderRadius: BorderRadius.circular(16), // rounded-2xl
-        boxShadow: const [
-          BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4)),
-        ],
-        border: const Border(
-          left: BorderSide(color: AppColors.accent, width: 4), // border-l-4 border-[#F59E0B]
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon container (w-16 h-16 bg-gradient)
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.accent, AppColors.accentHover],
-              ),
-              borderRadius: BorderRadius.circular(12), // rounded-xl
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: data['icon']!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => const Icon(Icons.emoji_events, color: Colors.white, size: 32),
-                errorWidget: (_, __, ___) =>
-                    const Icon(Icons.emoji_events, color: Colors.white, size: 32),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16), // mb-4
-
-          Text(
-            data['title']!,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 18, // text-lg
-              color: AppColors.foreground,
-            ),
-          ),
-          const SizedBox(height: 8), // mb-2
-
-          Text(
-            data['description']!,
-            style: const TextStyle(fontSize: 14, color: AppColors.gray600),
-          ),
-          const SizedBox(height: 12), // mb-3
-
-          Text(
-            data['year']!,
-            style: const TextStyle(
-              fontSize: 12, // text-xs
-              fontWeight: FontWeight.w500,
-              color: AppColors.accent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// VIDEO SECTION — py-20, 3-column grid
-// ═══════════════════════════════════════════════
-class _VideoSection extends StatelessWidget {
-  const _VideoSection();
+  const _NewsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -562,35 +389,20 @@ class _VideoSection extends StatelessWidget {
           child: Column(
             children: [
               const Text(
-                'Video Unggulan & Kehidupan Kampus',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
+                'Berita & Pengumuman Terbaru',
+                style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024
-                      ? 3
-                      : constraints.maxWidth >= 768
-                          ? 2
-                          : 1;
+                  final crossAxisCount = constraints.maxWidth >= 1024 ? 3 : constraints.maxWidth >= 768 ? 2 : 1;
                   return Wrap(
-                    spacing: 32,
-                    runSpacing: 32,
-                    children: _videoData.map((video) {
-                      final cardWidth =
-                          (constraints.maxWidth - (crossAxisCount - 1) * 32) /
-                              crossAxisCount;
-                      return SizedBox(
-                        width: cardWidth,
-                        child: _VideoCard(data: video),
-                      );
-                    }).toList(),
+                    spacing: 32, runSpacing: 32,
+                    children: List.generate(_newsData.length, (i) {
+                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 32) / crossAxisCount;
+                      return SizedBox(width: cardWidth, child: _NewsCard(news: _newsData[i], index: i));
+                    }),
                   );
                 },
               ),
@@ -602,84 +414,385 @@ class _VideoSection extends StatelessWidget {
   }
 }
 
-class _VideoCard extends StatelessWidget {
-  final Map<String, String> data;
-  const _VideoCard({required this.data});
+class _NewsCard extends StatefulWidget {
+  final Map<String, String> news;
+  final int index;
+  const _NewsCard({required this.news, required this.index});
+
+  @override
+  State<_NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends State<_NewsCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    Future.delayed(Duration(milliseconds: 150 * widget.index), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SlideTransition(
+        position: _slideAnim,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          cursor: SystemMouseCursors.click,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            transform: Matrix4.diagonal3Values(_hovered ? 1.03 : 1.0, _hovered ? 1.03 : 1.0, 1.0),
+            transformAlignment: Alignment.center,
+            height: 420,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  blurRadius: _hovered ? 20 : 10,
+                  offset: Offset(0, _hovered ? 8 : 4),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 192, width: double.infinity,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.news['image']!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(color: AppColors.gray200),
+                    errorWidget: (_, __, ___) => Container(
+                      color: AppColors.gray200,
+                      child: const Icon(Icons.image, size: 48, color: AppColors.gray400),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.news['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.foreground), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 8),
+                        Text(widget.news['excerpt']!, style: const TextStyle(fontSize: 14, color: AppColors.gray600), maxLines: 3, overflow: TextOverflow.ellipsis),
+                        const Spacer(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(widget.news['date']!, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
+                            InkWell(
+                              onTap: () {},
+                              child: const Row(children: [
+                                Text('Baca Selengkapnya', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.accent, fontSize: 14)),
+                                SizedBox(width: 4),
+                                Text('→', style: TextStyle(color: AppColors.accent)),
+                              ]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ACHIEVEMENTS SECTION — py-20, 4-column grid
+// ═══════════════════════════════════════════════
+class _AchievementsSection extends StatelessWidget {
+  const _AchievementsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4)),
-        ],
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Column(
+            children: [
+              const Text('Prestasi yang Membanggakan', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary), textAlign: TextAlign.center),
+              const SizedBox(height: 48),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth >= 1024 ? 4 : constraints.maxWidth >= 768 ? 2 : 1;
+                  return Wrap(
+                    spacing: 24, runSpacing: 24,
+                    children: List.generate(_achievementsData.length, (i) {
+                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 24) / crossAxisCount;
+                      return SizedBox(width: cardWidth, child: _AchievementCard(data: _achievementsData[i], index: i));
+                    }),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Thumbnail with play button (h-56)
-          SizedBox(
-            height: 224,
-            width: double.infinity,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CachedNetworkImage(
-                  imageUrl: data['thumbnail']!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: AppColors.gray900),
-                  errorWidget: (_, __, ___) => Container(color: AppColors.gray900),
-                ),
-                // Dark overlay
-                Container(color: Colors.black.withValues(alpha: 0.3)),
-                // Play button
-                Center(
-                  child: Container(
-                    width: 64, // w-16
-                    height: 64, // h-16
-                    decoration: const BoxDecoration(
-                      color: AppColors.accent,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x40000000),
-                          blurRadius: 15,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.play_arrow, size: 32, color: Colors.white),
-                  ),
+    );
+  }
+}
+
+class _AchievementCard extends StatefulWidget {
+  final Map<String, String> data;
+  final int index;
+  const _AchievementCard({required this.data, required this.index});
+
+  @override
+  State<_AchievementCard> createState() => _AchievementCardState();
+}
+
+class _AchievementCardState extends State<_AchievementCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    Future.delayed(Duration(milliseconds: 120 * widget.index), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SlideTransition(
+        position: _slideAnim,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          cursor: SystemMouseCursors.click,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            transform: Matrix4.diagonal3Values(_hovered ? 1.05 : 1.0, _hovered ? 1.05 : 1.0, 1.0),
+            transformAlignment: Alignment.center,
+            height: 260,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  blurRadius: _hovered ? 20 : 10,
+                  offset: Offset(0, _hovered ? 8 : 4),
                 ),
               ],
+              border: const Border(left: BorderSide(color: AppColors.accent, width: 4)),
             ),
-          ),
-          // Info (p-6)
-          Padding(
-            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  data['title']!,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: AppColors.foreground,
+                Container(
+                  width: 64, height: 64,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: widget.data['icon']!, fit: BoxFit.cover,
+                      placeholder: (_, __) => const Icon(Icons.emoji_events, color: Colors.white, size: 32),
+                      errorWidget: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 32),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Text(widget.data['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.foreground)),
                 const SizedBox(height: 8),
-                Text(
-                  data['duration']!,
-                  style: const TextStyle(fontSize: 14, color: AppColors.gray500),
+                Expanded(child: Text(widget.data['description']!, style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
+                Text(widget.data['year']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.accent)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// VIDEO SECTION — py-20, 3-column grid
+// ═══════════════════════════════════════════════
+class _VideoSection extends StatelessWidget {
+  const _VideoSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Column(
+            children: [
+              const Text('Video Unggulan & Kehidupan Kampus', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary), textAlign: TextAlign.center),
+              const SizedBox(height: 48),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth >= 1024 ? 3 : constraints.maxWidth >= 768 ? 2 : 1;
+                  return Wrap(
+                    spacing: 32, runSpacing: 32,
+                    children: List.generate(_videoData.length, (i) {
+                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 32) / crossAxisCount;
+                      return SizedBox(width: cardWidth, child: _VideoCard(data: _videoData[i], index: i));
+                    }),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoCard extends StatefulWidget {
+  final Map<String, String> data;
+  final int index;
+  const _VideoCard({required this.data, required this.index});
+
+  @override
+  State<_VideoCard> createState() => _VideoCardState();
+}
+
+class _VideoCardState extends State<_VideoCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    Future.delayed(Duration(milliseconds: 150 * widget.index), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SlideTransition(
+        position: _slideAnim,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          cursor: SystemMouseCursors.click,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            transform: Matrix4.diagonal3Values(_hovered ? 1.03 : 1.0, _hovered ? 1.03 : 1.0, 1.0),
+            transformAlignment: Alignment.center,
+            height: 340,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  blurRadius: _hovered ? 20 : 10,
+                  offset: Offset(0, _hovered ? 8 : 4),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 224, width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: widget.data['thumbnail']!, fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: AppColors.gray900),
+                        errorWidget: (_, __, ___) => Container(color: AppColors.gray900),
+                      ),
+                      Container(color: Colors.black.withValues(alpha: 0.3)),
+                      Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          width: _hovered ? 72 : 64,
+                          height: _hovered ? 72 : 64,
+                          decoration: BoxDecoration(
+                            color: _hovered ? AppColors.accentHover : AppColors.accent,
+                            shape: BoxShape.circle,
+                            boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 15, offset: Offset(0, 4))],
+                          ),
+                          child: const Icon(Icons.play_arrow, size: 32, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.data['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.foreground)),
+                        const Spacer(),
+                        Text(widget.data['duration']!, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

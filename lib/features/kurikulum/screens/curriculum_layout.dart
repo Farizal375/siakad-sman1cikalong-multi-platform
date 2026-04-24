@@ -66,6 +66,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
               SidebarMenuItem(icon: Icons.people_outline, label: 'Manajemen Rombel', route: '/curriculum/manajemen-rombel'),
               SidebarMenuItem(icon: Icons.calendar_today_outlined, label: 'Jadwal Pelajaran', route: '/curriculum/jadwal-pelajaran'),
               SidebarMenuItem(icon: Icons.grid_view_outlined, label: 'Monitoring Jadwal', route: '/curriculum/monitoring-jadwal'),
+              SidebarMenuItem(icon: Icons.move_up, label: 'Migrasi Kelas', route: '/curriculum/migrasi-kelas'),
             ],
             bottomMenuItems: [
               SidebarMenuItem(icon: Icons.settings_outlined, label: 'Pengaturan'),
