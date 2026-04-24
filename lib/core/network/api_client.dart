@@ -9,8 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  // Use 10.0.2.2 for Android emulator, localhost for web/desktop
-  static const String _defaultBaseUrl = 'http://10.0.2.2:3001/api';
+  // Use 192.168.1.9 for physical Android device, localhost for web/desktop
+  static const String _defaultBaseUrl = 'http://192.168.1.9:3001/api';
   static const String _webBaseUrl = 'http://localhost:3001/api';
 
   static final ApiClient _instance = ApiClient._internal();
