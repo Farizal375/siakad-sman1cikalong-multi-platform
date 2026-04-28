@@ -38,6 +38,13 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
   @override
   Widget build(BuildContext context) {
     final currentRoute = GoRouterState.of(context).uri.toString();
+    // Baca user dari authProvider — reaktif, langsung update saat nama berubah
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final userName = authUser?.name ?? 'Admin';
+    final userInitials = userName.trim().split(' ')
+        .where((w) => w.isNotEmpty).take(2)
+        .map((w) => w[0].toUpperCase()).join();
+    final userRole = authUser?.role.displayName ?? 'Super Admin';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -96,9 +103,9 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
                   currentRoute: currentRoute,
                   sidebarController: _sidebarController,
                   roleName: 'Admin',
-                  userName: 'Admin Sekolah',
-                  userRole: 'Super Admin',
-                  userInitials: 'AS',
+                  userName: userName,
+                  userRole: userRole,
+                  userInitials: userInitials,
                   onProfileTap: () => context.go('/dashboard/profile'),
                 ),
                 Expanded(

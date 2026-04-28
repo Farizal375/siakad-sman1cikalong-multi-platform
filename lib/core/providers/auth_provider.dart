@@ -70,6 +70,29 @@ class AuthNotifier extends AsyncNotifier<User?> {
     state = const AsyncValue.data(null);
   }
 
+  /// Update nama user setelah edit profil — sinkronisasi state + SharedPreferences
+  Future<void> updateUserName(String newName) async {
+    final currentUser = state.valueOrNull;
+    if (currentUser == null) return;
+
+    // Buat user baru dengan nama yang diperbarui
+    final updatedUser = User(
+      id: currentUser.id,
+      email: currentUser.email,
+      password: currentUser.password,
+      name: newName,
+      role: currentUser.role,
+      avatar: currentUser.avatar,
+    );
+
+    // Simpan ke SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('currentUser', jsonEncode(updatedUser.toJson()));
+
+    // Update state Riverpod
+    state = AsyncValue.data(updatedUser);
+  }
+
   Future<void> _clearSession() async {
     await ApiClient.clearToken();
     final prefs = await SharedPreferences.getInstance();

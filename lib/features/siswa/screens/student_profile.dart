@@ -5,18 +5,20 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared_widgets/success_toast.dart';
 
-class StudentProfile extends StatefulWidget {
+class StudentProfile extends ConsumerStatefulWidget {
   const StudentProfile({super.key});
 
   @override
-  State<StudentProfile> createState() => _StudentProfileState();
+  ConsumerState<StudentProfile> createState() => _StudentProfileState();
 }
 
-class _StudentProfileState extends State<StudentProfile> {
+class _StudentProfileState extends ConsumerState<StudentProfile> {
   bool _showSuccessToast = false;
   bool _loading = true;
   bool _saving = false;
@@ -100,7 +102,11 @@ class _StudentProfileState extends State<StudentProfile> {
         'rw': _rwCtrl.text,
         'kodePos': _postalCtrl.text,
       });
-      if (mounted) setState(() { _showSuccessToast = true; _saving = false; });
+      if (mounted) {
+        // Sinkronisasi nama ke authProvider agar TopBar ikut berubah
+        await ref.read(authProvider.notifier).updateUserName(_fullNameCtrl.text);
+        setState(() { _showSuccessToast = true; _saving = false; });
+      }
     } catch (e) {
       if (mounted) setState(() => _saving = false);
     }

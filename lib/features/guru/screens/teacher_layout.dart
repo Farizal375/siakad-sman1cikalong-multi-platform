@@ -5,19 +5,21 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 
-class TeacherLayout extends StatefulWidget {
+class TeacherLayout extends ConsumerStatefulWidget {
   final Widget child;
   const TeacherLayout({super.key, required this.child});
 
   @override
-  State<TeacherLayout> createState() => _TeacherLayoutState();
+  ConsumerState<TeacherLayout> createState() => _TeacherLayoutState();
 }
 
-class _TeacherLayoutState extends State<TeacherLayout> {
+class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
   final SidebarController _sidebarController = SidebarController();
 
   @override
@@ -60,6 +62,12 @@ class _TeacherLayoutState extends State<TeacherLayout> {
   Widget build(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
     final currentRoute = GoRouterState.of(context).uri.toString();
+    // Baca user dari authProvider — reaktif, langsung update saat nama berubah
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final userName = authUser?.name ?? 'Guru';
+    final userInitials = userName.trim().split(' ')
+        .where((w) => w.isNotEmpty).take(2)
+        .map((w) => w[0].toUpperCase()).join();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -90,7 +98,7 @@ class _TeacherLayoutState extends State<TeacherLayout> {
           Expanded(
             child: Column(
               children: [
-                _buildHeader(context, path),
+                _buildHeader(context, path, userName, userInitials),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -105,7 +113,7 @@ class _TeacherLayoutState extends State<TeacherLayout> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String path) {
+  Widget _buildHeader(BuildContext context, String path, String userName, String userInitials) {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -162,12 +170,12 @@ class _TeacherLayoutState extends State<TeacherLayout> {
             onTap: () => context.go('/guru/profile'),
             child: Row(
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Dra. Siti Aminah', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.foreground)),
-                    Text('Guru Mata Pelajaran', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
+                    Text(userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.foreground)),
+                    const Text('Guru Mata Pelajaran', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -177,7 +185,7 @@ class _TeacherLayoutState extends State<TeacherLayout> {
                     gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
                     borderRadius: BorderRadius.circular(99),
                   ),
-                  child: const Center(child: Text('SA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
+                  child: Center(child: Text(userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
                 ),
               ],
             ),

@@ -434,6 +434,8 @@ class _ScheduleCard extends StatelessWidget {
   }
 
   void _showMenu(BuildContext ctx) {
+    // Store navigator before async gap to avoid deactivated widget error
+    final nav = Navigator.of(ctx);
     showDialog(context: ctx, builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -453,10 +455,10 @@ class _ScheduleCard extends StatelessWidget {
         const Divider(height: 1),
         ListTile(leading: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
           title: const Text('Edit Jadwal', style: TextStyle(fontSize: 14)),
-          onTap: () { Navigator.pop(ctx); onEdit(); }),
+          onTap: () { nav.pop(); onEdit(); }),
         ListTile(leading: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFDC2626)),
           title: const Text('Hapus Jadwal', style: TextStyle(fontSize: 14, color: Color(0xFFDC2626))),
-          onTap: () { Navigator.pop(ctx); onDelete(); }),
+          onTap: () { nav.pop(); onDelete(); }),
       ]),
     ));
   }

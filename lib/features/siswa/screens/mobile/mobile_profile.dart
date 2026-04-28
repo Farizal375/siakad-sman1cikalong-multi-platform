@@ -82,19 +82,30 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       });
       if (mounted) {
         setState(() { _saving = false; _editing = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Profil berhasil diperbarui'),
-            ]),
-            backgroundColor: const Color(0xFF16A34A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        // Sinkronisasi nama ke authProvider agar TopBar ikut berubah
+        await ref.read(authProvider.notifier).updateUserName(_fullNameCtrl.text);
+        // Perbarui inisial avatar
+        final names = _fullNameCtrl.text.split(' ');
+        if (mounted) {
+          setState(() {
+            _initials = names.length >= 2
+                ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+                : (names.isNotEmpty && names[0].isNotEmpty ? names[0][0].toUpperCase() : '?');
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Profil berhasil diperbarui'),
+              ]),
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

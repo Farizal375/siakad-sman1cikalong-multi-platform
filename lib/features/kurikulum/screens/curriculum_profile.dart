@@ -6,18 +6,20 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared_widgets/success_toast.dart';
 
-class CurriculumProfile extends StatefulWidget {
+class CurriculumProfile extends ConsumerStatefulWidget {
   const CurriculumProfile({super.key});
 
   @override
-  State<CurriculumProfile> createState() => _CurriculumProfileState();
+  ConsumerState<CurriculumProfile> createState() => _CurriculumProfileState();
 }
 
-class _CurriculumProfileState extends State<CurriculumProfile> {
+class _CurriculumProfileState extends ConsumerState<CurriculumProfile> {
   bool _showSuccessToast = false;
   String _successMessage = '';
   bool _loading = true;
@@ -106,6 +108,8 @@ class _CurriculumProfileState extends State<CurriculumProfile> {
         'kodePos': _postalCtrl.text,
       });
       if (mounted) {
+        // Sinkronisasi nama ke authProvider agar TopBar ikut berubah
+        await ref.read(authProvider.notifier).updateUserName(_fullNameCtrl.text);
         setState(() {
           _successMessage = 'Profil berhasil diperbarui';
           _showSuccessToast = true;

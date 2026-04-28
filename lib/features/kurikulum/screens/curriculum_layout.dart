@@ -48,6 +48,12 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
   @override
   Widget build(BuildContext context) {
     final currentRoute = GoRouterState.of(context).uri.toString();
+    // Baca user dari authProvider — reaktif, langsung update saat nama berubah
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final userName = authUser?.name ?? 'Manajer Kurikulum';
+    final userInitials = userName.trim().split(' ')
+        .where((w) => w.isNotEmpty).take(2)
+        .map((w) => w[0].toUpperCase()).join();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -84,7 +90,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
           Expanded(
             child: Column(
               children: [
-                _buildTopBar(context, currentRoute),
+                _buildTopBar(context, currentRoute, userName, userInitials),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -99,7 +105,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, String currentRoute) {
+  Widget _buildTopBar(BuildContext context, String currentRoute, String userName, String userInitials) {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -158,12 +164,12 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
-                  const Column(
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('Manajer Kurikulum', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground)),
-                      Text('Dr. Ahmad Ridwan', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
+                      Text(userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground)),
+                      const Text('Manajer Kurikulum', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
                     ],
                   ),
                   const SizedBox(width: 12),
@@ -173,7 +179,7 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
                       gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Center(child: Text('CM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
+                    child: Center(child: Text(userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
                   ),
                 ],
               ),

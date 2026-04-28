@@ -6,18 +6,20 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared_widgets/success_toast.dart';
 
-class UserProfileScreen extends StatefulWidget {
+class UserProfileScreen extends ConsumerStatefulWidget {
   const UserProfileScreen({super.key});
 
   @override
-  State<UserProfileScreen> createState() => _UserProfileScreenState();
+  ConsumerState<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
+class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _showSuccessToast = false;
@@ -108,6 +110,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         'kodePos': _postalCode,
       });
       if (mounted) {
+        // Sinkronisasi nama ke authProvider agar TopBar ikut berubah
+        await ref.read(authProvider.notifier).updateUserName(_fullName);
         setState(() {
           _successMessage = 'Profil berhasil diperbarui';
           _showSuccessToast = true;
