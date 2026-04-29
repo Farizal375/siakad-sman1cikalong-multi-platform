@@ -116,6 +116,7 @@ class _UserManagementState extends State<UserManagement> {
                          _successMessage = 'Pengguna berhasil ditambahkan.';
                          _showSuccessToast = true;
                       });
+                      _loadUsers();
                     });
                   },
                   icon: const Icon(Icons.add, size: 20),
@@ -214,6 +215,7 @@ class _UserManagementState extends State<UserManagement> {
                                     _successMessage = 'Pengguna berhasil diperbarui.';
                                     _showSuccessToast = true;
                                   });
+                                  _loadUsers();
                                 }
                               );
                             },
@@ -227,6 +229,7 @@ class _UserManagementState extends State<UserManagement> {
                                     _successMessage = 'Kata sandi pengguna berhasil di-reset.';
                                     _showSuccessToast = true;
                                   });
+                                  _loadUsers();
                                 }
                               );
                             },
@@ -510,6 +513,8 @@ class _UserFormModalState extends State<UserFormModal> {
   late TextEditingController _passwordCtrl;
   String _role = '';
   bool _isActive = true;
+  bool _loading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -543,16 +548,58 @@ class _UserFormModalState extends State<UserFormModal> {
     });
   }
 
-  void _saveData() {
-    widget.onSave({
-      'name': _nameCtrl.text,
-      'idNumber': _idNumberCtrl.text,
-      'email': _emailCtrl.text,
-      'role': _role,
-      'password': _passwordCtrl.text,
-      'status': _isActive ? 'Aktif' : 'Tidak Aktif',
-    });
-    Navigator.pop(context);
+  Future<void> _saveData() async {
+    // ── Validation ──
+    if (!widget.forcePasswordReset) {
+      if (_nameCtrl.text.trim().isEmpty || _emailCtrl.text.trim().isEmpty || _role.isEmpty) {
+        setState(() => _errorMessage = 'Nama, email, dan peran wajib diisi.');
+        return;
+      }
+    }
+    if (_passwordCtrl.text.isEmpty && widget.initialData == null) {
+      setState(() => _errorMessage = 'Password wajib diisi untuk pengguna baru.');
+      return;
+    }
+    if (widget.forcePasswordReset && _passwordCtrl.text.isEmpty) {
+      setState(() => _errorMessage = 'Password baru wajib diisi.');
+      return;
+    }
+
+    setState(() { _loading = true; _errorMessage = null; });
+
+    try {
+      final payload = {
+        'name': _nameCtrl.text.trim(),
+        'idNumber': _idNumberCtrl.text.trim(),
+        'email': _emailCtrl.text.trim(),
+        'role': _role,
+        'password': _passwordCtrl.text,
+        'status': _isActive ? 'Aktif' : 'Tidak Aktif',
+      };
+
+      if (widget.forcePasswordReset && widget.initialData != null) {
+        // ── Reset Password mode ──
+        await ApiService.resetPassword(widget.initialData!['id']!, _passwordCtrl.text);
+      } else if (widget.initialData != null) {
+        // ── Edit mode ──
+        await ApiService.updateUser(widget.initialData!['id']!, payload);
+      } else {
+        // ── Create mode ──
+        await ApiService.createUser(payload);
+      }
+
+      if (mounted) {
+        widget.onSave(payload);
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal menyimpan data. Silakan coba lagi.';
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -631,7 +678,7 @@ class _UserFormModalState extends State<UserFormModal> {
                             decoration: _inputDecoration(''),
                             items: const [
                               DropdownMenuItem(value: 'Siswa', child: Text('Siswa')),
-                              DropdownMenuItem(value: 'Guru Mata Pelajaran', child: Text('Guru Mata Pelajaran')),
+                              DropdownMenuItem(value: 'Guru Mapel', child: Text('Guru Mapel')),
                               DropdownMenuItem(value: 'Wali Kelas', child: Text('Wali Kelas')),
                               DropdownMenuItem(value: 'Kurikulum', child: Text('Kurikulum')),
                             ],
@@ -666,6 +713,25 @@ class _UserFormModalState extends State<UserFormModal> {
                     ),
                   ],
                 ),
+                // ── Error Message ──
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade700, fontSize: 13))),
+                      ],
+                    ),
+                  ),
+                ],
                 if (!widget.forcePasswordReset) ...[
                   const SizedBox(height: 24),
                   _buildLabel('Status Akun'),
@@ -698,13 +764,15 @@ class _UserFormModalState extends State<UserFormModal> {
               ),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: _saveData,
+                onPressed: _loading ? null : _saveData,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: widget.forcePasswordReset ? Colors.red : AppColors.accent,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text(widget.forcePasswordReset ? 'Simpan & Reset Sandi' : 'Simpan Pengguna', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: _loading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(widget.forcePasswordReset ? 'Simpan & Reset Sandi' : 'Simpan Pengguna', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

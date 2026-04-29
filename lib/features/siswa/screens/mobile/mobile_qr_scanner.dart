@@ -3,11 +3,14 @@
 // MOBILE QR SCANNER (FR-06.2)
 // Real camera QR scanning with mobile_scanner package
 // Fallback simulation for web
-// Connected to /kehadiran/qr-scan API
+// Connected to /kehadiran/qr-scan API with colored feedback
 // ===========================================
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_service.dart';
 
@@ -22,10 +25,24 @@ class _MobileQRScannerState extends State<MobileQRScanner>
     with SingleTickerProviderStateMixin {
   bool _isScanning = true;
   bool _showResult = false;
-  bool _success = false;
+  bool _isProcessing = false;
+
+  // Result state
+  String _resultCode = ''; // SUCCESS, QR_EXPIRED, ALREADY_ATTENDED, NOT_ENROLLED, QR_INVALID
   String _resultMessage = '';
+  int _resultHttpStatus = 0;
+
   late AnimationController _animCtrl;
   late Animation<double> _scanAnim;
+
+  // Camera controller (only for non-web)
+  MobileScannerController? _cameraController;
+  bool _cameraInitialized = false;
+  bool _flashOn = false;
+
+  // Debounce: prevent rapid re-scans
+  DateTime? _lastScanTime;
+  static const _scanDebounceMs = 3000;
 
   @override
   void initState() {
@@ -38,54 +55,93 @@ class _MobileQRScannerState extends State<MobileQRScanner>
       CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut),
     );
     _animCtrl.repeat();
+
+    // Initialize camera for native platforms
+    if (!kIsWeb) {
+      _cameraController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+      );
+      _cameraInitialized = true;
+    }
   }
 
   @override
   void dispose() {
     _animCtrl.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
 
+  // ── QR Processing ──────────────────────────────────────────────
   Future<void> _processQRCode(String qrData) async {
-    if (!_isScanning) return;
+    if (!_isScanning || _isProcessing) return;
 
-    setState(() => _isScanning = false);
+    // Debounce check
+    final now = DateTime.now();
+    if (_lastScanTime != null &&
+        now.difference(_lastScanTime!).inMilliseconds < _scanDebounceMs) {
+      return;
+    }
+    _lastScanTime = now;
+
+    setState(() {
+      _isScanning = false;
+      _isProcessing = true;
+    });
     _animCtrl.stop();
+    _cameraController?.stop();
 
     try {
-      // Parse QR data — expected format: SIAKAD-{jadwalId}-{timestamp}-{random}
-      if (!qrData.startsWith('SIAKAD-')) {
-        _showResultModal(false, 'QR Code tidak valid. Pastikan Anda memindai QR yang benar.');
+      // Parse QR data — expected JSON: { "token": "...", "jadwalId": "...", "tanggal": "..." }
+      Map<String, dynamic> qrPayload;
+      try {
+        qrPayload = jsonDecode(qrData) as Map<String, dynamic>;
+      } catch (_) {
+        _showFeedback(400, 'QR_INVALID', 'QR Code tidak valid. Pastikan Anda memindai QR yang benar dari layar guru.');
         return;
       }
 
-      final parts = qrData.split('-');
-      if (parts.length < 3) {
-        _showResultModal(false, 'Format QR Code tidak valid.');
+      final token = qrPayload['token'] as String?;
+      final jadwalId = qrPayload['jadwalId'] as String?;
+      final tanggal = qrPayload['tanggal'] as String?;
+
+      if (token == null || jadwalId == null || tanggal == null) {
+        _showFeedback(400, 'QR_INVALID', 'Format QR Code tidak lengkap.');
         return;
       }
 
-      final jadwalId = parts[1];
-      final today = DateTime.now();
-      final tanggal = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
+      // Call backend API
       final response = await ApiService.scanQR({
-        'qrToken': qrData,
+        'qrToken': token,
         'jadwalId': jadwalId,
         'tanggal': tanggal,
       });
 
-      _showResultModal(true, response['message'] ?? 'Presensi berhasil dicatat!');
+      _showFeedback(
+        200,
+        response['code'] ?? 'SUCCESS',
+        response['message'] ?? 'Presensi berhasil dicatat!',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode ?? 500;
+      final data = e.response?.data;
+      final message = data is Map ? (data['message'] ?? 'Terjadi kesalahan') : 'Gagal menghubungi server';
+      final code = data is Map ? (data['code'] ?? 'ERROR') : 'ERROR';
+      _showFeedback(statusCode, code, message);
     } catch (e) {
-      _showResultModal(false, 'Gagal mencatat presensi. Silakan coba lagi.');
+      _showFeedback(500, 'ERROR', 'Gagal memproses QR Code. Silakan coba lagi.');
     }
   }
 
-  void _showResultModal(bool isSuccess, String message) {
+  void _showFeedback(int httpStatus, String code, String message) {
     setState(() {
-      _success = isSuccess;
+      _resultHttpStatus = httpStatus;
+      _resultCode = code;
       _resultMessage = message;
       _showResult = true;
+      _isProcessing = false;
     });
   }
 
@@ -94,14 +150,87 @@ class _MobileQRScannerState extends State<MobileQRScanner>
       _isScanning = true;
       _showResult = false;
       _resultMessage = '';
+      _resultCode = '';
+      _resultHttpStatus = 0;
+      _isProcessing = false;
     });
     _animCtrl.repeat();
+    _cameraController?.start();
   }
 
-  // Demo simulation for web
+  void _toggleFlash() {
+    _cameraController?.toggleTorch();
+    setState(() => _flashOn = !_flashOn);
+  }
+
+  // ── Demo simulation (web only) ─────────────────────────────────
   void _simulateScan() {
-    final mockToken = 'SIAKAD-mock-jadwal-id-${DateTime.now().millisecondsSinceEpoch}-abcd1234';
-    _processQRCode(mockToken);
+    final mockPayload = jsonEncode({
+      'token': 'mock-jwt-token-${DateTime.now().millisecondsSinceEpoch}',
+      'jadwalId': 'mock-jadwal-id',
+      'tanggal': '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
+      'pertemuanKe': 1,
+    });
+    _processQRCode(mockPayload);
+  }
+
+  // ── Feedback Colors ────────────────────────────────────────────
+  Color get _feedbackColor {
+    switch (_resultHttpStatus) {
+      case 200: return const Color(0xFF059669); // Green — success
+      case 409: return const Color(0xFFD97706); // Yellow/amber — already attended
+      case 410: return const Color(0xFFDC2626); // Red — expired
+      case 403: return const Color(0xFFDC2626); // Red — not enrolled
+      default:  return const Color(0xFFDC2626); // Red — error
+    }
+  }
+
+  Color get _feedbackBgColor {
+    switch (_resultHttpStatus) {
+      case 200: return const Color(0xFFECFDF5); // Green bg
+      case 409: return const Color(0xFFFFFBEB); // Yellow bg
+      case 410: return const Color(0xFFFEE2E2); // Red bg
+      case 403: return const Color(0xFFFEE2E2); // Red bg
+      default:  return const Color(0xFFFEE2E2); // Red bg
+    }
+  }
+
+  IconData get _feedbackIcon {
+    switch (_resultHttpStatus) {
+      case 200: return Icons.check_rounded;
+      case 409: return Icons.info_outline_rounded;
+      case 410: return Icons.timer_off_rounded;
+      case 403: return Icons.block_rounded;
+      default:  return Icons.close_rounded;
+    }
+  }
+
+  String get _feedbackTitle {
+    switch (_resultHttpStatus) {
+      case 200: return 'Presensi Berhasil!';
+      case 409: return 'Sudah Absen';
+      case 410: return 'QR Expired';
+      case 403: return 'Akses Ditolak';
+      default:  return 'Gagal';
+    }
+  }
+
+  String get _feedbackStatusLabel {
+    switch (_resultHttpStatus) {
+      case 200: return 'Status: HADIR';
+      case 409: return 'Sudah tercatat di sesi ini';
+      case 410: return 'Minta guru refresh QR Code';
+      case 403: return 'Anda tidak terdaftar di kelas ini';
+      default:  return 'Silakan coba lagi';
+    }
+  }
+
+  Color get _feedbackStatusColor {
+    switch (_resultHttpStatus) {
+      case 200: return const Color(0xFF15803D);
+      case 409: return const Color(0xFFB45309);
+      default:  return const Color(0xFFB91C1C);
+    }
   }
 
   @override
@@ -151,16 +280,27 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              // Camera / Mock background
-                              Container(
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Color(0xFF111827), Color(0xFF1F2937)],
+                              // Camera view or mock background
+                              if (!kIsWeb && _cameraInitialized && _isScanning)
+                                MobileScanner(
+                                  controller: _cameraController!,
+                                  onDetect: (capture) {
+                                    final barcodes = capture.barcodes;
+                                    if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                                      _processQRCode(barcodes.first.rawValue!);
+                                    }
+                                  },
+                                )
+                              else
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [Color(0xFF111827), Color(0xFF1F2937)],
+                                    ),
                                   ),
                                 ),
-                              ),
 
                               // Scan overlay
                               Container(color: const Color(0x33374151)),
@@ -201,22 +341,32 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                                           ),
                                         ),
 
-                                      // Center icon
-                                      Center(
-                                        child: Container(
-                                          width: 72,
-                                          height: 72,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          child: const Icon(
-                                            Icons.qr_code_2,
+                                      // Processing indicator
+                                      if (_isProcessing)
+                                        const Center(
+                                          child: CircularProgressIndicator(
                                             color: AppColors.accent,
-                                            size: 40,
+                                            strokeWidth: 3,
                                           ),
                                         ),
-                                      ),
+
+                                      // Center icon (only when not scanning with real camera)
+                                      if (kIsWeb || !_isScanning)
+                                        Center(
+                                          child: Container(
+                                            width: 72,
+                                            height: 72,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                            child: const Icon(
+                                              Icons.qr_code_2,
+                                              color: AppColors.accent,
+                                              size: 40,
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -230,9 +380,11 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                                 child: Column(
                                   children: [
                                     Text(
-                                      _isScanning
-                                          ? 'Posisikan QR Code dalam frame'
-                                          : 'Memproses...',
+                                      _isProcessing
+                                          ? 'Memproses absensi...'
+                                          : _isScanning
+                                              ? 'Posisikan QR Code dalam frame'
+                                              : 'Selesai',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
@@ -241,7 +393,9 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'QR akan terdeteksi secara otomatis',
+                                      kIsWeb
+                                          ? 'Gunakan tombol simulasi di bawah'
+                                          : 'QR akan terdeteksi secara otomatis',
                                       style: TextStyle(
                                         color: Colors.white.withValues(alpha: 0.6),
                                         fontSize: 12,
@@ -251,24 +405,30 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                                 ),
                               ),
 
-                              // Flash toggle
-                              Positioned(
-                                top: 12,
-                                right: 12,
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.flash_off,
-                                    color: Colors.white,
-                                    size: 20,
+                              // Flash toggle (only for native)
+                              if (!kIsWeb)
+                                Positioned(
+                                  top: 12,
+                                  right: 12,
+                                  child: GestureDetector(
+                                    onTap: _toggleFlash,
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: _flashOn
+                                            ? AppColors.accent.withValues(alpha: 0.8)
+                                            : Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        _flashOn ? Icons.flash_on : Icons.flash_off,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -339,10 +499,13 @@ class _MobileQRScannerState extends State<MobileQRScanner>
     );
   }
 
+  // ── Result Modal with Colored Feedback ──────────────────────────
   Widget _buildResultModal(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fgColor = isDark ? Colors.white : AppColors.foreground;
+    final isSuccess = _resultHttpStatus == 200;
+    final isDuplicate = _resultHttpStatus == 409;
     
     return GestureDetector(
       onTap: _resetScanner,
@@ -367,29 +530,25 @@ class _MobileQRScannerState extends State<MobileQRScanner>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon
+                // Icon with colored background
                 Container(
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: _success ? AppColors.accent : AppColors.destructive,
+                    color: _feedbackColor,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    _success ? Icons.check_rounded : Icons.close_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
+                  child: Icon(_feedbackIcon, color: Colors.white, size: 40),
                 ),
                 const SizedBox(height: 20),
 
                 // Title
                 Text(
-                  _success ? 'Presensi Berhasil!' : 'Gagal',
+                  _feedbackTitle,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: _success ? AppColors.primary : AppColors.destructive,
+                    color: _feedbackColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -401,49 +560,53 @@ class _MobileQRScannerState extends State<MobileQRScanner>
                   style: TextStyle(fontSize: 14, color: isDark ? AppColors.gray300 : AppColors.gray600, height: 1.5),
                 ),
 
-                if (_success) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.green50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFBBF7D0)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.check_circle, size: 18, color: Color(0xFF15803D)),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Status: HADIR',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF15803D),
-                          ),
-                        ),
-                      ],
-                    ),
+                // Status badge
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _feedbackBgColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _feedbackColor.withValues(alpha: 0.3)),
                   ),
-                ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isSuccess ? Icons.check_circle : isDuplicate ? Icons.info : Icons.warning,
+                        size: 18,
+                        color: _feedbackStatusColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _feedbackStatusLabel,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _feedbackStatusColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 20),
 
-                // Close button
+                // Action button
                 SizedBox(
                   width: double.infinity,
                   height: 44,
                   child: ElevatedButton(
                     onPressed: _resetScanner,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _success ? AppColors.primary : (isDark ? AppColors.gray700 : AppColors.gray200),
-                      foregroundColor: _success ? Colors.white : fgColor,
+                      backgroundColor: isSuccess ? AppColors.primary : (isDark ? AppColors.gray700 : AppColors.gray200),
+                      foregroundColor: isSuccess ? Colors.white : fgColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: Text(
-                      _success ? 'Selesai' : 'Coba Lagi',
+                      isSuccess ? 'Selesai' : 'Coba Lagi',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),

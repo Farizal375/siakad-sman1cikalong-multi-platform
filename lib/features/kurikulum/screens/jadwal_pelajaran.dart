@@ -270,11 +270,21 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
 
   static const _days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
   static const _timeSlots = [
-    {'slot': '0', 'time': '07:00\n07:45'}, {'slot': '1', 'time': '07:45\n08:30'},
-    {'slot': '2', 'time': '08:30\n09:15'}, {'slot': '3', 'time': '09:30\n10:15'},
-    {'slot': '4', 'time': '10:15\n11:00'}, {'slot': '5', 'time': '11:00\n11:45'},
-    {'slot': '6', 'time': '13:00\n13:45'}, {'slot': '7', 'time': '13:45\n14:30'},
+    {'slot': '0', 'start': '07:00', 'end': '07:45'},
+    {'slot': '1', 'start': '07:45', 'end': '08:30'},
+    {'slot': '2', 'start': '10:00', 'end': '10:45'},
+    {'slot': '3', 'start': '10:45', 'end': '11:30'},
+    {'slot': '4', 'start': '13:00', 'end': '13:45'},
+    {'slot': '5', 'start': '13:45', 'end': '14:30'},
+    {'slot': '6', 'start': '14:30', 'end': '15:15'},
+    {'slot': '7', 'start': '15:15', 'end': '16:00'},
   ];
+
+  // Break rows yang ditampilkan di antara slot
+  static const _breakAfterSlot = {
+    1: {'label': 'Istirahat 1', 'time': '09:00 – 10:00'},
+    3: {'label': 'Istirahat 2', 'time': '12:00 – 13:00'},
+  };
 
   @override
   bool get wantKeepAlive => true;
@@ -335,131 +345,284 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
   Widget build(BuildContext context) {
     super.build(context);
     return Column(children: [
+      // ── Toolbar ──
       Row(children: [
         Expanded(child: DropdownButtonFormField<String>(
           value: widget.selectedKelasId,
-          items: widget.kelasList.map((e) => DropdownMenuItem(value: e['id'] as String, child: Text(e['name'] ?? e['nama'] ?? ''))).toList(),
+          menuMaxHeight: 280,
+          items: widget.kelasList.map((e) => DropdownMenuItem(
+            value: e['id'] as String,
+            child: Text(e['name'] ?? e['nama'] ?? ''),
+          )).toList(),
           onChanged: (v) { widget.onKelasChanged(v); _activeKelasId = v; _loadJadwal(); },
-          decoration: InputDecoration(labelText: 'Pilih Kelas', filled: true, fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.class_outlined, size: 18, color: AppColors.primary),
+            labelText: 'Pilih Kelas',
+            filled: true, fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
         )),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         ElevatedButton.icon(
           onPressed: _openAddModal,
-          icon: const Icon(Icons.add, size: 20), label: const Text('Tambah Jadwal'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text('Tambah Jadwal', style: TextStyle(fontWeight: FontWeight.w600)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accent, foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
       ]),
-      const SizedBox(height: 24),
+      const SizedBox(height: 20),
+      // ── Grid ──
       Expanded(child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gray200),
+          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4))],
+        ),
         clipBehavior: Clip.antiAlias,
         child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: IntrinsicWidth(child: Column(children: [
-                // Header row
-                Container(color: AppColors.gray50,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(children: [
-                    const SizedBox(width: 80, child: Text('Jam', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                    ..._days.map((d) => SizedBox(width: 160, child: Center(child: Text(d, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground))))),
-                  ]),
-                ),
-                const Divider(height: 1, color: AppColors.gray200),
-                // Time slots
-                ..._timeSlots.map((slot) => Container(
-                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.gray100))),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    SizedBox(width: 80, child: Text(slot['time']!, style: const TextStyle(fontSize: 12, color: AppColors.gray600, fontWeight: FontWeight.w500))),
-                    ...List.generate(5, (dayIdx) {
-                      final key = '${slot['slot']}_$dayIdx';
-                      final entry = _schedule[key];
-                      return SizedBox(width: 160, child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: entry != null
-                          ? _ScheduleCard(entry: entry, onEdit: () => _openEditModal(entry), onDelete: () => _delete(entry))
-                          : const SizedBox(height: 60),
-                      ));
-                    }),
-                  ]),
-                )),
-              ])),
-            )),
+          : SingleChildScrollView(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: IntrinsicWidth(child: Column(children: [
+                  // ── Header baris hari ──
+                  Container(
+                    color: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(children: [
+                      const SizedBox(width: 76,
+                        child: Text('Waktu', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70))),
+                      ..._days.map((d) => SizedBox(width: 168,
+                        child: Center(child: Text(d, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))))),
+                    ]),
+                  ),
+                  // ── Slot rows ──
+                  ..._buildSlotRows(),
+                ])),
+              ),
+            ),
       )),
     ]);
   }
+
+  List<Widget> _buildSlotRows() {
+    final rows = <Widget>[];
+    for (int i = 0; i < _timeSlots.length; i++) {
+      final slot = _timeSlots[i];
+      final isEven = i % 2 == 0;
+      rows.add(_buildSlotRow(slot, isEven));
+      // Tambah break row setelah slot tertentu
+      final breakInfo = _breakAfterSlot[int.parse(slot['slot']!)];
+      if (breakInfo != null) {
+        rows.add(_buildBreakRow(breakInfo['label']!, breakInfo['time']!));
+      }
+    }
+    return rows;
+  }
+
+  Widget _buildBreakRow(String label, String time) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        border: const Border(top: BorderSide(color: Color(0xFFFED7AA)), bottom: BorderSide(color: Color(0xFFFED7AA))),
+      ),
+      child: Row(children: [
+        const Icon(Icons.free_breakfast_outlined, size: 13, color: Color(0xFFEA580C)),
+        const SizedBox(width: 6),
+        Text('$label  $time', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFFEA580C))),
+        const Spacer(),
+        ...List.generate(5, (_) => const SizedBox(width: 168)),
+      ]),
+    );
+  }
+
+  Widget _buildSlotRow(Map<String, String> slot, bool isEven) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isEven ? Colors.white : const Color(0xFFFAFBFC),
+        border: const Border(bottom: BorderSide(color: AppColors.gray100)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        // Kolom waktu
+        SizedBox(width: 76, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(slot['start']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+          Text(slot['end']!, style: const TextStyle(fontSize: 11, color: AppColors.gray400)),
+        ])),
+        // Kolom per hari
+        ...List.generate(5, (dayIdx) {
+          final key = '${slot['slot']}_$dayIdx';
+          final entry = _schedule[key];
+          return SizedBox(width: 168, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+            child: entry != null
+              ? _ScheduleCard(entry: entry, slotIdx: int.parse(slot['slot']!),
+                  onEdit: () => _openEditModal(entry), onDelete: () => _delete(entry))
+              : _EmptySlot(onAdd: _openAddModal),
+          ));
+        }),
+      ]),
+    );
+  }
 }
 
-// ═══════════════════════════════════════════════
-// SCHEDULE CARD (read-only display with actions)
-// ═══════════════════════════════════════════════
-class _ScheduleCard extends StatelessWidget {
+// ─── Empty Slot Indicator ────────────────────────────────────────────
+class _EmptySlot extends StatelessWidget {
+  final VoidCallback onAdd;
+  const _EmptySlot({required this.onAdd});
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onAdd,
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.gray100, style: BorderStyle.solid),
+          ),
+          child: const Center(
+            child: Icon(Icons.add, size: 14, color: AppColors.gray300),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Schedule Card ────────────────────────────────────────────────────
+// Color palette per mapel index
+const _cardPalette = [
+  (bg: Color(0xFFEFF6FF), border: Color(0xFFBFDBFE), text: Color(0xFF1D4ED8)),
+  (bg: Color(0xFFF0FDF4), border: Color(0xFFBBF7D0), text: Color(0xFF15803D)),
+  (bg: Color(0xFFFFF7ED), border: Color(0xFFFED7AA), text: Color(0xFFEA580C)),
+  (bg: Color(0xFFFDF4FF), border: Color(0xFFE9D5FF), text: Color(0xFF7E22CE)),
+  (bg: Color(0xFFFFF1F2), border: Color(0xFFFFCDD2), text: Color(0xFFBE123C)),
+  (bg: Color(0xFFF0FDFA), border: Color(0xFF99F6E4), text: Color(0xFF0F766E)),
+  (bg: Color(0xFFFEFCE8), border: Color(0xFFFEF08A), text: Color(0xFFCA8A04)),
+  (bg: Color(0xFFF8FAFC), border: Color(0xFFCBD5E1), text: Color(0xFF475569)),
+];
+
+class _ScheduleCard extends StatefulWidget {
   final Map<String, dynamic> entry;
+  final int slotIdx;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  const _ScheduleCard({required this.entry, required this.onEdit, required this.onDelete});
+  const _ScheduleCard({required this.entry, required this.slotIdx, required this.onEdit, required this.onDelete});
+  @override
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFEFF6FF),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => _showMenu(context),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Expanded(child: Text(entry['subject'] ?? '-',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              const Icon(Icons.more_vert, size: 14, color: AppColors.gray400),
-            ]),
-            const SizedBox(height: 2),
-            Text(entry['teacher'] ?? '-', style: const TextStyle(fontSize: 10, color: AppColors.gray600), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text('${entry['startTime'] ?? ''} - ${entry['endTime'] ?? ''}', style: const TextStyle(fontSize: 10, color: AppColors.gray500, fontWeight: FontWeight.w500)),
-            if ((entry['room'] ?? '-') != '-')
-              Text('📍 ${entry['room']}', style: const TextStyle(fontSize: 10, color: AppColors.gray500)),
-          ]),
+    final palette = _cardPalette[widget.slotIdx % _cardPalette.length];
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: _hovered ? palette.bg.withValues(alpha: 0.85) : palette.bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: palette.border, width: 1.2),
+          boxShadow: _hovered ? [BoxShadow(color: palette.border.withValues(alpha: 0.5), blurRadius: 6, offset: const Offset(0, 2))] : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showMenu(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                // Subject name
+                Text(widget.entry['subject'] ?? '-',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: palette.text),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                // Teacher
+                Row(children: [
+                  Icon(Icons.person_outline, size: 11, color: palette.text.withValues(alpha: 0.6)),
+                  const SizedBox(width: 3),
+                  Expanded(child: Text(widget.entry['teacher'] ?? '-',
+                    style: TextStyle(fontSize: 10, color: palette.text.withValues(alpha: 0.75)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+                // Room
+                if ((widget.entry['room'] ?? '-') != '-') Row(children: [
+                  Icon(Icons.meeting_room_outlined, size: 11, color: palette.text.withValues(alpha: 0.6)),
+                  const SizedBox(width: 3),
+                  Text(widget.entry['room'] ?? '',
+                    style: TextStyle(fontSize: 10, color: palette.text.withValues(alpha: 0.6))),
+                ]),
+              ]),
+            ),
+          ),
         ),
       ),
     );
   }
 
   void _showMenu(BuildContext ctx) {
-    // Store navigator before async gap to avoid deactivated widget error
-    final nav = Navigator.of(ctx);
-    showDialog(context: ctx, builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(children: [
-            Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.schedule, color: AppColors.primary, size: 20)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(entry['subject'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.foreground)),
-              Text('${entry['teacher'] ?? '-'} • ${entry['startTime'] ?? ''}-${entry['endTime'] ?? ''}',
-                style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
-            ])),
-          ]),
-        ),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-          title: const Text('Edit Jadwal', style: TextStyle(fontSize: 14)),
-          onTap: () { nav.pop(); onEdit(); }),
-        ListTile(leading: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFDC2626)),
-          title: const Text('Hapus Jadwal', style: TextStyle(fontSize: 14, color: Color(0xFFDC2626))),
-          onTap: () { nav.pop(); onDelete(); }),
-      ]),
-    ));
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: EdgeInsets.zero,
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Info header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(children: [
+              Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.schedule_rounded, color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.entry['subject'] ?? '-',
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.foreground, fontSize: 15)),
+                Text('${widget.entry['teacher'] ?? '-'} • ${widget.entry['startTime'] ?? ''}–${widget.entry['endTime'] ?? ''}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+              ])),
+            ]),
+          ),
+          const Divider(height: 1, color: AppColors.gray100),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+            title: const Text('Edit Jadwal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            onTap: () { Navigator.of(dialogCtx).pop(); widget.onEdit(); },
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFDC2626)),
+            title: const Text('Hapus Jadwal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFFDC2626))),
+            onTap: () { Navigator.of(dialogCtx).pop(); widget.onDelete(); },
+          ),
+          const SizedBox(height: 4),
+        ]),
+      ),
+    );
   }
 }

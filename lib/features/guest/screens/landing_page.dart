@@ -265,7 +265,7 @@ class _HeroSection extends StatelessWidget {
         children: [
           // Background image
           Image.asset(
-            'assets/images/heroImage.jpg',
+            'assets/images/heroImage.jpeg',
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,

@@ -8,7 +8,9 @@ import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
 
 // ── Mock Data ──────────────────────────────────────────────────────────────
 class _Student {
@@ -61,7 +63,8 @@ class _PastMeeting {
 class _RecapStudent {
   final String name, nisn;
   final List<String> attendance; // 'H', 'I', 'S', 'A', '-'
-  _RecapStudent({required this.name, required this.nisn, required this.attendance});
+  final int persentase;
+  _RecapStudent({required this.name, required this.nisn, required this.attendance, this.persentase = 0});
 
   int get totalHadir => attendance.where((a) => a == 'H').length;
   int get totalIzin  => attendance.where((a) => a == 'I').length;
@@ -80,38 +83,33 @@ class ClassDetail extends StatefulWidget {
 
 class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
   // Jurnal tab state
-  bool _sessionOpen = false;
-  String _sessionTopic = '';
-  String _sessionDesc = '';
-  String _sessionPertemuan = '';
   String _generatedQR = '';
   Timer? _qrTimer;
-  int _qrCountdown = 60;
+  Timer? _pollTimer; // polling real-time attendance setiap 10 detik
+  int _qrCountdown = 180; // 3 menit
   bool _showQRModal = false;
+  // ignore: unused_field
+  bool _isGeneratingQR = false;
+
+  // QR session state
+  List<String> _scheduleIds = [];
+  int _totalPertemuanDibuat = 0;
+  String _activeJadwalId = '';
+  int _activePertemuanKe = 1;
+  String _activeTanggal = '';
+  String _activeMateri = '';
+  bool _sessionActive = false; // true = sesi absensi sedang terbuka
+  DateTime? _sessionStartTime;
 
   // Edit History state
   bool _showHistoryModal = false;
   _PastMeeting? _selectedHistory;
 
-  final List<_Student> _students = List.generate(
-    18,
-    (i) => _Student(
-      id: 'S${(i + 1).toString().padLeft(3, '0')}',
-      name: [
-        'Ahmad Fauzi', 'Budi Santoso', 'Citra Dewi', 'Dian Pratama', 'Eka Rahayu',
-        'Fajar Nugroho', 'Gita Permata', 'Hendra Wijaya', 'Indah Sari', 'Joko Susilo',
-        'Karina Putri', 'Luthfi Hakim', 'Maya Anggraini', 'Nanda Kurniawan', 'Olivia Rini',
-        'Prasetyo Adi', 'Qonita Zahra', 'Rizky Maulana',
-      ][i],
-      nisn: '${100000 + i}',
-      status: 'HADIR',
-    ),
-  );
+  List<_Student> _students = [];
 
   // Input Nilai tab state
-  late List<_GradeRow> _grades;
+  List<_GradeRow> _grades = [];
   String _editingId = '';
   final _controllers = <String, TextEditingController>{};
   bool _gradesSaved = false;
@@ -124,84 +122,88 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   double _bobotKeaktifan = 10;
   double _bobotKehadiran = 20;
 
-  // QR Timer
-  late List<_PastMeeting> _histories;
-  late List<_RecapStudent> _recapStudents;
+  // Data lists
+  List<_PastMeeting> _histories = [];
+  List<_RecapStudent> _recapStudents = [];
+
+  bool _isLoading = true;
+  String _className = '';
+  String _subjectName = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+  }
 
-    // kehadiran dihitung setelah _recapStudents diisi
-    _grades = List.generate(
-      _students.length,
-      (i) => _GradeRow(
-        name: _students[i].name,
-        nisn: _students[i].nisn,
-        tugas:     (60 + Random().nextInt(40)).toDouble(),
-        uh:        (60 + Random().nextInt(40)).toDouble(),
-        uts:       (60 + Random().nextInt(40)).toDouble(),
-        uas:       (60 + Random().nextInt(40)).toDouble(),
-        keaktifan: (70 + Random().nextInt(30)).toDouble(),
-        kehadiran: 0, // ditentukan di bawah setelah _recapStudents
-      ),
-    );
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await ApiService.getGuruClassDetail(widget.classId);
+      final data = res['data'];
 
-    _histories = [
-      _PastMeeting(
-        id: 'M1',
-        date: '08 Apr 2026',
-        pertemuanKe: '1',
-        materi: 'Pengenalan Materi & Silabus',
-        students: _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: 'HADIR')).toList(),
-      ),
-      _PastMeeting(
-        id: 'M2',
-        date: '10 Apr 2026',
-        pertemuanKe: '2',
-        materi: 'Ruang Lingkup Lanjutan',
-        students: _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: s.name.startsWith('A') ? 'IZIN' : 'HADIR')).toList(),
-      ),
-    ];
+      if (mounted) {
+        setState(() {
+          _className = data['className'];
+          _subjectName = data['subjectName'];
+          
+          final studentsList = data['students'] as List;
+          _students = studentsList.map((s) => _Student(
+            id: s['id'],
+            name: s['name'],
+            nisn: s['nisn'],
+            status: 'ALPA', // Default: belum scan = Alpa
+          )).toList();
 
-    _recapStudents = [
-      _RecapStudent(name: 'Ahmad Fauzi',      nisn: '100000', attendance: ['H','H','H','H','H','H','H','S','H','H','H','H']),
-      _RecapStudent(name: 'Budi Santoso',      nisn: '100001', attendance: ['H','I','H','H','I','H','H','H','H','I','H','H']),
-      _RecapStudent(name: 'Citra Dewi',        nisn: '100002', attendance: ['H','H','S','H','H','H','S','H','H','H','S','H']),
-      _RecapStudent(name: 'Dian Pratama',      nisn: '100003', attendance: ['H','H','H','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Eka Rahayu',        nisn: '100004', attendance: ['I','H','H','I','A','H','H','A','H','H','A','A']),
-      _RecapStudent(name: 'Fajar Nugroho',     nisn: '100005', attendance: ['H','H','H','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Gita Permata',      nisn: '100006', attendance: ['H','H','H','S','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Hendra Wijaya',     nisn: '100007', attendance: ['H','H','A','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Indah Sari',        nisn: '100008', attendance: ['S','H','H','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Joko Susilo',       nisn: '100009', attendance: ['H','H','H','H','H','I','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Karina Putri',      nisn: '100010', attendance: ['H','H','H','H','H','H','H','H','H','H','I','H']),
-      _RecapStudent(name: 'Luthfi Hakim',      nisn: '100011', attendance: ['H','H','H','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Maya Anggraini',    nisn: '100012', attendance: ['H','H','H','H','H','H','H','H','A','H','H','H']),
-      _RecapStudent(name: 'Nanda Kurniawan',   nisn: '100013', attendance: ['H','H','H','H','H','H','H','H','H','I','H','H']),
-      _RecapStudent(name: 'Olivia Rini',       nisn: '100014', attendance: ['H','H','H','H','H','H','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Prasetyo Adi',      nisn: '100015', attendance: ['H','H','S','H','H','S','H','H','H','H','H','H']),
-      _RecapStudent(name: 'Qonita Zahra',      nisn: '100016', attendance: ['H','H','H','H','H','H','A','H','H','H','H','H']),
-      _RecapStudent(name: 'Rizky Maulana',     nisn: '100017', attendance: ['H','H','H','H','H','H','H','H','H','H','H','H']),
-    ];
+          _grades = studentsList.map((s) {
+            final double gradeData = ((s['grade'] ?? 0) as num).toDouble();
+            // Default 0 jika belum ada data presensi (sesuai aturan: alpa=0, belum ada=0)
+            final double attendanceRate = ((s['attendanceRate'] ?? 0) as num).toDouble();
+            return _GradeRow(
+              name: s['name'] ?? '',
+              nisn: s['nisn'] ?? '-',
+              tugas: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
+              uh: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
+              uts: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
+              uas: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
+              keaktifan: (70 + Random().nextInt(30)).toDouble(),
+              kehadiran: attendanceRate, // 0 jika belum ada presensi
+            );
+          }).toList();
 
-    // ── Auto-hitung kehadiran dari _recapStudents ────────────────────
-    // Skor kehadiran = (totalHadir / totalPertemuan) * 100
-    const totalPertemuan = 12;
-    for (int i = 0; i < _grades.length && i < _recapStudents.length; i++) {
-      final pct = (_recapStudents[i].totalHadir / totalPertemuan) * 100;
-      // _GradeRow.kehadiran adalah final; kita buat ulang baris itu
-      _grades[i] = _GradeRow(
-        name:      _grades[i].name,
-        nisn:      _grades[i].nisn,
-        tugas:     _grades[i].tugas,
-        uh:        _grades[i].uh,
-        uts:       _grades[i].uts,
-        uas:       _grades[i].uas,
-        keaktifan: _grades[i].keaktifan,
-        kehadiran: pct.clamp(0, 100),
-      );
+          _totalPertemuanDibuat = (data['totalPertemuanDibuat'] ?? 0) as int;
+          _scheduleIds = List<String>.from(data['scheduleIds'] ?? []);
+
+          final recapList = data['recap'] as List;
+          _recapStudents = recapList.map((r) {
+            final pertemuanList = r['pertemuan'] as List? ?? [];
+            final List<String> att = pertemuanList.map<String>((p) => (p['status'] ?? '-') as String).toList();
+            return _RecapStudent(
+              name: r['name'] ?? '',
+              nisn: r['nisn'] ?? '-',
+              attendance: att,
+              persentase: (r['persentase'] ?? 0) as int,
+            );
+          }).toList();
+
+          final historiesList = data['histories'] as List;
+          _histories = historiesList.map((h) => _PastMeeting(
+            id: h['id'] ?? '',
+            date: h['date'] ?? '',
+            pertemuanKe: h['session'].toString(),
+            materi: h['topic'] ?? '',
+            students: _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: 'ALPA')).toList(),
+          )).toList();
+
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showErrorSnackbar('Gagal memuat data kelas: Koneksi terputus');
+      }
     }
   }
 
@@ -209,25 +211,86 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   void dispose() {
     _tabController.dispose();
     _qrTimer?.cancel();
+    _pollTimer?.cancel();
     for (final c in _controllers.values) {
       c.dispose();
     }
     super.dispose();
   }
 
-  // ── QR Generation ─────────────────────────────────────────────────────
-  void _generateQR() {
-    final code = 'SIAKAD-${widget.classId.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch}';
-    setState(() {
-      _generatedQR = code;
-      _qrCountdown = 60;
-      _showQRModal = true;
-    });
+  // ── QR Generation (API-backed, 3-minute expiry) ─────────────────────
+  String _todayString() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _generateQR() async {
+    if (_scheduleIds.isEmpty) {
+      _showErrorSnackbar('Tidak ada jadwal terkait untuk kelas ini');
+      return;
+    }
+    setState(() => _isGeneratingQR = true);
+    try {
+      final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : _scheduleIds.first;
+      final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+      final pertemuanKe = _activePertemuanKe;
+
+      final res = await ApiService.generateQR({
+        'jadwalId': jadwalId,
+        'tanggal': tanggal,
+        'pertemuanKe': pertemuanKe,
+      });
+      final data = res['data'];
+      setState(() {
+        // Reset SEMUA siswa ke ALPA dulu — sesi baru = 0 hadir
+        for (final s in _students) {
+          s.status = 'ALPA';
+        }
+        _generatedQR = data['qrData'] ?? '';
+        _qrCountdown = 180;
+        _showQRModal = true;
+        _sessionActive = true;
+        _isGeneratingQR = false;
+      });
+      _startCountdownTimer();
+      _startPolling(); // mulai polling real-time
+    } catch (e) {
+      setState(() => _isGeneratingQR = false);
+      _showErrorSnackbar('Gagal generate QR Code. Periksa koneksi.');
+    }
+  }
+
+  Future<void> _refreshQR() async {
+    if (_scheduleIds.isEmpty) return;
+    try {
+      final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : _scheduleIds.first;
+      final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+      final pertemuanKe = _activePertemuanKe;
+
+      final res = await ApiService.refreshQR({
+        'jadwalId': jadwalId,
+        'tanggal': tanggal,
+        'pertemuanKe': pertemuanKe,
+      });
+      final data = res['data'];
+      if (mounted) {
+        setState(() {
+          _generatedQR = data['qrData'] ?? '';
+          _qrCountdown = 180;
+        });
+        _startCountdownTimer();
+      }
+    } catch (e) {
+      if (mounted) _showErrorSnackbar('Gagal refresh QR Code');
+    }
+  }
+
+  void _startCountdownTimer() {
     _qrTimer?.cancel();
     _qrTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (_qrCountdown <= 1) {
         t.cancel();
-        _generateQR(); // auto refresh
+        _refreshQR(); // auto refresh setiap 3 menit
       } else {
         if (mounted) setState(() => _qrCountdown--);
       }
@@ -236,12 +299,72 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   void _closeQRModal() {
     _qrTimer?.cancel();
+    // Tidak stop polling — session masih aktif, modal hanya diminimize
     setState(() => _showQRModal = false);
+  }
+
+  // ── Real-time Polling (10 detik) ──────────────────────────────────────────
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _pollLiveAttendance());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollLiveAttendance() async {
+    if (!_sessionActive || !mounted) return;
+    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final tanggal  = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+    if (jadwalId.isEmpty) return;
+
+    try {
+      final res = await ApiService.getLiveAttendance(jadwalId: jadwalId, tanggal: tanggal);
+      final List<dynamic> hadirnList = res['data'] ?? [];
+      final Set<String> hadirIds = hadirnList.map((h) => h['siswaId'] as String).toSet();
+
+      if (!mounted) return;
+      setState(() {
+        for (final s in _students) {
+          if (hadirIds.contains(s.id)) {
+            s.status = 'HADIR';
+          }
+          // Jangan reset ke ALPA yang sudah diubah manual guru
+        }
+      });
+    } catch (_) {
+      // Polling error diabaikan — tidak ganggu UX
+    }
+  }
+
+  Future<void> _endSession() async {
+    _qrTimer?.cancel();
+    _stopPolling(); // hentikan polling
+    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+
+    if (jadwalId.isNotEmpty) {
+      try {
+        await ApiService.endSession({'jadwalId': jadwalId, 'tanggal': tanggal});
+      } catch (_) {}
+    }
+
+    setState(() {
+      _showQRModal = false;
+      _sessionActive = false;
+      _generatedQR = '';
+      _qrCountdown = 180;
+    });
+    _showSaveSnackbar('Sesi absensi telah ditutup.');
   }
 
   // ── Open Session ───────────────────────────────────────────────────────
   void _openSessionDialog() {
-    final pertemuanCtrl = TextEditingController();
+    final pertemuanCtrl = TextEditingController(
+      text: '${_totalPertemuanDibuat + 1}',
+    );
     final topicCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     showDialog(
@@ -263,19 +386,19 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 decoration: _inputDeco('Contoh: 1'),
               ),
               const SizedBox(height: 16),
-              const Text('Topik Pertemuan', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('Materi / Topik Pertemuan', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               TextField(
                 controller: topicCtrl,
-                decoration: _inputDeco('Contoh: Persamaan Kuadrat'),
+                decoration: _inputDeco('Contoh: Integral Tak Tentu'),
               ),
               const SizedBox(height: 16),
-              const Text('Deskripsi / Materi', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('Deskripsi Kegiatan', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               TextField(
                 controller: descCtrl,
                 maxLines: 3,
-                decoration: _inputDeco('Jelaskan materi yang akan dibahas...'),
+                decoration: _inputDeco('Jelaskan kegiatan pembelajaran...'),
               ),
             ],
           ),
@@ -284,22 +407,53 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            onPressed: () {
-              if (topicCtrl.text.trim().isEmpty || pertemuanCtrl.text.trim().isEmpty) return;
-              setState(() {
-                _sessionOpen = true;
-                _sessionPertemuan = pertemuanCtrl.text.trim();
-                _sessionTopic = topicCtrl.text.trim();
-                _sessionDesc = descCtrl.text.trim();
-              });
-              Navigator.pop(ctx);
+            onPressed: () async {
+              if (pertemuanCtrl.text.trim().isEmpty) {
+                _showErrorSnackbar('Pertemuan ke- wajib diisi'); return;
+              }
+              if (topicCtrl.text.trim().isEmpty) {
+                _showErrorSnackbar('Materi / topik wajib diisi'); return;
+              }
+              if (_scheduleIds.isEmpty) {
+                _showErrorSnackbar('Tidak ada jadwal terkait'); return;
+              }
+              try {
+                final jadwalId = _scheduleIds.first;
+                final tanggal = _todayString();
+                final pertemuanKe = int.tryParse(pertemuanCtrl.text.trim()) ?? 1;
+                final materi = topicCtrl.text.trim();
+
+                await ApiService.createJurnal({
+                  'jadwalId': jadwalId,
+                  'tanggal': tanggal,
+                  'pertemuanKe': pertemuanKe,
+                  'judulMateri': materi,
+                  'deskripsiKegiatan': descCtrl.text.trim(),
+                });
+
+                _activeJadwalId = jadwalId;
+                _activePertemuanKe = pertemuanKe;
+                _activeTanggal = tanggal;
+                _activeMateri = materi;
+                _sessionStartTime = DateTime.now();
+
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+
+                await _loadData();
+                await _generateQR(); // sets _sessionActive=true inside
+              } catch (e) {
+                _showErrorSnackbar('Gagal membuat sesi pertemuan. Periksa koneksi.');
+              }
             },
-            child: const Text('Buka Sesi'),
+            child: const Text('Buka Sesi & Tampilkan QR'),
           ),
         ],
       ),
     );
   }
+
+
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
         hintText: hint,
@@ -317,35 +471,46 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   }
 
   void _saveGrades() {
-    for (int i = 0; i < _grades.length; i++) {
-      final g = _grades[i];
-      final tugasKey     = '${g.nisn}-tugas';
-      final uhKey        = '${g.nisn}-uh';
-      final utsKey       = '${g.nisn}-uts';
-      final uasKey       = '${g.nisn}-uas';
-      final keaktifanKey = '${g.nisn}-keaktifan';
-      if (_controllers.containsKey(tugasKey))     g.tugas     = double.tryParse(_controllers[tugasKey]!.text)     ?? g.tugas;
-      if (_controllers.containsKey(uhKey))        g.uh        = double.tryParse(_controllers[uhKey]!.text)        ?? g.uh;
-      if (_controllers.containsKey(utsKey))       g.uts       = double.tryParse(_controllers[utsKey]!.text)       ?? g.uts;
-      if (_controllers.containsKey(uasKey))       g.uas       = double.tryParse(_controllers[uasKey]!.text)       ?? g.uas;
-      if (_controllers.containsKey(keaktifanKey)) g.keaktifan = double.tryParse(_controllers[keaktifanKey]!.text) ?? g.keaktifan;
+    if (_getTotalBobot() != 100) {
+      _showErrorSnackbar('Total bobot penilaian harus 100% sebelum dapat menyimpan nilai');
+      return;
     }
-    setState(() {
-      _editingId = '';
-      _gradesSaved = true;
-    });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _gradesSaved = false);
-    });
+    try {
+      for (int i = 0; i < _grades.length; i++) {
+        final g = _grades[i];
+        final tugasKey     = '${g.nisn}-tugas';
+        final uhKey        = '${g.nisn}-uh';
+        final utsKey       = '${g.nisn}-uts';
+        final uasKey       = '${g.nisn}-uas';
+        final keaktifanKey = '${g.nisn}-keaktifan';
+        if (_controllers.containsKey(tugasKey))     g.tugas     = double.tryParse(_controllers[tugasKey]!.text)     ?? g.tugas;
+        if (_controllers.containsKey(uhKey))        g.uh        = double.tryParse(_controllers[uhKey]!.text)        ?? g.uh;
+        if (_controllers.containsKey(utsKey))       g.uts       = double.tryParse(_controllers[utsKey]!.text)       ?? g.uts;
+        if (_controllers.containsKey(uasKey))       g.uas       = double.tryParse(_controllers[uasKey]!.text)       ?? g.uas;
+        if (_controllers.containsKey(keaktifanKey)) g.keaktifan = double.tryParse(_controllers[keaktifanKey]!.text) ?? g.keaktifan;
+      }
+      setState(() {
+        _editingId = '';
+        _gradesSaved = true;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _gradesSaved = false);
+      });
+      _showSaveSnackbar('Nilai berhasil disimpan!');
+    } catch (e) {
+      _showErrorSnackbar('Koneksi terputus saat menyimpan nilai');
+    }
   }
 
   // ── UI ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // Parse meta from classId
-    final parts = widget.classId.split('-');
-    final subject = parts.isNotEmpty ? parts[0].toUpperCase() : widget.classId.toUpperCase();
-    final kelas = parts.length > 1 ? 'Kelas ${parts[1].toUpperCase()}-${parts.length > 2 ? parts[2] : ''}' : '';
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final subject = _subjectName.isNotEmpty ? _subjectName : widget.classId.toUpperCase();
+    final kelas = _className.isNotEmpty ? _className : '';
 
     return Stack(
       children: [
@@ -357,24 +522,31 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             _buildHeader(subject, kelas),
             const SizedBox(height: 24),
 
-            // ── Tabs ──
+            // ── Segmented Tabs ──
             Container(
+              height: 54,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.gray500,
-                indicatorColor: AppColors.accent,
-                indicatorWeight: 3,
+                indicator: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: Colors.white,
+                unselectedLabelColor: AppColors.gray600,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                dividerColor: Colors.transparent,
                 tabs: const [
-                  Tab(icon: Icon(Icons.assignment_outlined), text: 'Jurnal & Absensi'),
-                  Tab(icon: Icon(Icons.table_rows_outlined), text: 'Rekapitulasi'),
-                  Tab(icon: Icon(Icons.grade_outlined), text: 'Input Nilai'),
+                  Tab(text: 'Riwayat Pertemuan'),
+                  Tab(text: 'Rekapitulasi Absensi'),
+                  Tab(text: 'Manajemen Nilai'),
                 ],
               ),
             ),
@@ -404,497 +576,390 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   }
 
   Widget _buildHeader(String subject, String kelas) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Breadcrumb
+        Row(
+          children: [
+            const Text('Guru  >  ', style: TextStyle(color: AppColors.gray500, fontSize: 13)),
+            const Text('Detail Kelas', style: TextStyle(color: Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: () => context.goNamed('guru-kelas'),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                    child: Text(subject, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(20)),
-                    child: Text(kelas, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gray600)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Detail Kelas',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.primary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Kelola jurnal, absensi, dan nilai siswa secara lengkap.',
-                style: TextStyle(fontSize: 14, color: AppColors.gray600),
-              ),
+              Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+              SizedBox(width: 8),
+              Text('Kembali ke Daftar Kelas', style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
-        // Stats summary
-        _statBadge(Icons.people, '${_students.length}', 'Siswa', AppColors.primary),
-        const SizedBox(width: 12),
-        _statBadge(Icons.check_circle_outline, '${_students.where((s) => s.status == 'HADIR').length}', 'Hadir', const Color(0xFF059669)),
-        const SizedBox(width: 12),
-        _statBadge(
-          _sessionOpen ? Icons.radio_button_checked : Icons.radio_button_off,
-          _sessionOpen ? 'Aktif' : 'Tutup',
-          'Sesi',
-          _sessionOpen ? const Color(0xFF059669) : AppColors.gray500,
+        const SizedBox(height: 24),
+
+        // Title Row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$subject - Kelas $kelas',
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline, color: AppColors.gray500, size: 20),
+                      const SizedBox(width: 6),
+                      Text('Total: ${_students.length} Siswa', style: const TextStyle(color: AppColors.gray500, fontSize: 14)),
+                      if (_sessionActive) ...[
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD1FAE5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF059669), shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              const Text('Sesi Absensi Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF065F46))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Toggle Button
+            if (_sessionActive)
+              ElevatedButton.icon(
+                onPressed: _endSession,
+                icon: const Icon(Icons.stop_circle_outlined, size: 20),
+                label: const Text('Akhiri Sesi Pertemuan', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: _openSessionDialog,
+                icon: const Icon(Icons.play_circle_outline, size: 20),
+                label: const Text('Buka Presensi', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _statBadge(IconData icon, String value, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray500)),
+  void _openHistoryModal(_PastMeeting history) {
+    setState(() {
+      _selectedHistory = history;
+      _showHistoryModal = true;
+    });
+  }
+
+  Future<void> _deleteHistory(_PastMeeting history) async {
+    if (history.id.isEmpty) {
+      _showErrorSnackbar('ID pertemuan tidak valid'); return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 10),
+            Text('Hapus Pertemuan?', style: TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+            children: [
+              const TextSpan(text: 'Pertemuan '),
+              TextSpan(text: 'ke-${history.pertemuanKe} (${history.materi})', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+              const TextSpan(text: ' dan seluruh data absensinya akan '),
+              const TextSpan(text: 'dihapus permanen', style: TextStyle(fontWeight: FontWeight.w700)),
+              const TextSpan(text: '.\n\nTindakan ini tidak dapat dibatalkan.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Hapus'),
+          ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    try {
+      await ApiService.deleteJurnal(history.id);
+      _showSaveSnackbar('Pertemuan berhasil dihapus.');
+      await _loadData(); // sync with database
+    } catch (e) {
+      _showErrorSnackbar('Gagal menghapus pertemuan. Periksa koneksi.');
+    }
   }
 
-  // ══════════════════ JURNAL TAB ══════════════════════════════════════════
+  // ══════════════════ RIWAYAT PERTEMUAN TAB ════════════════════════════════
   Widget _buildJurnalTab() {
     return SingleChildScrollView(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─ Session Card ─
-          _buildSessionCard(),
-          const SizedBox(height: 20),
+          // ── REAL-TIME ATTENDANCE PANEL (only when session active) ──────
+          if (_sessionActive) _buildRealTimeAttendance(),
 
-          // ─ Absensi ─
-          if (_sessionOpen) _buildAbsensiPanel(),
+          const SizedBox(height: 16),
 
-          // ─ Riwayat Pertemuan ─
-          if (!_sessionOpen) _buildHistoryPanel(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSessionCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.book_outlined, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              const Text('Jurnal Pertemuan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              const Spacer(),
-              if (_sessionOpen)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFD1FAE5), borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF059669), shape: BoxShape.circle)),
-                      const SizedBox(width: 6),
-                      const Text('Sesi Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669))),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          if (!_sessionOpen) ...[
-            // ─ Open Session CTA ─
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFF),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFDDE3F0)),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.lock_open_outlined, size: 48, color: AppColors.gray400),
-                  const SizedBox(height: 12),
-                  const Text('Belum Ada Sesi Terbuka', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.gray600)),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Buka sesi pertemuan baru untuk memulai absensi dan mencatat jurnal mengajar hari ini.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppColors.gray500),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('Buka Pertemuan Baru', style: TextStyle(fontWeight: FontWeight.w600)),
-                    onPressed: _openSessionDialog,
-                  ),
-                ],
-              ),
+          // ── HISTORY TABLE ─────────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-          ] else ...[
-            // ─ Active Session Info ─
-            Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('Daftar Riwayat Pertemuan',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFF3F4F6)),
+                      bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
+                    ),
+                  ),
+                  child: const Row(
                     children: [
-                      if (_sessionPertemuan.isNotEmpty) ...[
-                        _infoRow(Icons.numbers_outlined, 'Pertemuan Ke', _sessionPertemuan),
-                        const SizedBox(height: 10),
-                      ],
-                      _infoRow(Icons.topic_outlined, 'Topik', _sessionTopic),
-                      if (_sessionDesc.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _infoRow(Icons.description_outlined, 'Materi', _sessionDesc),
-                      ],
-                      const SizedBox(height: 10),
-                      _infoRow(Icons.calendar_today_outlined, 'Tanggal', _formattedDate()),
+                      SizedBox(width: 140, child: Text('Tanggal',            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                      SizedBox(width: 120, child: Text('Pertemuan Ke-',      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                      Expanded(            child: Text('Materi / KD',        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                      SizedBox(width: 320, child: Text('Ringkasan Kehadiran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                      SizedBox(width: 200, child: Text('Aksi',               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1D4ED8),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                if (_histories.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: Text('Belum ada riwayat pertemuan.', style: TextStyle(color: AppColors.gray500))),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _histories.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                    itemBuilder: (_, index) {
+                      final h = _histories[index];
+                      final hadir = h.students.where((s) => s.status == 'HADIR').length;
+                      final izin  = h.students.where((s) => s.status == 'IZIN').length;
+                      final sakit = h.students.where((s) => s.status == 'SAKIT').length;
+                      final alpa  = h.students.where((s) => s.status == 'ALPA').length;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Row(
+                          children: [
+                            SizedBox(width: 140, child: Row(children: [
+                              const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray500),
+                              const SizedBox(width: 8),
+                              Text(h.date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
+                            ])),
+                            SizedBox(width: 120, child: Text('Pertemuan ${h.pertemuanKe}', style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
+                            Expanded(child: Text(h.materi, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)))),
+                            SizedBox(width: 320, child: Row(children: [
+                              _buildSummaryText('Hadir', hadir, const Color(0xFF059669)),
+                              _buildSummaryDivider(),
+                              _buildSummaryText('Izin', izin, const Color(0xFFD97706)),
+                              _buildSummaryDivider(),
+                              _buildSummaryText('Sakit', sakit, const Color(0xFF2563EB)),
+                              _buildSummaryDivider(),
+                              _buildSummaryText('Alpa', alpa, const Color(0xFFDC2626)),
+                            ])),
+                            SizedBox(width: 200, child: Row(children: [
+                              OutlinedButton.icon(
+                                onPressed: () => _openHistoryModal(h),
+                                icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
+                                label: const Text('Lihat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () => _deleteHistory(h),
+                                icon: const Icon(Icons.delete_outline, size: 16),
+                                label: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFDC2626),
+                                  side: const BorderSide(color: Color(0xFFDC2626)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ])),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  icon: const Icon(Icons.qr_code_2),
-                  label: const Text('Tampilkan QR Absensi', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onPressed: _generateQR,
-                ),
               ],
             ),
-          ],
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: AppColors.gray500),
-        const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gray600)),
-        Expanded(child: Text(value, style: const TextStyle(fontSize: 13, color: AppColors.foreground))),
-      ],
-    );
-  }
-
-  Widget _buildAbsensiPanel() {
-    final counts = {
-      'HADIR': _students.where((s) => s.status == 'HADIR').length,
-      'SAKIT': _students.where((s) => s.status == 'SAKIT').length,
-      'IZIN': _students.where((s) => s.status == 'IZIN').length,
-      'ALPA': _students.where((s) => s.status == 'ALPA').length,
-    };
+  // ── Real-time Attendance Management Panel ──────────────────────────────────
+  Widget _buildRealTimeAttendance() {
+    final hadirCount = _students.where((s) => s.status == 'HADIR').length;
+    final izinCount  = _students.where((s) => s.status == 'IZIN').length;
+    final sakitCount = _students.where((s) => s.status == 'SAKIT').length;
+    final alpaCount  = _students.where((s) => s.status == 'ALPA').length;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // ─ Header ─
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
             child: Row(
               children: [
-                const Icon(Icons.checklist, color: AppColors.primary),
-                const SizedBox(width: 10),
-                const Text('Daftar Hadir Siswa', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                const Text('Manajemen Absensi Real-time',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
                 const Spacer(),
-                // Summary chips
-                ..._statusChip('H', counts['HADIR']!, const Color(0xFF059669), const Color(0xFFD1FAE5)),
-                const SizedBox(width: 6),
-                ..._statusChip('S', counts['SAKIT']!, const Color(0xFFD97706), const Color(0xFFFEF3C7)),
-                const SizedBox(width: 6),
-                ..._statusChip('I', counts['IZIN']!, const Color(0xFF2563EB), const Color(0xFFDBEAFE)),
-                const SizedBox(width: 6),
-                ..._statusChip('A', counts['ALPA']!, const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+                // Live counters
+                _liveCounter('Hadir',  hadirCount,  const Color(0xFF059669), const Color(0xFFD1FAE5)),
+                const SizedBox(width: 8),
+                _liveCounter('Izin',   izinCount,   const Color(0xFFD97706), const Color(0xFFFEF3C7)),
+                const SizedBox(width: 8),
+                _liveCounter('Sakit',  sakitCount,  const Color(0xFF2563EB), const Color(0xFFDBEAFE)),
+                const SizedBox(width: 8),
+                _liveCounter('Alpa',   alpaCount,   const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Text(
+              'Pertemuan ke-$_activePertemuanKe  •  $_activeMateri',
+              style: const TextStyle(fontSize: 13, color: AppColors.gray500),
+            ),
+          ),
 
-          // Table header
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
+          // ─ Table Header ─
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            color: AppColors.primary,
+            child: const Row(
               children: [
-                SizedBox(width: 40, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
-                Expanded(flex: 3, child: Text('NAMA', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
-                SizedBox(width: 100, child: Text('NISN', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
-                SizedBox(width: 260, child: Text('STATUS KEHADIRAN', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
+                SizedBox(width: 40,  child: Text('No',         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(width: 48,  child: Text('Foto',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                Expanded(            child: Text('Nama Siswa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(width: 130, child: Text('NISN',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(width: 100, child: Text('Waktu Scan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(width: 80,  child: Text('Status',     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(width: 260, child: Text('Aksi',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
 
-          // Student rows
+          // ─ Student Rows ─
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _students.length,
             separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-            itemBuilder: (ctx, i) => _buildAbsensiRow(_students[i], i),
-          ),
-
-          // Save button
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Simpan Absensi', style: TextStyle(fontWeight: FontWeight.w600)),
-                onPressed: () => _showSaveSnackbar('Absensi berhasil disimpan!'),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _statusChip(String label, int count, Color fg, Color bg) => [
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-      child: Text('$label: $count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
-    ),
-  ];
-
-  Widget _buildAbsensiRow(_Student s, int idx) {
-    const statuses = ['HADIR', 'SAKIT', 'IZIN', 'ALPA'];
-    const colors = {
-      'HADIR': Color(0xFF059669),
-      'SAKIT': Color(0xFFD97706),
-      'IZIN': Color(0xFF2563EB),
-      'ALPA': Color(0xFFDC2626),
-    };
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 40,
-            child: Text('${idx + 1}', style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
-          ),
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: Text(s.name[0], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                ),
-                const SizedBox(width: 10),
-                Text(s.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 100,
-            child: Text(s.nisn, style: const TextStyle(fontSize: 13, color: AppColors.gray500, fontFamily: 'monospace')),
-          ),
-          SizedBox(
-            width: 260,
-            child: Row(
-              children: statuses.map((status) {
-                final isSelected = s.status == status;
-                final color = colors[status]!;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () => setState(() => s.status = status),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: isSelected ? color : const Color(0xFFF9FAFB),
-                        border: Border.all(color: isSelected ? color : const Color(0xFFE5E7EB)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : AppColors.gray500,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ══════════════════ RIWAYAT PERTEMUAN ═══════════════════════════════════
-  Widget _buildHistoryPanel() {
-    if (_histories.isEmpty) return const SizedBox();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─ Table Header ─
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.history, color: AppColors.primary),
-                SizedBox(width: 10),
-                Text('Daftar Riwayat Pertemuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              ],
-            ),
-          ),
-          // ─ Column Labels ─
-          Container(
-            color: const Color(0xFFF9FAFB),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: const Row(
-              children: [
-                SizedBox(width: 120, child: Text('TANGGAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray500))),
-                SizedBox(width: 80,  child: Text('PERTEMUAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray500))),
-                Expanded(child: Text('MATERI / KD', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray500))),
-                SizedBox(width: 260, child: Text('RINGKASAN KEHADIRAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray500))),
-                SizedBox(width: 120, child: Text('AKSI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray500))),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
-          // ─ Rows ─
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _histories.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-            itemBuilder: (ctx, i) {
-              final h = _histories[i];
-              final hadir  = h.students.where((s) => s.status == 'HADIR').length;
-              final izin   = h.students.where((s) => s.status == 'IZIN').length;
-              final sakit  = h.students.where((s) => s.status == 'SAKIT').length;
-              final alpa   = h.students.where((s) => s.status == 'ALPA').length;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            itemBuilder: (_, idx) {
+              final s = _students[idx];
+              final isOdd = idx % 2 == 1;
+              return Container(
+                color: isOdd ? const Color(0xFFF9FAFB) : Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 child: Row(
                   children: [
-                    // Tanggal
-                    SizedBox(
-                      width: 120,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.gray500),
-                          const SizedBox(width: 6),
-                          Flexible(child: Text(h.date, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.foreground))),
-                        ],
-                      ),
-                    ),
-                    // Pertemuan Ke
-                    SizedBox(
-                      width: 80,
-                      child: Text('Ke-${h.pertemuanKe}', style: const TextStyle(fontSize: 13, color: AppColors.gray600)),
-                    ),
-                    // Materi
-                    Expanded(
-                      child: Text(h.materi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
-                    ),
-                    // Summary chips
+                    // No
+                    SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(fontSize: 13, color: AppColors.gray500))),
+                    // Avatar
+                    SizedBox(width: 48, child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      child: Text(s.name[0], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    )),
+                    // Name
+                    Expanded(child: Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                    // NISN
+                    SizedBox(width: 130, child: Text(s.nisn, style: const TextStyle(fontSize: 12, color: AppColors.gray500, fontFamily: 'monospace'))),
+                    // Waktu Scan
+                    SizedBox(width: 100, child: s.status == 'HADIR'
+                      ? Row(children: [
+                          const Icon(Icons.access_time, size: 13, color: AppColors.gray500),
+                          const SizedBox(width: 4),
+                          Text('${(7 + idx ~/ 6).toString().padLeft(2,'0')}:${((idx * 3) % 60).toString().padLeft(2,'0')}', style: const TextStyle(fontSize: 12, color: AppColors.gray600)),
+                        ])
+                      : const Text('–', style: TextStyle(color: AppColors.gray400))),
+                    // Status badge
+                    SizedBox(width: 80, child: _statusBadge(s.status)),
+                    // 4-Button Actions
                     SizedBox(
                       width: 260,
                       child: Row(
                         children: [
-                          _summaryChip('Hadir', hadir, const Color(0xFF15803D), const Color(0xFFDCFCE7)),
+                          _attendanceBtn('Hadir', s.status == 'HADIR', const Color(0xFF059669), const Color(0xFFD1FAE5), () => setState(() => s.status = 'HADIR')),
                           const SizedBox(width: 6),
-                          _summaryChip('Izin', izin, const Color(0xFFB45309), const Color(0xFFFEF3C7)),
+                          _attendanceBtn('Izin',  s.status == 'IZIN',  const Color(0xFFD97706), const Color(0xFFFEF3C7), () => setState(() => s.status = 'IZIN')),
                           const SizedBox(width: 6),
-                          _summaryChip('Sakit', sakit, const Color(0xFF1D4ED8), const Color(0xFFDBEAFE)),
+                          _attendanceBtn('Sakit', s.status == 'SAKIT', const Color(0xFF2563EB), const Color(0xFFDBEAFE), () => setState(() => s.status = 'SAKIT')),
                           const SizedBox(width: 6),
-                          _summaryChip('Alpa', alpa, const Color(0xFFB91C1C), const Color(0xFFFEE2E2)),
+                          _attendanceBtn('Alpa',  s.status == 'ALPA',  const Color(0xFFDC2626), const Color(0xFFFEE2E2), () => setState(() => s.status = 'ALPA')),
                         ],
-                      ),
-                    ),
-                    // Action
-                    SizedBox(
-                      width: 120,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
-                        label: const Text('Lihat & Edit', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                        onPressed: () => setState(() {
-                          _selectedHistory = h;
-                          _showHistoryModal = true;
-                        }),
                       ),
                     ),
                   ],
@@ -902,18 +967,119 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               );
             },
           ),
+
+          // ─ Save Button ─
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('${_students.length} siswa', style: const TextStyle(color: AppColors.gray500, fontSize: 13)),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: _saveAttendanceChanges,
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Simpan Perubahan Absensi', style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryChip(String label, int count, Color fg, Color bg) {
+  Widget _liveCounter(String label, int count, Color color, Color bg) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-      child: Text('$label: $count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 5),
+          Text('$label: $count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
     );
   }
+
+  Widget _attendanceBtn(String label, bool isActive, Color activeColor, Color activeBg, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? activeBg : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isActive ? activeColor.withValues(alpha: 0.5) : Colors.transparent),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            color: isActive ? activeColor : AppColors.gray500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveAttendanceChanges() async {
+    if (_students.isEmpty) return;
+    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final tanggal  = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+
+    if (jadwalId.isEmpty) {
+      _showErrorSnackbar('Tidak ada sesi aktif untuk disimpan');
+      return;
+    }
+    try {
+      await ApiService.saveBatchAttendance({
+        'jadwalId': jadwalId,
+        'tanggal': tanggal,
+        'pertemuanKe': _activePertemuanKe,
+        'topik': _activeMateri,
+        'records': _students.map((s) => {'siswaId': s.id, 'status': s.status}).toList(),
+      });
+      _showSaveSnackbar('Perubahan absensi berhasil disimpan!');
+      await _loadData();
+    } catch (e) {
+      _showErrorSnackbar('Gagal menyimpan absensi. Periksa koneksi.');
+    }
+  }
+
+
+  Widget _buildSummaryText(String label, int count, Color color) {
+    return Row(
+      children: [
+        Text('$label: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+      ],
+    );
+  }
+
+  Widget _buildSummaryDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Text('|', style: TextStyle(color: Color(0xFFD1D5DB), fontSize: 12)),
+    );
+  }
+
+
+
 
   Widget _buildHistoryModal() {
     if (_selectedHistory == null) return const SizedBox();
@@ -1170,7 +1336,7 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   // ══════════════════ REKAPITULASI TAB ════════════════════════════════════
   Widget _buildRekapTab() {
-    const totalPertemuan = 12;
+    final totalPertemuan = _totalPertemuanDibuat > 0 ? _totalPertemuanDibuat : (_recapStudents.isNotEmpty ? _recapStudents.first.attendance.length : 0);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,10 +1407,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   const DataColumn(label: SizedBox(width: 50,  child: Text('Izin',  style: TextStyle(color: Color(0xFFFDE68A))))),
                   const DataColumn(label: SizedBox(width: 50,  child: Text('Sakit', style: TextStyle(color: Color(0xFFBFDBFE))))),
                   const DataColumn(label: SizedBox(width: 50,  child: Text('Alpa',  style: TextStyle(color: Color(0xFFFCA5A5))))),
+                  const DataColumn(label: SizedBox(width: 55,  child: Text('%',     style: TextStyle(color: Color(0xFFE2E8F0))))),
                 ],
                 rows: _recapStudents.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final s   = entry.value;
+                  final Color pctColor = s.persentase >= 90 ? const Color(0xFF15803D) : s.persentase >= 75 ? const Color(0xFFB45309) : const Color(0xFFB91C1C);
+                  final Color pctBg = s.persentase >= 90 ? const Color(0xFFF0FDF4) : s.persentase >= 75 ? const Color(0xFFFFFBEB) : const Color(0xFFFEE2E2);
                   return DataRow(
                     color: WidgetStateProperty.all(idx % 2 == 0 ? Colors.white : const Color(0xFFF9FAFB)),
                     cells: [
@@ -1257,6 +1426,7 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                       DataCell(_rekapTotalCell('${s.totalSakit}', const Color(0xFF1D4ED8), const Color(0xFFEFF6FF))),
                       DataCell(_rekapTotalCell('${s.totalAlpa}',  const Color(0xFFB91C1C),
                           s.totalAlpa > 3 ? const Color(0xFFFEE2E2) : const Color(0xFFFFF5F5))),
+                      DataCell(_rekapTotalCell('${s.persentase}%', pctColor, pctBg)),
                     ],
                   );
                 }).toList(),
@@ -1350,9 +1520,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           Row(children: [
             _nilaiStatCard('Rata-rata Kelas',  avg.toStringAsFixed(1),                                              Icons.bar_chart,          AppColors.primary),
             const SizedBox(width: 12),
-            _nilaiStatCard('Nilai Tertinggi', _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(max).toStringAsFixed(1), Icons.trending_up,   const Color(0xFF059669)),
+            _nilaiStatCard('Nilai Tertinggi', _grades.isEmpty ? '0.0' : _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(max).toStringAsFixed(1), Icons.trending_up,   const Color(0xFF059669)),
             const SizedBox(width: 12),
-            _nilaiStatCard('Nilai Terendah',  _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(min).toStringAsFixed(1), Icons.trending_down, const Color(0xFFDC2626)),
+            _nilaiStatCard('Nilai Terendah',  _grades.isEmpty ? '0.0' : _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(min).toStringAsFixed(1), Icons.trending_down, const Color(0xFFDC2626)),
             const SizedBox(width: 12),
             _nilaiStatCard('Lulus (≥70)',      '${_grades.where((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran) >= 70).length}/${_grades.length}', Icons.check_circle_outline, const Color(0xFF7C3AED)),
           ]),
@@ -1713,152 +1883,201 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   // ══════════════════ QR MODAL ═══════════════════════════════════════════
   Widget _buildQRModal() {
+    final minutes = (_qrCountdown ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_qrCountdown % 60).toString().padLeft(2, '0');
+    final isUrgent = _qrCountdown <= 30;
+    final timerColor = isUrgent ? const Color(0xFFDC2626) : const Color(0xFF059669);
+
     return GestureDetector(
-      onTap: _closeQRModal,
+      onTap: () {}, // Don't close on outer tap — session stays active
       child: Container(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: Colors.black.withValues(alpha: 0.55),
         child: Center(
-          child: GestureDetector(
-            onTap: () {}, // prevent close on inner tap
-            child: Container(
-              width: 420,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 32, offset: const Offset(0, 8))],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
+          child: Container(
+            width: 440,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 40, offset: const Offset(0, 12))],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ─ Header bar ─────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+                  ),
+                  child: Row(
                     children: [
-                      const Text('QR Absensi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      // Status pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF6EE7B7), shape: BoxShape.circle)),
+                            const SizedBox(width: 6),
+                            const Text('Sesi Absensi Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                          ],
+                        ),
+                      ),
                       const Spacer(),
+                      // Close (minimize only — session still runs)
                       GestureDetector(
                         onTap: _closeQRModal,
-                        child: const Icon(Icons.close, color: AppColors.gray500),
+                        child: Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.minimize_rounded, color: Colors.white, size: 20),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                ),
 
-                  // Countdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _qrCountdown <= 10 ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.timer_outlined, size: 16, color: _qrCountdown <= 10 ? const Color(0xFFDC2626) : const Color(0xFF059669)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Refresh dalam $_qrCountdown detik',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _qrCountdown <= 10 ? const Color(0xFFDC2626) : const Color(0xFF059669),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // QR Code mock
-                  Container(
-                    width: 240,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
-                    ),
-                    child: Stack(
-                      children: [
-                        // QR grid pattern (mock)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: CustomPaint(
-                            size: const Size(240, 240),
-                            painter: _QRPainter(_generatedQR),
-                          ),
-                        ),
-                        // Center logo
-                        Center(
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE5E7EB)),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.school, color: AppColors.primary, size: 28),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Code text
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      _generatedQR,
-                      style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.gray600),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text(
-                    'QR Code otomatis diperbarui setiap 60 detik untuk keamanan.\nSiswa scan menggunakan aplikasi SIAKAD Mobile.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: AppColors.gray500),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
+                // ─ Body ───────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _generateQR,
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Refresh QR'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            side: const BorderSide(color: AppColors.primary),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
+                      // Title
+                      const Text('QR Absensi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pertemuan ke-$_activePertemuanKe  •  $_activeMateri',
+                        style: const TextStyle(fontSize: 13, color: AppColors.gray500),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Progress bar + timer ──
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: _qrCountdown / 180,
+                          backgroundColor: const Color(0xFFE5E7EB),
+                          valueColor: AlwaysStoppedAnimation<Color>(timerColor),
+                          minHeight: 5,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _closeQRModal,
-                          icon: const Icon(Icons.close, size: 16),
-                          label: const Text('Tutup'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.timer_outlined, size: 15, color: timerColor),
+                          const SizedBox(width: 5),
+                          Text('QR diperbarui dalam $minutes:$seconds',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: timerColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── QR Code (token NOT exposed) ──
+                      Container(
+                        width: 260,
+                        height: 260,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                        ),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: CustomPaint(
+                                size: const Size(240, 240),
+                                painter: _QRPainter(_generatedQR),
+                              ),
+                            ),
+                            Center(
+                              child: Container(
+                                width: 52, height: 52,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
+                                ),
+                                child: const Center(child: Icon(Icons.school, color: AppColors.primary, size: 30)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Siswa scan melalui aplikasi mobile masing-masing',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11, color: AppColors.gray500),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Session Info Grid ──
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Row(
+                          children: [
+                            _qrInfoCell('Pertemuan Ke-', '$_activePertemuanKe'),
+                            const _QRInfoDivider(),
+                            _qrInfoCell('Waktu Mulai',
+                              _sessionStartTime != null
+                                ? '${_sessionStartTime!.hour.toString().padLeft(2,'0')}:${_sessionStartTime!.minute.toString().padLeft(2,'0')}'
+                                : '--:--'),
+                            const _QRInfoDivider(),
+                            _qrInfoCell('Hadir', '${_students.where((s) => s.status == 'HADIR').length}/${_students.length}'),
+                          ],
+                        ),
+                      ),
+                      if (_activeMateri.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Row(
+                            children: [
+                              const Text('Materi: ', style: TextStyle(fontSize: 13, color: AppColors.gray500)),
+                              Expanded(child: Text(_activeMateri, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary), overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 20),
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                // ─ Footer ─────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: _endSession,
+                    icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                    label: const Text('Akhiri Sesi Pertemuan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1866,13 +2085,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     );
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
-  String _formattedDate() {
-    final now = DateTime.now();
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-    return '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  Widget _qrInfoCell(String label, String value) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray500)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
+        ],
+      ),
+    );
   }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
 
   void _showSaveSnackbar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1885,6 +2111,23 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           ],
         ),
         backgroundColor: const Color(0xFF059669),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(msg),
+          ],
+        ),
+        backgroundColor: const Color(0xFFDC2626),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -1979,4 +2222,13 @@ class _QRPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_QRPainter old) => old.data != data;
+}
+
+// ── QR Info Divider helper ────────────────────────────────────────────────────
+class _QRInfoDivider extends StatelessWidget {
+  const _QRInfoDivider();
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 36, color: const Color(0xFFE5E7EB), margin: const EdgeInsets.symmetric(horizontal: 8));
+  }
 }

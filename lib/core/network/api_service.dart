@@ -50,6 +50,11 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> getGuruClassDetail(String id) async {
+    final response = await _client.get('/dashboard/guru/kelas/$id');
+    return response.data;
+  }
+
   // ═══════════════════════════════════════════
   // USER MANAGEMENT
   // ═══════════════════════════════════════════
@@ -384,6 +389,37 @@ class ApiService {
 
   static Future<Map<String, dynamic>> scanQR(Map<String, dynamic> data) async {
     final response = await _client.post('/kehadiran/qr-scan', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> refreshQR(Map<String, dynamic> data) async {
+    final response = await _client.post('/kehadiran/refresh-qr', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> endSession(Map<String, dynamic> data) async {
+    final response = await _client.post('/kehadiran/end-session', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> saveBatchAttendance(Map<String, dynamic> data) async {
+    final response = await _client.post('/kehadiran/batch', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getLiveAttendance({
+    required String jadwalId,
+    required String tanggal,
+  }) async {
+    final response = await _client.get('/kehadiran/live-attendance', queryParameters: {
+      'jadwalId': jadwalId,
+      'tanggal': tanggal,
+    });
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getActiveSemester() async {
+    final response = await _client.get('/dashboard/active-semester');
     return response.data;
   }
 

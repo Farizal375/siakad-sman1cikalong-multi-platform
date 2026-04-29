@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/table_pagination.dart';
-import '../../../shared_widgets/delete_confirmation_modal.dart';
 import '../../../shared_widgets/success_toast.dart';
 
 class MasterData extends StatefulWidget {
@@ -24,6 +23,7 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
   late TabController _tabController;
   bool _showSuccessToast = false;
   String _successMessage = '';
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -37,20 +37,7 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  void _handleDelete(String type, String name) {
-    DeleteConfirmationModal.show(
-      context,
-      title: 'Konfirmasi Penghapusan Data Master',
-      message: 'Apakah Anda yakin ingin menghapus data master ini? Data yang dihapus tidak dapat dipulihkan.',
-      itemName: name,
-      onConfirm: () {
-        setState(() {
-          _successMessage = '$type "$name" berhasil dihapus';
-          _showSuccessToast = true;
-        });
-      },
-    );
-  }
+  // Delete handled via User Management, not Master Data
 
   void _showFormModal({String? mode, int? tabIndex, String? entityId}) {
     final tab = tabIndex ?? _tabController.index;
@@ -90,15 +77,7 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
     });
   }
 
-  String get _addButtonLabel {
-    switch (_tabController.index) {
-      case 0: return 'Tambah Data Siswa';
-      case 1: return 'Tambah Data Guru';
-      default: return 'Tambah Data';
-    }
-  }
-
-  bool get _showImportExport => true;
+  // Add/Import/Export buttons removed — data managed via User Management
 
   @override
   Widget build(BuildContext context) {
@@ -145,15 +124,43 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 24),
 
-            // ── Action Bar ──
+            // ── Info Banner ──
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F7FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Data siswa & guru ditambahkan melalui menu User Management. Halaman ini hanya untuk mengelola detail profil.',
+                      style: TextStyle(color: const Color(0xFF1E40AF), fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Search Bar ──
             Row(
               children: [
                 Expanded(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 448),
                     child: TextField(
+                      onChanged: (v) {
+                        setState(() {
+                          _searchQuery = v;
+                        });
+                      },
                       decoration: InputDecoration(
-                        hintText: 'Cari...',
+                        hintText: 'Cari berdasarkan nama, NISN, atau NIP...',
                         prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
                         filled: true, fillColor: Colors.white,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
@@ -162,78 +169,6 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
                         contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // Import/Export buttons for students/teachers
-                if (_showImportExport) ...[
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Template berhasil diunduh';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
-                    label: const Text('Template'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Data siap diimport';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.file_upload_outlined, size: 18),
-                    label: const Text('Import'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF16A34A),
-                      side: const BorderSide(color: Color(0xFF16A34A), width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Data berhasil diekspor';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.download_outlined, size: 18),
-                    label: const Text('Export'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
-                      side: const BorderSide(color: Color(0xFF2563EB), width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-
-                ElevatedButton.icon(
-                  onPressed: () => _showFormModal(mode: 'create'),
-                  icon: const Icon(Icons.add, size: 20),
-                  label: Text(_addButtonLabel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -252,8 +187,8 @@ class _MasterDataState extends State<MasterData> with SingleTickerProviderStateM
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _UsersTable(onDelete: (name) => _handleDelete('Data Siswa', name), onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 0, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 0, entityId: id), itemName: 'siswa', roleFilter: 'Siswa', columns: const ['NISN', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
-                    _UsersTable(onDelete: (name) => _handleDelete('Data Guru', name), onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 1, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 1, entityId: id), itemName: 'guru', roleFilter: 'Guru Mapel', columns: const ['NIP', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
+                    _UsersTable(search: _searchQuery, onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 0, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 0, entityId: id), itemName: 'siswa', roleFilter: 'Siswa', columns: const ['NISN', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
+                    _UsersTable(search: _searchQuery, onEdit: (id) => _showFormModal(mode: 'edit', tabIndex: 1, entityId: id), onView: (id) => _showFormModal(mode: 'view', tabIndex: 1, entityId: id), itemName: 'guru', roleFilter: 'Guru Mapel', columns: const ['NIP', 'Nama Lengkap', 'Email', 'Status', 'Aksi']),
                   ],
                 ),
               ),
@@ -310,7 +245,7 @@ class _ToggleSwitch extends StatelessWidget {
 // USERS TABLE — API Connected (for Siswa & Guru tabs)
 // ═══════════════════════════════════════════════
 class _UsersTable extends StatefulWidget {
-  final void Function(String name) onDelete;
+  final String search;
   final void Function(String id) onEdit;
   final void Function(String id)? onView;
   final String itemName;
@@ -318,7 +253,7 @@ class _UsersTable extends StatefulWidget {
   final List<String> columns;
 
   const _UsersTable({
-    required this.onDelete,
+    this.search = '',
     required this.onEdit,
     this.onView,
     required this.itemName,
@@ -343,11 +278,21 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
     _loadData();
   }
 
+  @override
+  void didUpdateWidget(covariant _UsersTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.search != widget.search) {
+      _currentPage = 1;
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     try {
       final response = await ApiService.getUsers(
         page: _currentPage,
         limit: _itemsPerPage,
+        search: widget.search,
         role: widget.roleFilter,
       );
       final items = response['data'] as List? ?? [];
@@ -371,12 +316,7 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
     }
   }
 
-  Future<void> _deleteItem(Map<String, dynamic> row) async {
-    try {
-      await ApiService.deleteUser(row['id']);
-      _loadData();
-    } catch (_) {}
-  }
+  // Delete removed — managed via User Management
 
   @override
   bool get wantKeepAlive => true;
@@ -395,7 +335,7 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
           child: Row(
             children: [
               ...dataCols.map((c) => Expanded(child: Text(c, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground)))),
-              SizedBox(width: widget.onView != null ? 120 : 80, child: const Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              SizedBox(width: widget.onView != null ? 80 : 40, child: const Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
             ],
           ),
         ),
@@ -440,16 +380,12 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
                             );
                           }),
                           SizedBox(
-                            width: widget.onView != null ? 120 : 80,
+                            width: widget.onView != null ? 80 : 40,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (widget.onView != null) IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onView!(row['id']), splashRadius: 18, tooltip: 'Lihat Detail'),
                                 IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row['id']), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () {
-                                  widget.onDelete(row['name']);
-                                  _deleteItem(row);
-                                }, splashRadius: 18, tooltip: 'Hapus'),
                               ],
                             ),
                           ),

@@ -24,7 +24,6 @@ import 'features/kurikulum/screens/master_mapel.dart';
 import 'features/kurikulum/screens/manajemen_rombel.dart';
 import 'features/kurikulum/screens/jadwal_pelajaran.dart';
 import 'features/kurikulum/screens/curriculum_profile.dart';
-import 'features/kurikulum/screens/jadwal_overview.dart';
 import 'features/kurikulum/screens/master_akademik.dart';
 import 'features/kurikulum/screens/migrasi_kelas_wizard.dart';
 import 'features/guru/screens/teacher_layout.dart';
@@ -45,8 +44,18 @@ import 'features/siswa/screens/hasil_studi.dart';
 import 'features/siswa/screens/riwayat_kehadiran.dart';
 import 'features/siswa/screens/student_profile.dart';
 import 'shared_widgets/not_found_page.dart';
+import 'core/providers/auth_provider.dart';
+import 'core/models/user.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
+  // ── Role-based redirect helper ──
+  String? roleRedirect(GoRouterState state, List<UserRole> allowedRoles) {
+    final user = ref.read(authProvider).valueOrNull;
+    if (user == null) return '/login';
+    if (!allowedRoles.contains(user.role)) return '/login';
+    return null;
+  }
+
   return GoRouter(
     initialLocation: '/',
     routes: [
@@ -66,6 +75,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // ── Admin Routes ──
       ShellRoute(
+        redirect: (context, state) => roleRedirect(state, [UserRole.admin]),
         builder: (context, state, child) =>
             DashboardLayout(child: child),
         routes: [
@@ -106,6 +116,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // ── Kurikulum Routes ──
       ShellRoute(
+        redirect: (context, state) => roleRedirect(state, [UserRole.curriculum]),
         builder: (context, state, child) =>
             CurriculumLayout(child: child),
         routes: [
@@ -152,12 +163,6 @@ final _routerProvider = Provider<GoRouter>((ref) {
                     const CurriculumProfile(),
               ),
               GoRoute(
-                path: 'monitoring-jadwal',
-                name: 'curriculum-monitoring',
-                builder: (context, state) =>
-                    const JadwalOverview(),
-              ),
-              GoRoute(
                 path: 'migrasi-kelas',
                 name: 'curriculum-migrasi',
                 builder: (context, state) =>
@@ -170,6 +175,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // ── Guru & Wali Kelas Routes ──
       ShellRoute(
+        redirect: (context, state) => roleRedirect(state, [UserRole.teacher]),
         builder: (context, state, child) =>
             TeacherLayout(child: child),
         routes: [
@@ -242,6 +248,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // ── Siswa Routes ──
       ShellRoute(
+        redirect: (context, state) => roleRedirect(state, [UserRole.student]),
         builder: (context, state, child) =>
             StudentLayout(child: child),
         routes: [

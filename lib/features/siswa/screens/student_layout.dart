@@ -5,25 +5,44 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 
-class StudentLayout extends StatefulWidget {
+class StudentLayout extends ConsumerStatefulWidget {
   final Widget child;
   const StudentLayout({super.key, required this.child});
 
   @override
-  State<StudentLayout> createState() => _StudentLayoutState();
+  ConsumerState<StudentLayout> createState() => _StudentLayoutState();
 }
 
-class _StudentLayoutState extends State<StudentLayout> {
+class _StudentLayoutState extends ConsumerState<StudentLayout> {
   final SidebarController _sidebarController = SidebarController();
+  String _semesterLabel = 'Memuat...';
 
   @override
   void initState() {
     super.initState();
     _sidebarController.addListener(() => setState(() {}));
+    _loadSemester();
+  }
+
+  Future<void> _loadSemester() async {
+    try {
+      final res = await ApiService.getActiveSemester();
+      final data = res['data'];
+      if (mounted) {
+        setState(() => _semesterLabel = data != null
+            ? 'Aktif: ${data['label']}'
+            : 'Tidak ada semester aktif');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _semesterLabel = 'Aktif: -');
+    }
   }
 
   @override
@@ -45,6 +64,11 @@ class _StudentLayoutState extends State<StudentLayout> {
   Widget build(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
     final currentRoute = GoRouterState.of(context).uri.toString();
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final userName = authUser?.name ?? 'Siswa';
+    final userInitials = userName.trim().split(' ')
+        .where((w) => w.isNotEmpty).take(2)
+        .map((w) => w[0].toUpperCase()).join();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -71,7 +95,7 @@ class _StudentLayoutState extends State<StudentLayout> {
           Expanded(
             child: Column(
               children: [
-                _buildHeader(context, path),
+                _buildHeader(context, path, userName, userInitials),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -86,7 +110,7 @@ class _StudentLayoutState extends State<StudentLayout> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String path) {
+  Widget _buildHeader(BuildContext context, String path, String userName, String userInitials) {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -127,28 +151,20 @@ class _StudentLayoutState extends State<StudentLayout> {
               gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF2563EB)]),
               borderRadius: BorderRadius.circular(99),
             ),
-            child: const Text('Aktif: 2025/2026 - Semester Genap', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(_semesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 16),
-
-          Stack(
-            children: [
-              IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_outlined, color: AppColors.gray600)),
-              Positioned(top: 8, right: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFB91C1C), shape: BoxShape.circle))),
-            ],
-          ),
-          const SizedBox(width: 8),
 
           GestureDetector(
             onTap: () => context.go('/siswa/profil'),
             child: Row(
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Ahmad Fauzi', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.foreground)),
-                    Text('NISN: 2023001', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
+                    Text(userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.foreground)),
+                    const Text('Siswa', style: TextStyle(fontSize: 12, color: AppColors.gray500)),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -158,7 +174,7 @@ class _StudentLayoutState extends State<StudentLayout> {
                     gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
                     borderRadius: BorderRadius.circular(99),
                   ),
-                  child: const Center(child: Text('AF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
+                  child: Center(child: Text(userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
                 ),
               ],
             ),

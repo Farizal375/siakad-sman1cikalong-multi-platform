@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 
 class DashboardLayout extends ConsumerStatefulWidget {
@@ -126,7 +127,7 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
 // ═════════════════════════════════════
 // SHARED TOP BAR — Reusable across all roles
 // ═════════════════════════════════════
-class _TopBar extends StatelessWidget {
+class _TopBar extends StatefulWidget {
   final String currentRoute;
   final SidebarController sidebarController;
   final String roleName;
@@ -145,11 +146,38 @@ class _TopBar extends StatelessWidget {
     required this.onProfileTap,
   });
 
+  @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  String _semesterLabel = 'Memuat...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSemester();
+  }
+
+  Future<void> _loadSemester() async {
+    try {
+      final res = await ApiService.getActiveSemester();
+      final data = res['data'];
+      if (mounted) {
+        setState(() => _semesterLabel = data != null
+            ? 'Aktif: ${data['label']}'
+            : 'Tidak ada semester aktif');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _semesterLabel = 'Aktif: -');
+    }
+  }
+
   String get _pageTitle {
-    if (currentRoute.contains('/users')) return 'Manajemen Pengguna';
-    if (currentRoute.contains('/cms')) return 'CMS Publik';
-    if (currentRoute.contains('/master-data')) return 'Master Data';
-    if (currentRoute.contains('/profile')) return 'Profil Pengguna';
+    if (widget.currentRoute.contains('/users')) return 'Manajemen Pengguna';
+    if (widget.currentRoute.contains('/cms')) return 'CMS Publik';
+    if (widget.currentRoute.contains('/master-data')) return 'Master Data';
+    if (widget.currentRoute.contains('/profile')) return 'Profil Pengguna';
     return 'Beranda';
   }
 
@@ -167,13 +195,13 @@ class _TopBar extends StatelessWidget {
         children: [
           // Toggle sidebar button
           IconButton(
-            onPressed: () => sidebarController.toggle(),
+            onPressed: () => widget.sidebarController.toggle(),
             icon: AnimatedRotation(
-              turns: sidebarController.isCollapsed ? 0.5 : 0,
+              turns: widget.sidebarController.isCollapsed ? 0.5 : 0,
               duration: const Duration(milliseconds: 250),
               child: const Icon(Icons.menu_open, size: 22),
             ),
-            tooltip: sidebarController.isCollapsed ? 'Perluas Sidebar' : 'Perkecil Sidebar',
+            tooltip: widget.sidebarController.isCollapsed ? 'Perluas Sidebar' : 'Perkecil Sidebar',
             style: IconButton.styleFrom(
               backgroundColor: AppColors.gray50,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -182,7 +210,7 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 16),
 
           // Breadcrumb
-          Text(roleName, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
+          Text(widget.roleName, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
             child: Icon(Icons.chevron_right, size: 16, color: AppColors.gray400),
@@ -194,7 +222,7 @@ class _TopBar extends StatelessWidget {
 
           const Spacer(),
 
-          // Active Semester
+          // Active Semester — from DB
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -202,23 +230,13 @@ class _TopBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 6, offset: Offset(0, 2))],
             ),
-            child: const Text(
-              'Aktif: 2026/2027 - Semester Ganjil',
-              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
+            child: Text(_semesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 16),
 
-          // Notification Bell
-          IconButton(
-            onPressed: () {},
-            icon: const Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: AppColors.gray600)),
-          ),
-          const SizedBox(width: 8),
-
           // Profile
           InkWell(
-            onTap: onProfileTap,
+            onTap: widget.onProfileTap,
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -228,8 +246,8 @@ class _TopBar extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground)),
-                      Text(userRole, style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+                      Text(widget.userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground)),
+                      Text(widget.userRole, style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
                     ],
                   ),
                   const SizedBox(width: 12),
@@ -239,7 +257,7 @@ class _TopBar extends StatelessWidget {
                       gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Center(child: Text(userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
+                    child: Center(child: Text(widget.userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
                   ),
                 ],
               ),

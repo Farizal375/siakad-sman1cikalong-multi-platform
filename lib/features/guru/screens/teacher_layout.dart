@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 
 class TeacherLayout extends ConsumerStatefulWidget {
@@ -21,11 +22,28 @@ class TeacherLayout extends ConsumerStatefulWidget {
 
 class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
   final SidebarController _sidebarController = SidebarController();
+  String _activeSemesterLabel = 'Memuat...';
 
   @override
   void initState() {
     super.initState();
     _sidebarController.addListener(() => setState(() {}));
+    _loadActiveSemester();
+  }
+
+  Future<void> _loadActiveSemester() async {
+    try {
+      final res = await ApiService.getActiveSemester();
+      final data = res['data'];
+      if (data != null) {
+        final label = data['label'] as String? ?? '';
+        if (mounted) setState(() => _activeSemesterLabel = 'Aktif: $label');
+      } else {
+        if (mounted) setState(() => _activeSemesterLabel = 'Tidak ada semester aktif');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _activeSemesterLabel = 'Aktif: -');
+    }
   }
 
   @override
@@ -154,18 +172,9 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
               gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF2563EB)]),
               borderRadius: BorderRadius.circular(99),
             ),
-            child: const Text('Aktif: 2026/2027', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(_activeSemesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 16),
-
-          Stack(
-            children: [
-              IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_outlined, color: AppColors.gray600)),
-              Positioned(top: 8, right: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFB91C1C), shape: BoxShape.circle))),
-            ],
-          ),
-          const SizedBox(width: 8),
-
           GestureDetector(
             onTap: () => context.go('/guru/profile'),
             child: Row(

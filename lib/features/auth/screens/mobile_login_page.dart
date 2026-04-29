@@ -407,7 +407,7 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage>
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.foreground),
                   ),
                   const SizedBox(height: 8),
-                  _demoRow('Email', 'siswa@siakad.sch.id'),
+                  _demoRow('Email', 'siswa001@siakad.sch.id'),
                   const SizedBox(height: 4),
                   _demoRow('Password', 'password123'),
                   const SizedBox(height: 12),
@@ -415,7 +415,7 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage>
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        _emailCtrl.text = 'siswa@siakad.sch.id';
+                        _emailCtrl.text = 'siswa001@siakad.sch.id';
                         _passwordCtrl.text = 'password123';
                         setState(() => _showDemo = false);
                       },

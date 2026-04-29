@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 
 class CurriculumLayout extends ConsumerStatefulWidget {
@@ -21,11 +22,27 @@ class CurriculumLayout extends ConsumerStatefulWidget {
 
 class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
   final SidebarController _sidebarController = SidebarController();
+  String _semesterLabel = 'Memuat...';
 
   @override
   void initState() {
     super.initState();
     _sidebarController.addListener(() => setState(() {}));
+    _loadSemester();
+  }
+
+  Future<void> _loadSemester() async {
+    try {
+      final res = await ApiService.getActiveSemester();
+      final data = res['data'];
+      if (mounted) {
+        setState(() => _semesterLabel = data != null
+            ? 'Aktif: ${data['label']}'
+            : 'Tidak ada semester aktif');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _semesterLabel = 'Aktif: -');
+    }
   }
 
   @override
@@ -38,7 +55,6 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
     final r = GoRouterState.of(context).uri.toString();
     if (r.contains('/master-mapel')) return 'Master Mapel';
     if (r.contains('/manajemen-rombel')) return 'Manajemen Rombel';
-    if (r.contains('/monitoring-jadwal')) return 'Monitoring Jadwal';
     if (r.contains('/jadwal-pelajaran')) return 'Jadwal Pelajaran';
     if (r.contains('/master-akademik')) return 'Master Akademik';
     if (r.contains('/profile')) return 'Profil Pengguna';
@@ -71,7 +87,6 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
               SidebarMenuItem(icon: Icons.menu_book_outlined, label: 'Master Mapel', route: '/curriculum/master-mapel'),
               SidebarMenuItem(icon: Icons.people_outline, label: 'Manajemen Rombel', route: '/curriculum/manajemen-rombel'),
               SidebarMenuItem(icon: Icons.calendar_today_outlined, label: 'Jadwal Pelajaran', route: '/curriculum/jadwal-pelajaran'),
-              SidebarMenuItem(icon: Icons.grid_view_outlined, label: 'Monitoring Jadwal', route: '/curriculum/monitoring-jadwal'),
               SidebarMenuItem(icon: Icons.move_up, label: 'Migrasi Kelas', route: '/curriculum/migrasi-kelas'),
             ],
             bottomMenuItems: [
@@ -147,15 +162,9 @@ class _CurriculumLayoutState extends ConsumerState<CurriculumLayout> {
               borderRadius: BorderRadius.circular(999),
               boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 6, offset: Offset(0, 2))],
             ),
-            child: const Text('Aktif: 2026/2027 - Semester Ganjil', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+            child: Text(_semesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 16),
-
-          IconButton(
-            onPressed: () {},
-            icon: const Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: AppColors.gray600)),
-          ),
-          const SizedBox(width: 8),
 
           InkWell(
             onTap: () => context.go('/curriculum/profile'),
