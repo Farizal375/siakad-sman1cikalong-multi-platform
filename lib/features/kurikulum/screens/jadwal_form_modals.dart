@@ -278,24 +278,7 @@ class _ScheduleFormModalState extends State<ScheduleFormModal> {
 
   int _toMin(TimeOfDay t) => t.hour * 60 + t.minute;
 
-  /// Menghitung slot index terdekat dari startTime
-  int _slotOf(TimeOfDay t) {
-    // Slot valid (diluar jam istirahat)
-    const slots = [
-      TimeOfDay(hour: 7, minute: 0),  TimeOfDay(hour: 7, minute: 45),
-      TimeOfDay(hour: 8, minute: 0),  TimeOfDay(hour: 8, minute: 45),
-      TimeOfDay(hour: 10, minute: 0), TimeOfDay(hour: 10, minute: 45),
-      TimeOfDay(hour: 11, minute: 30),
-      TimeOfDay(hour: 13, minute: 0), TimeOfDay(hour: 13, minute: 45),
-      TimeOfDay(hour: 14, minute: 30),TimeOfDay(hour: 15, minute: 15),
-    ];
-    int closest = 0, minDiff = 9999;
-    for (int i = 0; i < slots.length; i++) {
-      final diff = (_toMin(slots[i]) - _toMin(t)).abs();
-      if (diff < minDiff) { minDiff = diff; closest = i; }
-    }
-    return closest;
-  }
+  // (slot_index kini di-handle otomatis oleh backend)
 
   /// Validasi waktu terhadap aturan sekolah
   /// Return null jika valid, atau pesan error jika tidak valid
@@ -420,7 +403,7 @@ class _ScheduleFormModalState extends State<ScheduleFormModal> {
         'day': _selectedDay,
         'startTime': _fmt(_startTime),
         'endTime': _fmt(_endTime),
-        'slotIndex': _slotOf(_startTime),
+        'slotIndex': 0, // backend overrides this dynamically
       };
       if (widget.isEdit && widget.initialData != null) {
         await ApiService.updateJadwal(widget.initialData!['id'], payload);

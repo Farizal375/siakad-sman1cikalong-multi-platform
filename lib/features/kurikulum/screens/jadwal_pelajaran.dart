@@ -264,27 +264,13 @@ class _WeeklyScheduleGrid extends StatefulWidget {
 }
 
 class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with AutomaticKeepAliveClientMixin {
-  Map<String, Map<String, dynamic>> _schedule = {}; // key = 'slotIdx_dayIdx'
+  Map<String, List<Map<String, dynamic>>> _scheduleByDay = {
+    'Senin': [], 'Selasa': [], 'Rabu': [], 'Kamis': [], 'Jumat': []
+  };
   bool _loading = false;
   String? _activeKelasId;
 
   static const _days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-  static const _timeSlots = [
-    {'slot': '0', 'start': '07:00', 'end': '07:45'},
-    {'slot': '1', 'start': '07:45', 'end': '08:30'},
-    {'slot': '2', 'start': '10:00', 'end': '10:45'},
-    {'slot': '3', 'start': '10:45', 'end': '11:30'},
-    {'slot': '4', 'start': '13:00', 'end': '13:45'},
-    {'slot': '5', 'start': '13:45', 'end': '14:30'},
-    {'slot': '6', 'start': '14:30', 'end': '15:15'},
-    {'slot': '7', 'start': '15:15', 'end': '16:00'},
-  ];
-
-  // Break rows yang ditampilkan di antara slot
-  static const _breakAfterSlot = {
-    1: {'label': 'Istirahat 1', 'time': '09:00 – 10:00'},
-    3: {'label': 'Istirahat 2', 'time': '12:00 – 13:00'},
-  };
 
   @override
   bool get wantKeepAlive => true;
@@ -304,24 +290,43 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
     try {
       final res = await ApiService.getJadwal(kelasId: _activeKelasId);
       final list = ((res['data'] as List?) ?? []).cast<Map<String, dynamic>>();
-      final dayMap = {'Senin': 0, 'Selasa': 1, 'Rabu': 2, 'Kamis': 3, 'Jumat': 4};
-      final sched = <String, Map<String, dynamic>>{};
+      
+      final sched = <String, List<Map<String, dynamic>>>{
+        'Senin': [], 'Selasa': [], 'Rabu': [], 'Kamis': [], 'Jumat': []
+      };
+      
       for (final j in list) {
         final day = j['day'] ?? j['hari'] ?? 'Senin';
-        final slot = (j['slotIndex'] as num?)?.toInt() ?? 0;
-        sched['${slot}_${dayMap[day] ?? 0}'] = j;
+        if (sched.containsKey(day)) {
+          sched[day]!.add(j);
+        }
       }
-      if (mounted) setState(() { _schedule = sched; _loading = false; });
+
+      // Sort each day by startTime
+      for (final day in sched.keys) {
+        sched[day]!.sort((a, b) {
+          final ta = a['startTime'] ?? a['jam_mulai'] ?? '00:00';
+          final tb = b['startTime'] ?? b['jam_mulai'] ?? '00:00';
+          return ta.compareTo(tb);
+        });
+      }
+
+      if (mounted) setState(() { _scheduleByDay = sched; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
-  void _openAddModal() {
+  void _openAddModal({String? prefillDay}) {
     if (_activeKelasId == null || widget.kelasList.isEmpty) return;
     showDialog(
       context: context, barrierDismissible: false,
       builder: (_) => Dialog(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520),
-          child: ScheduleFormModal(kelasId: _activeKelasId!, kelasList: widget.kelasList))),
+          child: ScheduleFormModal(
+            kelasId: _activeKelasId!, 
+            kelasList: widget.kelasList, 
+            initialData: prefillDay != null ? {'day': prefillDay, 'hari': prefillDay} : null,
+            isEdit: false
+          ))),
     ).then((r) { if (r == true) { widget.onSuccess('Jadwal berhasil ditambahkan'); _loadJadwal(); }});
   }
 
@@ -367,7 +372,7 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
         )),
         const SizedBox(width: 12),
         ElevatedButton.icon(
-          onPressed: _openAddModal,
+          onPressed: () => _openAddModal(),
           icon: const Icon(Icons.add_rounded, size: 18),
           label: const Text('Tambah Jadwal', style: TextStyle(fontWeight: FontWeight.w600)),
           style: ElevatedButton.styleFrom(
@@ -379,7 +384,7 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
         ),
       ]),
       const SizedBox(height: 20),
-      // ── Grid ──
+      // ── Dynamic Kanban-Style Grid ──
       Expanded(child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -391,87 +396,64 @@ class _WeeklyScheduleGridState extends State<_WeeklyScheduleGrid> with Automatic
         child: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: IntrinsicWidth(child: Column(children: [
-                  // ── Header baris hari ──
-                  Container(
-                    color: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(children: [
-                      const SizedBox(width: 76,
-                        child: Text('Waktu', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70))),
-                      ..._days.map((d) => SizedBox(width: 168,
-                        child: Center(child: Text(d, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))))),
-                    ]),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _days.map((day) => _buildDayColumn(day)).toList(),
                   ),
-                  // ── Slot rows ──
-                  ..._buildSlotRows(),
-                ])),
+                ),
               ),
             ),
       )),
     ]);
   }
 
-  List<Widget> _buildSlotRows() {
-    final rows = <Widget>[];
-    for (int i = 0; i < _timeSlots.length; i++) {
-      final slot = _timeSlots[i];
-      final isEven = i % 2 == 0;
-      rows.add(_buildSlotRow(slot, isEven));
-      // Tambah break row setelah slot tertentu
-      final breakInfo = _breakAfterSlot[int.parse(slot['slot']!)];
-      if (breakInfo != null) {
-        rows.add(_buildBreakRow(breakInfo['label']!, breakInfo['time']!));
-      }
-    }
-    return rows;
-  }
-
-  Widget _buildBreakRow(String label, String time) {
+  Widget _buildDayColumn(String day) {
+    final list = _scheduleByDay[day] ?? [];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        border: const Border(top: BorderSide(color: Color(0xFFFED7AA)), bottom: BorderSide(color: Color(0xFFFED7AA))),
+      width: 220,
+      decoration: const BoxDecoration(
+        border: Border(right: BorderSide(color: AppColors.gray100)),
       ),
-      child: Row(children: [
-        const Icon(Icons.free_breakfast_outlined, size: 13, color: Color(0xFFEA580C)),
-        const SizedBox(width: 6),
-        Text('$label  $time', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFFEA580C))),
-        const Spacer(),
-        ...List.generate(5, (_) => const SizedBox(width: 168)),
-      ]),
-    );
-  }
-
-  Widget _buildSlotRow(Map<String, String> slot, bool isEven) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isEven ? Colors.white : const Color(0xFFFAFBFC),
-        border: const Border(bottom: BorderSide(color: AppColors.gray100)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header Hari
+          Container(
+            color: AppColors.primary,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            alignment: Alignment.center,
+            child: Text(day, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+          // List Jadwal
+          Container(
+            color: const Color(0xFFFAFBFC),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ...list.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final item = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ScheduleCard(
+                      entry: item, 
+                      slotIdx: idx, 
+                      onEdit: () => _openEditModal(item), 
+                      onDelete: () => _delete(item)
+                    ),
+                  );
+                }),
+                // Add Button
+                _EmptySlot(onAdd: () => _openAddModal(prefillDay: day)),
+              ],
+            ),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // Kolom waktu
-        SizedBox(width: 76, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(slot['start']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.foreground)),
-          Text(slot['end']!, style: const TextStyle(fontSize: 11, color: AppColors.gray400)),
-        ])),
-        // Kolom per hari
-        ...List.generate(5, (dayIdx) {
-          final key = '${slot['slot']}_$dayIdx';
-          final entry = _schedule[key];
-          return SizedBox(width: 168, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-            child: entry != null
-              ? _ScheduleCard(entry: entry, slotIdx: int.parse(slot['slot']!),
-                  onEdit: () => _openEditModal(entry), onDelete: () => _delete(entry))
-              : _EmptySlot(onAdd: _openAddModal),
-          ));
-        }),
-      ]),
     );
   }
 }

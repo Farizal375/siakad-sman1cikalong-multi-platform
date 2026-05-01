@@ -29,36 +29,38 @@ class ApiClient {
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
       ),
     );
 
     // Auth interceptor — automatically attach JWT token
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await getToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        if (error.response?.statusCode == 401) {
-          // Token expired or invalid — clear stored token
-          clearToken();
-        }
-        handler.next(error);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await getToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          if (error.response?.statusCode == 401) {
+            // Token expired or invalid — clear stored token
+            clearToken();
+          }
+          handler.next(error);
+        },
+      ),
+    );
 
     // Logging interceptor (dev only)
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (obj) => debugPrint('[API] $obj'),
-    ));
+    _dio.interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        logPrint: (obj) => debugPrint('[API] $obj'),
+      ),
+    );
   }
 
   // ─── Token Management ─────────────────────────
@@ -116,6 +118,31 @@ class ApiClient {
       ...?extraFields,
     });
     return await _dio.post(endpoint, data: formData);
+  }
+
+  Future<Response> uploadBytes(
+    String endpoint, {
+    required List<int> bytes,
+    required String filename,
+    required String fieldName,
+    Map<String, dynamic>? extraFields,
+  }) async {
+    final formData = FormData.fromMap({
+      fieldName: MultipartFile.fromBytes(bytes, filename: filename),
+      ...?extraFields,
+    });
+    return await _dio.post(endpoint, data: formData);
+  }
+
+  Future<Response<List<int>>> downloadBytes(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return await _dio.get<List<int>>(
+      endpoint,
+      queryParameters: queryParameters,
+      options: Options(responseType: ResponseType.bytes),
+    );
   }
 
   /// Get Dio instance for advanced usage

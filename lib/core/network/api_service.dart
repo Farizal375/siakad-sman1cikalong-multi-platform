@@ -13,11 +13,14 @@ class ApiService {
   // AUTH
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await _client.post('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
+    final response = await _client.post(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+    );
     return response.data;
   }
 
@@ -32,6 +35,11 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getDashboardStats() async {
     final response = await _client.get('/dashboard/stats');
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getCurriculumDashboard() async {
+    final response = await _client.get('/dashboard/kurikulum');
     return response.data;
   }
 
@@ -55,14 +63,35 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> quickSession(
+    Map<String, dynamic> data,
+  ) async {
+    final response = await _client.post(
+      '/dashboard/guru/quick-session',
+      data: data,
+    );
+    return response.data;
+  }
+
   // ═══════════════════════════════════════════
   // USER MANAGEMENT
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 10, String search = '', String role = ''}) async {
-    final response = await _client.get('/users', queryParameters: {
-      'page': page, 'limit': limit, 'search': search, 'role': role,
-    });
+  static Future<Map<String, dynamic>> getUsers({
+    int page = 1,
+    int limit = 10,
+    String search = '',
+    String role = '',
+  }) async {
+    final response = await _client.get(
+      '/users',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        'search': search,
+        'role': role,
+      },
+    );
     return response.data;
   }
 
@@ -71,12 +100,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createUser(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createUser(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/users', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateUser(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateUser(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/users/$id', data: data);
     return response.data;
   }
@@ -86,8 +120,14 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> resetPassword(String id, String password) async {
-    final response = await _client.patch('/users/$id/reset-password', data: {'password': password});
+  static Future<Map<String, dynamic>> resetPassword(
+    String id,
+    String password,
+  ) async {
+    final response = await _client.patch(
+      '/users/$id/reset-password',
+      data: {'password': password},
+    );
     return response.data;
   }
 
@@ -100,7 +140,9 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateProfile(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/profile', data: data);
     return response.data;
   }
@@ -115,12 +157,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createTahunAjaran(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createTahunAjaran(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/master/tahun-ajaran', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateTahunAjaran(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateTahunAjaran(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/master/tahun-ajaran/$id', data: data);
     return response.data;
   }
@@ -141,12 +188,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createSemester(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createSemester(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/master/semester', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateSemester(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateSemester(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/master/semester/$id', data: data);
     return response.data;
   }
@@ -167,12 +219,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createRuangKelas(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createRuangKelas(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/master/ruang-kelas', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateRuangKelas(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateRuangKelas(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/master/ruang-kelas/$id', data: data);
     return response.data;
   }
@@ -188,12 +245,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createMasterKelas(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createMasterKelas(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/master/master-kelas', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateMasterKelas(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateMasterKelas(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/master/master-kelas/$id', data: data);
     return response.data;
   }
@@ -212,12 +274,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createMataPelajaran(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createMataPelajaran(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/mata-pelajaran', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateMataPelajaran(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateMataPelajaran(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/mata-pelajaran/$id', data: data);
     return response.data;
   }
@@ -231,18 +298,25 @@ class ApiService {
   // GURU - MAPEL MAPPING
   // ═══════════════════════════════════════════
 
-
   static Future<Map<String, dynamic>> getGuruMapel({String search = ''}) async {
-    final response = await _client.get('/guru-mapel', queryParameters: {'search': search});
+    final response = await _client.get(
+      '/guru-mapel',
+      queryParameters: {'search': search},
+    );
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createGuruMapel(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createGuruMapel(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/guru-mapel', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateGuruMapel(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateGuruMapel(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/guru-mapel/$id', data: data);
     return response.data;
   }
@@ -261,12 +335,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createRombel(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createRombel(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/rombel', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateRombel(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateRombel(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/rombel/$id', data: data);
     return response.data;
   }
@@ -281,9 +360,16 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getAvailableWali({String? currentRombelId}) async {
-    final params = currentRombelId != null ? {'currentRombelId': currentRombelId} : null;
-    final response = await _client.get('/rombel/available-wali', queryParameters: params);
+  static Future<Map<String, dynamic>> getAvailableWali({
+    String? currentRombelId,
+  }) async {
+    final params = currentRombelId != null
+        ? {'currentRombelId': currentRombelId}
+        : null;
+    final response = await _client.get(
+      '/rombel/available-wali',
+      queryParameters: params,
+    );
     return response.data;
   }
 
@@ -292,12 +378,21 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> assignSiswa(String id, List<String> siswaIds) async {
-    final response = await _client.post('/rombel/$id/siswa', data: {'siswaIds': siswaIds});
+  static Future<Map<String, dynamic>> assignSiswa(
+    String id,
+    List<String> siswaIds,
+  ) async {
+    final response = await _client.post(
+      '/rombel/$id/siswa',
+      data: {'siswaIds': siswaIds},
+    );
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> removeSiswaFromRombel(String rombelId, String siswaId) async {
+  static Future<Map<String, dynamic>> removeSiswaFromRombel(
+    String rombelId,
+    String siswaId,
+  ) async {
     final response = await _client.delete('/rombel/$rombelId/siswa/$siswaId');
     return response.data;
   }
@@ -311,12 +406,16 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> lockPromosi(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> lockPromosi(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/promosi/lock', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> executePromosi(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> executePromosi(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/promosi/execute', data: data);
     return response.data;
   }
@@ -325,7 +424,10 @@ class ApiService {
   // JADWAL
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getJadwal({String? kelasId, String? hari}) async {
+  static Future<Map<String, dynamic>> getJadwal({
+    String? kelasId,
+    String? hari,
+  }) async {
     final params = <String, dynamic>{};
     if (kelasId != null) params['kelasId'] = kelasId;
     if (hari != null) params['hari'] = hari;
@@ -338,17 +440,25 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createJadwal(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createJadwal(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/jadwal', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateJadwal(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateJadwal(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/jadwal/$id', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> moveJadwal(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> moveJadwal(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.patch('/jadwal/$id/move', data: data);
     return response.data;
   }
@@ -362,7 +472,9 @@ class ApiService {
   // KEHADIRAN
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> saveKehadiran(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> saveKehadiran(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/kehadiran/batch', data: data);
     return response.data;
   }
@@ -377,12 +489,16 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getKehadiranHistory(String jadwalId) async {
+  static Future<Map<String, dynamic>> getKehadiranHistory(
+    String jadwalId,
+  ) async {
     final response = await _client.get('/kehadiran/history/$jadwalId');
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> generateQR(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> generateQR(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/kehadiran/generate-qr', data: data);
     return response.data;
   }
@@ -392,17 +508,23 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> refreshQR(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> refreshQR(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/kehadiran/refresh-qr', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> endSession(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> endSession(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/kehadiran/end-session', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> saveBatchAttendance(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> saveBatchAttendance(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/kehadiran/batch', data: data);
     return response.data;
   }
@@ -411,10 +533,10 @@ class ApiService {
     required String jadwalId,
     required String tanggal,
   }) async {
-    final response = await _client.get('/kehadiran/live-attendance', queryParameters: {
-      'jadwalId': jadwalId,
-      'tanggal': tanggal,
-    });
+    final response = await _client.get(
+      '/kehadiran/live-attendance',
+      queryParameters: {'jadwalId': jadwalId, 'tanggal': tanggal},
+    );
     return response.data;
   }
 
@@ -427,7 +549,11 @@ class ApiService {
   // NILAI
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getNilai({String? mapelId, String? semesterId, String? kelasId}) async {
+  static Future<Map<String, dynamic>> getNilai({
+    String? mapelId,
+    String? semesterId,
+    String? kelasId,
+  }) async {
     final params = <String, dynamic>{};
     if (mapelId != null) params['mapelId'] = mapelId;
     if (semesterId != null) params['semesterId'] = semesterId;
@@ -436,14 +562,22 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getNilaiSiswa(String siswaId, {String? semesterId}) async {
+  static Future<Map<String, dynamic>> getNilaiSiswa(
+    String siswaId, {
+    String? semesterId,
+  }) async {
     final params = <String, dynamic>{};
     if (semesterId != null) params['semesterId'] = semesterId;
-    final response = await _client.get('/nilai/siswa/$siswaId', queryParameters: params);
+    final response = await _client.get(
+      '/nilai/siswa/$siswaId',
+      queryParameters: params,
+    );
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> saveNilaiBatch(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> saveNilaiBatch(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/nilai/batch', data: data);
     return response.data;
   }
@@ -452,7 +586,9 @@ class ApiService {
   // JURNAL MENGAJAR
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> createJurnal(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createJurnal(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/jurnal', data: data);
     return response.data;
   }
@@ -462,12 +598,18 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> checkJurnal(String jadwalId, String tanggal) async {
+  static Future<Map<String, dynamic>> checkJurnal(
+    String jadwalId,
+    String tanggal,
+  ) async {
     final response = await _client.get('/jurnal/check/$jadwalId/$tanggal');
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateJurnal(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateJurnal(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/jurnal/$id', data: data);
     return response.data;
   }
@@ -481,20 +623,34 @@ class ApiService {
   // CATATAN AKADEMIK
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> upsertCatatanAkademik(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> upsertCatatanAkademik(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/catatan-akademik', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getCatatanSiswa(String siswaId, {String? semesterId}) async {
+  static Future<Map<String, dynamic>> getCatatanSiswa(
+    String siswaId, {
+    String? semesterId,
+  }) async {
     final params = <String, dynamic>{};
     if (semesterId != null) params['semesterId'] = semesterId;
-    final response = await _client.get('/catatan-akademik/siswa/$siswaId', queryParameters: params);
+    final response = await _client.get(
+      '/catatan-akademik/siswa/$siswaId',
+      queryParameters: params,
+    );
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getCatatanKelas(String kelasId, String semesterId) async {
-    final response = await _client.get('/catatan-akademik/kelas/$kelasId', queryParameters: {'semesterId': semesterId});
+  static Future<Map<String, dynamic>> getCatatanKelas(
+    String kelasId,
+    String semesterId,
+  ) async {
+    final response = await _client.get(
+      '/catatan-akademik/kelas/$kelasId',
+      queryParameters: {'semesterId': semesterId},
+    );
     return response.data;
   }
 
@@ -502,7 +658,10 @@ class ApiService {
   // E-RAPOR
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> previewRapor(String siswaId, String semesterId) async {
+  static Future<Map<String, dynamic>> previewRapor(
+    String siswaId,
+    String semesterId,
+  ) async {
     final response = await _client.get('/rapor/preview/$siswaId/$semesterId');
     return response.data;
   }
@@ -511,8 +670,6 @@ class ApiService {
   static String getRaporPdfUrl(String siswaId, String semesterId) {
     return 'http://localhost:3001/api/rapor/$siswaId/$semesterId';
   }
-
-
 
   // ═══════════════════════════════════════════
   // CMS / KONTEN PUBLIK
@@ -532,12 +689,17 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> createContent(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createContent(
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.post('/cms', data: data);
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> updateContent(String id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateContent(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client.put('/cms/$id', data: data);
     return response.data;
   }
@@ -557,7 +719,11 @@ class ApiService {
   // ═══════════════════════════════════════════
 
   static Future<Map<String, dynamic>> uploadAvatar(String filePath) async {
-    final response = await _client.uploadFile('/upload/avatar', filePath: filePath, fieldName: 'avatar');
+    final response = await _client.uploadFile(
+      '/upload/avatar',
+      filePath: filePath,
+      fieldName: 'avatar',
+    );
     return response.data;
   }
 
@@ -571,7 +737,32 @@ class ApiService {
   // ═══════════════════════════════════════════
 
   static Future<Map<String, dynamic>> importUsers(String filePath) async {
-    final response = await _client.uploadFile('/import/users', filePath: filePath, fieldName: 'file');
+    final response = await _client.uploadFile(
+      '/import/users',
+      filePath: filePath,
+      fieldName: 'file',
+    );
     return response.data;
+  }
+
+  static Future<Map<String, dynamic>> importUsersFile(
+    List<int> bytes,
+    String filename,
+  ) async {
+    final response = await _client.uploadBytes(
+      '/import/users',
+      bytes: bytes,
+      filename: filename,
+      fieldName: 'file',
+    );
+    return response.data;
+  }
+
+  static Future<List<int>> exportUsers({String format = 'csv'}) async {
+    final response = await _client.downloadBytes(
+      '/import/users/export',
+      queryParameters: {'format': format},
+    );
+    return response.data ?? <int>[];
   }
 }
