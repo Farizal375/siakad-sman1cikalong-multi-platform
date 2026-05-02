@@ -217,6 +217,7 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage>
           // Header
           const Text(
             'Masuk ke Akun',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -224,8 +225,9 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage>
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'Gunakan akun siswa yang diberikan sekolah',
+            textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.gray500),
           ),
           const SizedBox(height: 24),

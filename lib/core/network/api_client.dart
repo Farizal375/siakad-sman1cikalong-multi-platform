@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiClient {
   // Use current machine IP for physical Android device, localhost for web/desktop
   // Run `hostname -I` to get current IP if login fails on mobile
-  static const String _defaultBaseUrl = 'http://192.168.1.50:3001/api';
+  static const String _defaultBaseUrl = 'http://10.140.173.125:3001/api';
   static const String _webBaseUrl = 'http://localhost:3001/api';
 
   static final ApiClient _instance = ApiClient._internal();

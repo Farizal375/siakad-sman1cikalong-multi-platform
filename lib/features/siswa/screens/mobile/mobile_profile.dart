@@ -2,7 +2,7 @@
 // ===========================================
 // MOBILE STUDENT PROFILE (FR-07)
 // Single-column profile with logout
-// Connected to /profile API
+// Connected to /profile API + /dashboard/siswa for kelas + /jadwal for mapel
 // ===========================================
 
 import 'package:flutter/material.dart';
@@ -33,7 +33,6 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
   String _religion = 'Islam';
   String _email = '';
   String _nisn = '';
-  String _kelas = '-';
   String _initials = '';
 
   @override
@@ -46,17 +45,45 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
     try {
       final response = await ApiService.getProfile();
       final data = response['data'] ?? {};
+
+      // Build alamat from individual fields
+      final parts = <String>[];
+      if ((data['detailAlamat'] ?? '').toString().isNotEmpty) {
+        parts.add(data['detailAlamat']);
+      }
+      final rt = data['rt'] ?? '';
+      final rw = data['rw'] ?? '';
+      if (rt.toString().isNotEmpty || rw.toString().isNotEmpty) {
+        parts.add('RT $rt / RW $rw');
+      }
+      if ((data['kelurahan'] ?? '').toString().isNotEmpty) {
+        parts.add('Kel. ${data['kelurahan']}');
+      }
+      if ((data['kecamatan'] ?? '').toString().isNotEmpty) {
+        parts.add('Kec. ${data['kecamatan']}');
+      }
+      if ((data['kotaKabupaten'] ?? '').toString().isNotEmpty) {
+        parts.add(data['kotaKabupaten']);
+      }
+      if ((data['provinsi'] ?? '').toString().isNotEmpty) {
+        parts.add(data['provinsi']);
+      }
+      final alamat = parts.join(', ');
+
       if (mounted) {
         setState(() {
           _email = data['email'] ?? '';
           _nisn = data['nomorInduk'] ?? '';
-          _kelas = data['kelas'] ?? '-';
           _fullNameCtrl.text = data['namaLengkap'] ?? '';
           _motherCtrl.text = data['namaIbuKandung'] ?? '';
           _birthPlaceCtrl.text = data['tempatLahir'] ?? '';
-          _gender = data['jenisKelamin'] ?? 'Laki-laki';
-          _religion = data['agama'] ?? 'Islam';
-          _addressCtrl.text = data['alamat'] ?? '';
+          _gender = (data['jenisKelamin'] ?? '').toString().isNotEmpty
+              ? data['jenisKelamin']
+              : 'Laki-laki';
+          _religion = (data['agama'] ?? '').toString().isNotEmpty
+              ? data['agama']
+              : 'Islam';
+          _addressCtrl.text = alamat;
           final names = (data['namaLengkap'] ?? '').toString().split(' ');
           _initials = names.length >= 2
               ? '${names[0][0]}${names[1][0]}'.toUpperCase()
@@ -78,13 +105,12 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         'tempatLahir': _birthPlaceCtrl.text,
         'jenisKelamin': _gender,
         'agama': _religion,
-        'alamat': _addressCtrl.text,
+        'detailAlamat': _addressCtrl.text,
       });
       if (mounted) {
         setState(() { _saving = false; _editing = false; });
-        // Sinkronisasi nama ke authProvider agar TopBar ikut berubah
+        // Sync name to authProvider so TopBar updates
         await ref.read(authProvider.notifier).updateUserName(_fullNameCtrl.text);
-        // Perbarui inisial avatar
         final names = _fullNameCtrl.text.split(' ');
         if (mounted) {
           setState(() {
@@ -170,6 +196,9 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
     final isDark = theme.brightness == Brightness.dark;
     final fgColor = isDark ? Colors.white : AppColors.foreground;
 
+    // Get kelas from dashboard provider (not profile API)
+    final kelas = ref.watch(studentClassNameProvider);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       children: [
@@ -189,7 +218,7 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-            child: Text('Kelas $_kelas', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+            child: Text('Kelas $kelas', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
           ),
         ])),
         const SizedBox(height: 24),
@@ -198,7 +227,7 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         _sectionCard('Informasi Akun', Icons.person_outline, [
           _infoRow('Email', _email, Icons.email_outlined),
           _infoRow('NISN', _nisn, Icons.badge_outlined),
-          _infoRow('Kelas', _kelas, Icons.class_outlined),
+          _infoRow('Kelas', kelas, Icons.class_outlined),
         ]),
         const SizedBox(height: 16),
 
@@ -284,7 +313,7 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
                 onChanged: (val) {
                   ref.read(themeProvider.notifier).toggleTheme(val);
                 },
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
@@ -313,6 +342,7 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
   Widget _sectionCard(String title, IconData icon, List<Widget> children, {Widget? trailing}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final fgColor = isDark ? Colors.white : AppColors.foreground;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -324,7 +354,7 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         Row(children: [
           Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(width: 8),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.foreground))),
+          Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: fgColor))),
           if (trailing != null) trailing,
         ]),
         const SizedBox(height: 14),
@@ -345,7 +375,6 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       ]),
     );
   }
-
   Widget _editField(String label, TextEditingController ctrl, {int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -367,8 +396,9 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
   }
 
   Widget _dropdownField(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
+    final currentValue = items.contains(value) ? value : items.first;
     return DropdownButtonFormField<String>(
-      value: items.contains(value) ? value : items.first,
+      initialValue: currentValue,
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: onChanged,
       decoration: InputDecoration(

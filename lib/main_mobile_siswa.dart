@@ -13,9 +13,10 @@ import 'core/theme/app_colors.dart';
 import 'features/auth/screens/mobile_login_page.dart';
 import 'features/siswa/screens/mobile/mobile_dashboard.dart';
 import 'features/siswa/screens/mobile/mobile_schedule.dart';
-import 'features/siswa/screens/mobile/mobile_qr_scanner.dart';
+import 'features/siswa/screens/mobile/mobile_riwayat_kehadiran.dart';
 import 'features/siswa/screens/mobile/mobile_hasil_studi.dart';
 import 'features/siswa/screens/mobile/mobile_profile.dart';
+import 'features/siswa/screens/mobile/mobile_top_bar.dart';
 import 'shared_widgets/not_found_page.dart';
 import 'core/providers/theme_provider.dart';
 
@@ -50,13 +51,13 @@ final _mobileRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const MobileSchedule(),
               ),
               GoRoute(
-                path: 'absensi-qr',
-                name: 'siswa-qr',
-                builder: (context, state) => const MobileQRScanner(),
+                path: 'presensi',
+                name: 'siswa-presensi',
+                builder: (context, state) => const MobileRiwayatKehadiran(),
               ),
               GoRoute(
-                path: 'hasil-studi',
-                name: 'siswa-hasil',
+                path: 'rapor',
+                name: 'siswa-rapor',
                 builder: (context, state) => const MobileHasilStudi(),
               ),
               GoRoute(
@@ -79,7 +80,7 @@ void main() {
   // Set system UI overlay style for mobile
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
     systemNavigationBarColor: Colors.white,
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
@@ -108,18 +109,18 @@ class SiakadMobileSiswa extends ConsumerWidget {
 
 // ══════════════════════════════════════════════════════
 // STUDENT MOBILE LAYOUT
-// Professional bottom navigation with floating QR button
+// 4-tab bottom nav: Beranda, Jadwal, Presensi, Rapor
+// TopBar header on every page
 // ══════════════════════════════════════════════════════
 class StudentMobileLayout extends StatelessWidget {
   final Widget child;
   const StudentMobileLayout({super.key, required this.child});
 
   static const _tabs = [
-    (path: '/siswa/dashboard', icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Beranda'),
+    (path: '/siswa/dashboard', icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view_rounded, label: 'Beranda'),
     (path: '/siswa/jadwal', icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Jadwal'),
-    (path: '/siswa/absensi-qr', icon: Icons.qr_code_scanner_outlined, activeIcon: Icons.qr_code_scanner, label: 'Scan QR'),
-    (path: '/siswa/hasil-studi', icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: 'Nilai'),
-    (path: '/siswa/profil', icon: Icons.person_outline, activeIcon: Icons.person_rounded, label: 'Profil'),
+    (path: '/siswa/presensi', icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check_rounded, label: 'Presensi'),
+    (path: '/siswa/rapor', icon: Icons.menu_book_outlined, activeIcon: Icons.menu_book_rounded, label: 'Rapor'),
   ];
 
   int _getSelectedIndex(BuildContext context) {
@@ -129,8 +130,8 @@ class StudentMobileLayout extends StatelessWidget {
         return i;
       }
     }
-    // Default to Beranda for /siswa
-    if (path == '/siswa' || path == '/siswa/') return 0;
+    // Default to Beranda for /siswa and /siswa/profil
+    if (path == '/siswa' || path == '/siswa/' || path == '/siswa/profil') return -1;
     return 0;
   }
 
@@ -142,14 +143,28 @@ class StudentMobileLayout extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(child: child),
+      body: Column(
+        children: [
+          // ── Top Bar ──
+          const MobileTopBar(),
+
+          // ── Page Content ──
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: theme.bottomNavigationBarTheme.backgroundColor ?? Colors.white,
+          color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
           boxShadow: [
             BoxShadow(
-              color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
               offset: const Offset(0, -4),
             ),
           ],
@@ -157,21 +172,18 @@ class StudentMobileLayout extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: 68,
+            height: 72,
             child: Row(
               children: _tabs.asMap().entries.map((entry) {
                 final i = entry.key;
                 final tab = entry.value;
                 final isSelected = selectedIndex == i;
-                final isCenter = i == 2; // QR Scan button
 
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => context.go(tab.path),
                     behavior: HitTestBehavior.opaque,
-                    child: isCenter
-                        ? _buildCenterButton(context, isSelected)
-                        : _buildNavItem(tab, isSelected),
+                    child: _buildNavItem(context, tab, isSelected, isDark),
                   ),
                 );
               }).toList(),
@@ -183,74 +195,42 @@ class StudentMobileLayout extends StatelessWidget {
   }
 
   Widget _buildNavItem(
+    BuildContext context,
     ({String path, IconData icon, IconData activeIcon, String label}) tab,
     bool isSelected,
+    bool isDark,
   ) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isSelected ? tab.activeIcon : tab.icon,
-              size: 22,
-              color: isSelected ? AppColors.primary : AppColors.gray400,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            tab.label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-              color: isSelected ? AppColors.primary : AppColors.gray400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCenterButton(BuildContext context, bool isSelected) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          width: 48,
-          height: 48,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          width: isSelected ? 48 : 40,
+          height: isSelected ? 32 : 28,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isSelected
-                  ? [AppColors.accent, AppColors.accentHover]
-                  : [AppColors.primary, const Color(0xFF2563EB)],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: (isSelected ? AppColors.accent : AppColors.primary).withValues(alpha: 0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
+          child: Icon(
+            isSelected ? tab.activeIcon : tab.icon,
+            size: isSelected ? 24 : 22,
+            color: isSelected
+                ? AppColors.primary
+                : (isDark ? AppColors.gray400 : AppColors.gray400),
+          ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
-          'Scan QR',
+          tab.label,
           style: TextStyle(
             fontSize: 11,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.accent : AppColors.gray500,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+            color: isSelected
+                ? AppColors.primary
+                : (isDark ? AppColors.gray500 : AppColors.gray400),
           ),
         ),
       ],

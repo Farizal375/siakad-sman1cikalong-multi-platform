@@ -484,8 +484,16 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getKehadiranSiswa(String siswaId) async {
-    final response = await _client.get('/kehadiran/siswa/$siswaId');
+  static Future<Map<String, dynamic>> getKehadiranSiswa(
+    String siswaId, [
+    String? semesterId,
+  ]) async {
+    final params = <String, dynamic>{};
+    if (semesterId != null) params['semesterId'] = semesterId;
+    final response = await _client.get(
+      '/kehadiran/siswa/$siswaId',
+      queryParameters: params,
+    );
     return response.data;
   }
 
@@ -669,6 +677,19 @@ class ApiService {
   /// Returns the URL for downloading the PDF rapor
   static String getRaporPdfUrl(String siswaId, String semesterId) {
     return 'http://localhost:3001/api/rapor/$siswaId/$semesterId';
+  }
+
+  static Future<List<int>> downloadRaporPdf(
+    String siswaId,
+    String semesterId,
+  ) async {
+    final response = await _client.downloadBytes('/rapor/$siswaId/$semesterId');
+    return response.data ?? <int>[];
+  }
+
+  static Future<List<int>> downloadTranskripPdf(String siswaId) async {
+    final response = await _client.downloadBytes('/rapor/transkrip/$siswaId');
+    return response.data ?? <int>[];
   }
 
   // ═══════════════════════════════════════════

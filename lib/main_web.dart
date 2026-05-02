@@ -39,6 +39,7 @@ import 'features/guru/screens/cetak_rapor.dart';
 import 'features/guru/screens/student_deep_dive.dart';
 import 'features/siswa/screens/student_layout.dart';
 import 'features/siswa/screens/student_dashboard.dart';
+import 'features/siswa/screens/student_schedule.dart';
 import 'features/siswa/screens/qr_scanner.dart';
 import 'features/siswa/screens/hasil_studi.dart';
 import 'features/siswa/screens/riwayat_kehadiran.dart';
@@ -76,38 +77,32 @@ final _routerProvider = Provider<GoRouter>((ref) {
       // ── Admin Routes ──
       ShellRoute(
         redirect: (context, state) => roleRedirect(state, [UserRole.admin]),
-        builder: (context, state, child) =>
-            DashboardLayout(child: child),
+        builder: (context, state, child) => DashboardLayout(child: child),
         routes: [
           GoRoute(
             path: '/dashboard',
             name: 'admin-dashboard',
-            builder: (context, state) =>
-                const DashboardOverview(),
+            builder: (context, state) => const DashboardOverview(),
             routes: [
               GoRoute(
                 path: 'users',
                 name: 'admin-users',
-                builder: (context, state) =>
-                    const UserManagement(),
+                builder: (context, state) => const UserManagement(),
               ),
               GoRoute(
                 path: 'cms',
                 name: 'admin-cms',
-                builder: (context, state) =>
-                    const PublicCMS(),
+                builder: (context, state) => const PublicCMS(),
               ),
               GoRoute(
                 path: 'master-data',
                 name: 'admin-master-data',
-                builder: (context, state) =>
-                    const MasterData(),
+                builder: (context, state) => const MasterData(),
               ),
               GoRoute(
                 path: 'profile',
                 name: 'admin-profile',
-                builder: (context, state) =>
-                    const UserProfileScreen(),
+                builder: (context, state) => const UserProfileScreen(),
               ),
             ],
           ),
@@ -116,57 +111,49 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // ── Kurikulum Routes ──
       ShellRoute(
-        redirect: (context, state) => roleRedirect(state, [UserRole.curriculum]),
-        builder: (context, state, child) =>
-            CurriculumLayout(child: child),
+        redirect: (context, state) =>
+            roleRedirect(state, [UserRole.curriculum]),
+        builder: (context, state, child) => CurriculumLayout(child: child),
         routes: [
           GoRoute(
             path: '/curriculum',
             name: 'curriculum-home',
-            builder: (context, state) =>
-                const CurriculumDashboard(),
+            builder: (context, state) => const CurriculumDashboard(),
             routes: [
               GoRoute(
                 path: 'dashboard',
                 name: 'curriculum-dashboard',
-                builder: (context, state) =>
-                    const CurriculumDashboard(),
+                builder: (context, state) => const CurriculumDashboard(),
               ),
               GoRoute(
                 path: 'master-mapel',
                 name: 'curriculum-mapel',
-                builder: (context, state) =>
-                    const MasterMapel(),
+                builder: (context, state) => const MasterMapel(),
               ),
               GoRoute(
                 path: 'manajemen-rombel',
                 name: 'curriculum-rombel',
-                builder: (context, state) =>
-                    const ManajemenRombel(),
+                builder: (context, state) => const ManajemenRombel(),
               ),
               GoRoute(
                 path: 'master-akademik',
                 name: 'curriculum-akademik',
-                builder: (context, state) =>
-                    const MasterAkademik(),
+                builder: (context, state) => const MasterAkademik(),
               ),
               GoRoute(
                 path: 'jadwal-pelajaran',
                 name: 'curriculum-jadwal',
-                builder: (context, state) =>
-                    const JadwalPelajaran(),
+                builder: (context, state) => const JadwalPelajaran(),
               ),
               GoRoute(
                 path: 'profile',
                 name: 'curriculum-profile',
-                builder: (context, state) =>
-                    const CurriculumProfile(),
+                builder: (context, state) => const CurriculumProfile(),
               ),
               GoRoute(
                 path: 'migrasi-kelas',
                 name: 'curriculum-migrasi',
-                builder: (context, state) =>
-                    const MigrasiKelasWizard(),
+                builder: (context, state) => const MigrasiKelasWizard(),
               ),
             ],
           ),
@@ -176,8 +163,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
       // ── Guru & Wali Kelas Routes ──
       ShellRoute(
         redirect: (context, state) => roleRedirect(state, [UserRole.teacher]),
-        builder: (context, state, child) =>
-            TeacherLayout(child: child),
+        builder: (context, state, child) => TeacherLayout(child: child),
         routes: [
           GoRoute(
             path: '/guru',
@@ -202,8 +188,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'kelas/:classId',
                 name: 'guru-kelas-detail',
-                builder: (context, state) => ClassDetail(
-                    classId: state.pathParameters['classId'] ?? ''),
+                builder: (context, state) =>
+                    ClassDetail(classId: state.pathParameters['classId'] ?? ''),
               ),
               GoRoute(
                 path: 'kelas-wali',
@@ -239,7 +225,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 path: 'rapor-detail/:studentId',
                 name: 'guru-rapor-detail',
                 builder: (context, state) => StudentDeepDive(
-                    studentId: state.pathParameters['studentId']),
+                  studentId: state.pathParameters['studentId'],
+                ),
               ),
             ],
           ),
@@ -249,8 +236,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
       // ── Siswa Routes ──
       ShellRoute(
         redirect: (context, state) => roleRedirect(state, [UserRole.student]),
-        builder: (context, state, child) =>
-            StudentLayout(child: child),
+        builder: (context, state, child) => StudentLayout(child: child),
         routes: [
           GoRoute(
             path: '/siswa',
@@ -263,18 +249,33 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const StudentDashboard(),
               ),
               GoRoute(
+                path: 'jadwal',
+                name: 'siswa-jadwal',
+                builder: (context, state) => const StudentSchedule(),
+              ),
+              GoRoute(
+                path: 'presensi',
+                name: 'siswa-presensi',
+                builder: (context, state) => const RiwayatKehadiran(),
+              ),
+              GoRoute(
+                path: 'rapor',
+                name: 'siswa-rapor',
+                builder: (context, state) => const HasilStudi(),
+              ),
+              GoRoute(
                 path: 'absensi-qr',
                 name: 'siswa-qr',
                 builder: (context, state) => const QRScanner(),
               ),
               GoRoute(
                 path: 'hasil-studi',
-                name: 'siswa-hasil',
+                name: 'siswa-hasil-legacy',
                 builder: (context, state) => const HasilStudi(),
               ),
               GoRoute(
                 path: 'riwayat-kehadiran',
-                name: 'siswa-kehadiran',
+                name: 'siswa-kehadiran-legacy',
                 builder: (context, state) => const RiwayatKehadiran(),
               ),
               GoRoute(
@@ -294,9 +295,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
 });
 
 void main() {
-  runApp(
-    const ProviderScope(child: SiakadWebApp()),
-  );
+  runApp(const ProviderScope(child: SiakadWebApp()));
 }
 
 class SiakadWebApp extends ConsumerWidget {
@@ -314,5 +313,3 @@ class SiakadWebApp extends ConsumerWidget {
     );
   }
 }
-
-
