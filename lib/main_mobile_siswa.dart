@@ -8,9 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/config/supabase_config.dart';
+import 'core/models/user.dart';
+import 'core/providers/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/screens/mobile_login_page.dart';
+import 'features/auth/screens/forgot_password_page.dart';
 import 'features/siswa/screens/mobile/mobile_dashboard.dart';
 import 'features/siswa/screens/mobile/mobile_schedule.dart';
 import 'features/siswa/screens/mobile/mobile_riwayat_kehadiran.dart';
@@ -21,6 +25,13 @@ import 'shared_widgets/not_found_page.dart';
 import 'core/providers/theme_provider.dart';
 
 final _mobileRouterProvider = Provider<GoRouter>((ref) {
+  String? studentRedirect() {
+    final user = ref.read(authProvider).valueOrNull;
+    if (user == null) return '/login';
+    if (user.role != UserRole.student) return '/login';
+    return null;
+  }
+
   return GoRouter(
     initialLocation: '/login',
     routes: [
@@ -28,11 +39,21 @@ final _mobileRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
+        redirect: (context, state) {
+          final user = ref.read(authProvider).valueOrNull;
+          return user?.role == UserRole.student ? '/siswa/dashboard' : null;
+        },
         builder: (context, state) => const MobileLoginPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordPage(),
       ),
 
       // ── Siswa Routes (BottomNav layout) ──
       ShellRoute(
+        redirect: (context, state) => studentRedirect(),
         builder: (context, state, child) => StudentMobileLayout(child: child),
         routes: [
           GoRoute(
@@ -74,16 +95,19 @@ final _mobileRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseConfig.initialize();
 
   // Set system UI overlay style for mobile
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Colors.white,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
 
   runApp(const ProviderScope(child: SiakadMobileSiswa()));
 }
@@ -117,10 +141,30 @@ class StudentMobileLayout extends StatelessWidget {
   const StudentMobileLayout({super.key, required this.child});
 
   static const _tabs = [
-    (path: '/siswa/dashboard', icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view_rounded, label: 'Beranda'),
-    (path: '/siswa/jadwal', icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Jadwal'),
-    (path: '/siswa/presensi', icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check_rounded, label: 'Presensi'),
-    (path: '/siswa/rapor', icon: Icons.menu_book_outlined, activeIcon: Icons.menu_book_rounded, label: 'Rapor'),
+    (
+      path: '/siswa/dashboard',
+      icon: Icons.grid_view_outlined,
+      activeIcon: Icons.grid_view_rounded,
+      label: 'Beranda',
+    ),
+    (
+      path: '/siswa/jadwal',
+      icon: Icons.calendar_month_outlined,
+      activeIcon: Icons.calendar_month_rounded,
+      label: 'Jadwal',
+    ),
+    (
+      path: '/siswa/presensi',
+      icon: Icons.fact_check_outlined,
+      activeIcon: Icons.fact_check_rounded,
+      label: 'Presensi',
+    ),
+    (
+      path: '/siswa/rapor',
+      icon: Icons.menu_book_outlined,
+      activeIcon: Icons.menu_book_rounded,
+      label: 'Rapor',
+    ),
   ];
 
   int _getSelectedIndex(BuildContext context) {
@@ -131,7 +175,9 @@ class StudentMobileLayout extends StatelessWidget {
       }
     }
     // Default to Beranda for /siswa and /siswa/profil
-    if (path == '/siswa' || path == '/siswa/' || path == '/siswa/profil') return -1;
+    if (path == '/siswa' || path == '/siswa/' || path == '/siswa/profil') {
+      return -1;
+    }
     return 0;
   }
 

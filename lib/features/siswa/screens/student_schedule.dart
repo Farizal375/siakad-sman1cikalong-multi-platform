@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/student_providers.dart';
 
@@ -54,7 +55,7 @@ class _StudentScheduleState extends ConsumerState<StudentSchedule> {
     try {
       final dashboard = await ref.read(studentDashboardProvider.future);
       final kelasId = dashboard['kelasId'] as String?;
-      if (kelasId == null) {
+      if (kelasId == null || kelasId.trim().isEmpty) {
         if (mounted) {
           setState(() => _scheduleByDay = _emptySchedule());
         }
@@ -116,6 +117,12 @@ class _StudentScheduleState extends ConsumerState<StudentSchedule> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != next && next != null) {
+        _load();
+      }
+    });
+
     final kelasName = ref.watch(studentClassNameProvider);
     final selectedDayName = _days[_selectedDay];
 

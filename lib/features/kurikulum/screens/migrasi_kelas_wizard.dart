@@ -54,7 +54,9 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   }
 
   Future<void> _execute() async {
-    final errorMsg = await ref.read(migrasiProvider.notifier).executePromotion();
+    final errorMsg = await ref
+        .read(migrasiProvider.notifier)
+        .executePromotion();
     if (mounted) {
       if (errorMsg == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,7 +70,9 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
             ),
             backgroundColor: AppColors.green600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       } else {
@@ -77,7 +81,9 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
             content: Text(errorMsg),
             backgroundColor: AppColors.destructive,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -96,9 +102,10 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
         const Text(
           'Wizard Kenaikan Kelas',
           style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -115,7 +122,10 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
-                    color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4)),
+                  color: Color(0x15000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
               ],
             ),
             child: state.isDone
@@ -128,8 +138,9 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                       if (_currentStep == 0 && !_canProceedToStep2(state)) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content: Text('Pilih Tahun Ajaran dan Rombel Asal'),
-                              backgroundColor: AppColors.destructive),
+                            content: Text('Pilih Tahun Ajaran dan Rombel Asal'),
+                            backgroundColor: AppColors.destructive,
+                          ),
                         );
                         return;
                       }
@@ -137,18 +148,22 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                         if (!_canProceedToStep4(state)) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content:
-                                    Text('Pilih Tahun Ajaran dan Rombel Tujuan'),
-                                backgroundColor: AppColors.destructive),
+                              content: Text(
+                                'Pilih Tahun Ajaran dan Rombel Tujuan',
+                              ),
+                              backgroundColor: AppColors.destructive,
+                            ),
                           );
                           return;
                         }
                         if (state.rombelAsalId == state.rombelTujuanId) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content:
-                                    Text('Rombel Asal dan Rombel Tujuan tidak boleh sama!'),
-                                backgroundColor: AppColors.destructive),
+                              content: Text(
+                                'Rombel Asal dan Rombel Tujuan tidak boleh sama!',
+                              ),
+                              backgroundColor: AppColors.destructive,
+                            ),
                           );
                           return;
                         }
@@ -169,32 +184,45 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                                 onPressed: details.onStepCancel,
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                                 child: const Text('Kembali'),
                               ),
                             if (_currentStep > 0) const SizedBox(width: 16),
                             ElevatedButton(
-                              onPressed: state.isProcessing ? null : details.onStepContinue,
+                              onPressed: state.isProcessing
+                                  ? null
+                                  : details.onStepContinue,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 32, vertical: 12),
+                                  horizontal: 32,
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                               child: state.isProcessing && _currentStep == 3
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
                                       child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white))
-                                  : Text(_currentStep == 3
-                                      ? 'Eksekusi Migrasi'
-                                      : 'Lanjut'),
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      _currentStep == 3
+                                          ? 'Eksekusi Migrasi'
+                                          : 'Lanjut',
+                                    ),
                             ),
                           ],
                         ),
@@ -246,27 +274,38 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   Widget _buildStep1(MigrasiState state, MigrasiNotifier notifier) {
     final tas = state.tahunAjaranList;
     final rombels = state.tahunAjaranLamaId != null
-        ? state.rombelList.where((r) => r['tahunAjaranId'].toString() == state.tahunAjaranLamaId).toList()
+        ? state.rombelList
+              .where(
+                (r) => r['tahunAjaranId'].toString() == state.tahunAjaranLamaId,
+              )
+              .toList()
         : <dynamic>[];
 
     if (state.isLoadingData) {
-      return const Center(child: Padding(
-        padding: EdgeInsets.all(32.0),
-        child: CircularProgressIndicator(),
-      ));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Pilih Rombel Asal',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.foreground)),
+        const Text(
+          'Pilih Rombel Asal',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.foreground,
+          ),
+        ),
         const SizedBox(height: 8),
-        const Text('Tentukan dari rombel mana siswa akan dipromosikan.',
-            style: TextStyle(color: AppColors.gray600)),
+        const Text(
+          'Tentukan dari rombel mana siswa akan dipromosikan.',
+          style: TextStyle(color: AppColors.gray600),
+        ),
         const SizedBox(height: 24),
         Row(
           children: [
@@ -274,13 +313,22 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Tahun Ajaran Asal',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Text(
+                    'Tahun Ajaran Asal',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: state.tahunAjaranLamaId,
-                    items: tas.map((e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(), child: Text((e['code'] ?? e['kode'] ?? '').toString())))
+                    items: tas
+                        .map(
+                          (e) => DropdownMenuItem<String>(
+                            value: e['id'].toString(),
+                            child: Text(
+                              (e['code'] ?? e['kode'] ?? '').toString(),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => notifier.setTahunAjaranLama(v!),
                     decoration: _inputDeco('Pilih Tahun Ajaran Asal'),
@@ -293,18 +341,32 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Rombel Asal',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Text(
+                    'Rombel Asal',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: state.rombelAsalId,
                     items: rombels.isEmpty && state.tahunAjaranLamaId != null
-                        ? [const DropdownMenuItem<String>(value: '', child: Text('Belum ada data rombel'))]
-                        : rombels.map((e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text('${e['masterKelasName']} (${e['siswaCount']} Siswa)')))
-                            .toList(),
-                    onChanged: state.tahunAjaranLamaId == null || rombels.isEmpty
+                        ? [
+                            const DropdownMenuItem<String>(
+                              value: '',
+                              child: Text('Belum ada data rombel'),
+                            ),
+                          ]
+                        : rombels
+                              .map(
+                                (e) => DropdownMenuItem<String>(
+                                  value: e['id'].toString(),
+                                  child: Text(
+                                    '${e['masterKelasName']} (${e['siswaCount']} Siswa)',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    onChanged:
+                        state.tahunAjaranLamaId == null || rombels.isEmpty
                         ? null
                         : (v) => notifier.setRombelAsal(v!),
                     decoration: _inputDeco('Pilih Rombel Asal'),
@@ -325,27 +387,50 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Review Status Kenaikan',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.foreground)),
+        const Text(
+          'Review Status Kenaikan',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.foreground,
+          ),
+        ),
         const SizedBox(height: 8),
         const Text(
-            'Pastikan data keputusan dari Wali Kelas sudah benar. '
-            'Hanya siswa dengan status "Naik Kelas" yang akan dimigrasikan.',
-            style: TextStyle(color: AppColors.gray600)),
+          'Pastikan data keputusan dari Wali Kelas sudah benar. '
+          'Hanya siswa dengan status "Naik Kelas" yang akan dimigrasikan.',
+          style: TextStyle(color: AppColors.gray600),
+        ),
         const SizedBox(height: 24),
         Row(
           children: [
-            _buildStatCard('Total Siswa', '${state.siswaList.length}',
-                AppColors.blue50, AppColors.blue600),
+            _buildStatCard(
+              'Total Siswa',
+              '${state.siswaList.length}',
+              AppColors.blue50,
+              AppColors.blue600,
+            ),
             const SizedBox(width: 16),
-            _buildStatCard('Siap Naik Kelas', '${state.siswaNaik.length}',
-                AppColors.green50, AppColors.green600),
+            _buildStatCard(
+              'Siap Naik Kelas',
+              '${state.siswaNaik.length}',
+              AppColors.green50,
+              AppColors.green600,
+            ),
             const SizedBox(width: 16),
-            _buildStatCard('Tinggal Kelas', '${state.siswaTinggal.length}',
-                AppColors.red50, AppColors.destructive),
+            _buildStatCard(
+              'Tinggal Kelas',
+              '${state.siswaTinggal.length}',
+              AppColors.red50,
+              AppColors.destructive,
+            ),
+            const SizedBox(width: 16),
+            _buildStatCard(
+              'Perlu Cek',
+              '${state.siswaList.where((s) => s.status == StatusKenaikan.perluCek).length}',
+              AppColors.amber50,
+              AppColors.accent,
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -362,33 +447,47 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
             itemBuilder: (_, i) {
               final s = state.siswaList[i];
               final isNaik = s.status == StatusKenaikan.naik;
+              final isPerluCek = s.status == StatusKenaikan.perluCek;
+              final badgeColor = isPerluCek
+                  ? AppColors.accent
+                  : (isNaik ? AppColors.green600 : AppColors.destructive);
+              final badgeBg = isPerluCek
+                  ? AppColors.amber50
+                  : (isNaik ? AppColors.green50 : AppColors.red50);
+              final badgeText = isPerluCek
+                  ? 'Perlu Cek'
+                  : (isNaik ? 'Naik Kelas' : 'Tinggal Kelas');
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppColors.gray100,
-                  child: Text(s.nama[0],
-                      style: const TextStyle(color: AppColors.gray600)),
+                  child: Text(
+                    s.nama[0],
+                    style: const TextStyle(color: AppColors.gray600),
+                  ),
                 ),
-                title: Text(s.nama,
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                title: Text(
+                  s.nama,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
                 subtitle: Text('NISN: ${s.nisn}'),
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isNaik ? AppColors.green50 : AppColors.red50,
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(
-                        color: isNaik
-                            ? AppColors.green600
-                            : AppColors.destructive),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  child: Text(isNaik ? 'Naik Kelas' : 'Tinggal Kelas',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isNaik
-                              ? AppColors.green600
-                              : AppColors.destructive)),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: badgeColor),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                    ),
+                  ),
                 ),
               );
             },
@@ -402,20 +501,29 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   Widget _buildStep3(MigrasiState state, MigrasiNotifier notifier) {
     final tas = state.tahunAjaranList;
     final rombels = state.tahunAjaranBaruId != null
-        ? state.rombelList.where((r) => r['tahunAjaranId'].toString() == state.tahunAjaranBaruId).toList()
+        ? state.rombelList
+              .where(
+                (r) => r['tahunAjaranId'].toString() == state.tahunAjaranBaruId,
+              )
+              .toList()
         : <dynamic>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Pilih Rombel Tujuan',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.foreground)),
+        const Text(
+          'Pilih Rombel Tujuan',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.foreground,
+          ),
+        ),
         const SizedBox(height: 8),
-        const Text('Tentukan rombel baru untuk menampung siswa yang naik kelas.',
-            style: TextStyle(color: AppColors.gray600)),
+        const Text(
+          'Tentukan rombel baru untuk menampung siswa yang naik kelas.',
+          style: TextStyle(color: AppColors.gray600),
+        ),
         const SizedBox(height: 24),
         Row(
           children: [
@@ -423,13 +531,22 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Tahun Ajaran Baru',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Text(
+                    'Tahun Ajaran Baru',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: state.tahunAjaranBaruId,
-                    items: tas.map((e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(), child: Text((e['code'] ?? e['kode'] ?? '').toString())))
+                    items: tas
+                        .map(
+                          (e) => DropdownMenuItem<String>(
+                            value: e['id'].toString(),
+                            child: Text(
+                              (e['code'] ?? e['kode'] ?? '').toString(),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => notifier.setTahunAjaranBaru(v!),
                     decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
@@ -442,18 +559,32 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Rombel Tujuan',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Text(
+                    'Rombel Tujuan',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: state.rombelTujuanId,
                     items: rombels.isEmpty && state.tahunAjaranBaruId != null
-                        ? [const DropdownMenuItem<String>(value: '', child: Text('Belum ada data rombel'))]
-                        : rombels.map((e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text('${e['masterKelasName']} (${e['siswaCount']} Siswa saat ini)')))
-                            .toList(),
-                    onChanged: state.tahunAjaranBaruId == null || rombels.isEmpty
+                        ? [
+                            const DropdownMenuItem<String>(
+                              value: '',
+                              child: Text('Belum ada data rombel'),
+                            ),
+                          ]
+                        : rombels
+                              .map(
+                                (e) => DropdownMenuItem<String>(
+                                  value: e['id'].toString(),
+                                  child: Text(
+                                    '${e['masterKelasName']} (${e['siswaCount']} Siswa saat ini)',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    onChanged:
+                        state.tahunAjaranBaruId == null || rombels.isEmpty
                         ? null
                         : (v) => notifier.setRombelTujuan(v!),
                     decoration: _inputDeco('Pilih Rombel Tujuan'),
@@ -471,33 +602,53 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   Widget _buildStep4(MigrasiState state) {
     // Extract readable names
     final taAsalObj = state.tahunAjaranList.firstWhere(
-        (e) => e['id'].toString() == state.tahunAjaranLamaId, orElse: () => null);
-    final taAsalName = taAsalObj != null ? (taAsalObj['code'] ?? taAsalObj['kode'] ?? '-') : '-';
-    
+      (e) => e['id'].toString() == state.tahunAjaranLamaId,
+      orElse: () => null,
+    );
+    final taAsalName = taAsalObj != null
+        ? (taAsalObj['code'] ?? taAsalObj['kode'] ?? '-')
+        : '-';
+
     final rombelAsalObj = state.rombelList.firstWhere(
-        (e) => e['id'].toString() == state.rombelAsalId, orElse: () => null);
-    final rombelAsalName = rombelAsalObj != null ? rombelAsalObj['masterKelasName'] ?? '-' : '-';
+      (e) => e['id'].toString() == state.rombelAsalId,
+      orElse: () => null,
+    );
+    final rombelAsalName = rombelAsalObj != null
+        ? rombelAsalObj['masterKelasName'] ?? '-'
+        : '-';
 
     final taTujuanObj = state.tahunAjaranList.firstWhere(
-        (e) => e['id'].toString() == state.tahunAjaranBaruId, orElse: () => null);
-    final taTujuanName = taTujuanObj != null ? (taTujuanObj['code'] ?? taTujuanObj['kode'] ?? '-') : '-';
-    
+      (e) => e['id'].toString() == state.tahunAjaranBaruId,
+      orElse: () => null,
+    );
+    final taTujuanName = taTujuanObj != null
+        ? (taTujuanObj['code'] ?? taTujuanObj['kode'] ?? '-')
+        : '-';
+
     final rombelTujuanObj = state.rombelList.firstWhere(
-        (e) => e['id'].toString() == state.rombelTujuanId, orElse: () => null);
-    final rombelTujuanName = rombelTujuanObj != null ? rombelTujuanObj['masterKelasName'] ?? '-' : '-';
+      (e) => e['id'].toString() == state.rombelTujuanId,
+      orElse: () => null,
+    );
+    final rombelTujuanName = rombelTujuanObj != null
+        ? rombelTujuanObj['masterKelasName'] ?? '-'
+        : '-';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Konfirmasi Migrasi',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.foreground)),
+        const Text(
+          'Konfirmasi Migrasi',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.foreground,
+          ),
+        ),
         const SizedBox(height: 8),
         const Text(
-            'Periksa kembali ringkasan migrasi di bawah ini. Proses ini akan membuat riwayat RombelSiswa yang baru.',
-            style: TextStyle(color: AppColors.gray600)),
+          'Periksa kembali ringkasan migrasi di bawah ini. Proses ini akan membuat riwayat RombelSiswa yang baru.',
+          style: TextStyle(color: AppColors.gray600),
+        ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(24),
@@ -512,15 +663,19 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('SUMBER',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.amber600)),
+                    const Text(
+                      'SUMBER',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.amber600,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                        'Rombel: $rombelAsalName\nTahun Ajaran: $taAsalName',
-                        style: const TextStyle(fontWeight: FontWeight.w500)),
+                      'Rombel: $rombelAsalName\nTahun Ajaran: $taAsalName',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -530,15 +685,19 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('TUJUAN',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.amber600)),
+                    const Text(
+                      'TUJUAN',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.amber600,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                        'Rombel: $rombelTujuanName\nTahun Ajaran: $taTujuanName',
-                        style: const TextStyle(fontWeight: FontWeight.w500)),
+                      'Rombel: $rombelTujuanName\nTahun Ajaran: $taTujuanName',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -581,19 +740,29 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                  color: AppColors.green50, shape: BoxShape.circle),
-              child: const Icon(Icons.check_circle,
-                  color: AppColors.green600, size: 48),
+                color: AppColors.green50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: AppColors.green600,
+                size: 48,
+              ),
             ),
             const SizedBox(height: 24),
-            const Text('Migrasi Berhasil!',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.foreground)),
+            const Text(
+              'Migrasi Berhasil!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.foreground,
+              ),
+            ),
             const SizedBox(height: 8),
-            const Text('Siswa berhasil dipindahkan ke rombel baru.',
-                style: TextStyle(color: AppColors.gray600)),
+            const Text(
+              'Siswa berhasil dipindahkan ke rombel baru.',
+              style: TextStyle(color: AppColors.gray600),
+            ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
@@ -605,7 +774,10 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -619,17 +791,29 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: bg, borderRadius: BorderRadius.circular(12)),
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w700, color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -643,14 +827,17 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
       fillColor: AppColors.gray50,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.gray300)),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.gray300),
+      ),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.gray300)),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.gray300),
+      ),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
     );
   }
 }

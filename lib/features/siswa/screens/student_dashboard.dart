@@ -6,18 +6,20 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class StudentDashboard extends StatefulWidget {
+class StudentDashboard extends ConsumerStatefulWidget {
   const StudentDashboard({super.key});
 
   @override
-  State<StudentDashboard> createState() => _StudentDashboardState();
+  ConsumerState<StudentDashboard> createState() => _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> {
+class _StudentDashboardState extends ConsumerState<StudentDashboard> {
   bool _loading = true;
   Map<String, dynamic> _data = {};
 
@@ -43,6 +45,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != next && next != null) {
+        _loadDashboard();
+      }
+    });
+
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     final kelas = _data['kelas'] ?? '-';

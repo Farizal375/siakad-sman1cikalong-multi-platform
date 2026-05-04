@@ -96,7 +96,7 @@ class _State extends ConsumerState<MobileRiwayatKehadiran>
       final Map<String, Map<String, dynamic>> grouped = {};
 
       // 2. Fetch all subjects for this class from Jadwal to initialize 0%
-      if (kelasId != null) {
+      if (kelasId != null && kelasId.trim().isNotEmpty) {
         try {
           final jadwalRes = await ApiService.getJadwal(kelasId: kelasId);
           final List jadwalData = jadwalRes['data'] ?? [];
@@ -187,6 +187,13 @@ class _State extends ConsumerState<MobileRiwayatKehadiran>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != next && next != null) {
+        _selectedSemesterId = null;
+        _load();
+      }
+    });
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fgColor = isDark ? Colors.white : AppColors.foreground;
@@ -680,6 +687,8 @@ class _State extends ConsumerState<MobileRiwayatKehadiran>
     final pertemuanKe = data['pertemuanKe'] as int? ?? 1;
     final tanggalStr = data['tanggal'] as String? ?? '';
     final status = (data['status'] as String? ?? 'HADIR').toUpperCase();
+    final topik = data['topik'] as String? ?? '-';
+    final keterangan = data['keterangan'] as String? ?? '';
 
     // Base color for icon area depending on status
     Color iconBg = const Color(0xFFDCFCE7);
@@ -785,10 +794,27 @@ class _State extends ConsumerState<MobileRiwayatKehadiran>
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  '-',
-                  style: TextStyle(color: AppColors.gray400),
-                ), // placeholder
+                Text(
+                  topik.isEmpty ? '-' : topik,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (keterangan.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    keterangan,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.gray400,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [

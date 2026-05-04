@@ -5,12 +5,17 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart'
+    show FlutterQuillLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/config/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 
 // ── Real screens ──
 import 'features/auth/screens/login_page.dart';
+import 'features/auth/screens/forgot_password_page.dart';
 import 'features/guest/screens/landing_page.dart';
 import 'features/admin/screens/dashboard_layout.dart';
 import 'features/admin/screens/dashboard_overview.dart';
@@ -37,6 +42,7 @@ import 'features/guru/screens/monitoring_kehadiran.dart';
 import 'features/guru/screens/catatan_akademik.dart';
 import 'features/guru/screens/cetak_rapor.dart';
 import 'features/guru/screens/student_deep_dive.dart';
+import 'features/guru/providers/homeroom_provider.dart';
 import 'features/siswa/screens/student_layout.dart';
 import 'features/siswa/screens/student_dashboard.dart';
 import 'features/siswa/screens/student_schedule.dart';
@@ -53,9 +59,11 @@ final _routerProvider = Provider<GoRouter>((ref) {
   String? roleRedirect(GoRouterState state, List<UserRole> allowedRoles) {
     final user = ref.read(authProvider).valueOrNull;
     if (user == null) return '/login';
-    if (!allowedRoles.contains(user.role)) return '/login';
+    if (!allowedRoles.contains(user.role)) return '/unauthorized';
     return null;
   }
+
+  Widget waliGuard(Widget child) => HomeroomRouteGuard(child: child);
 
   return GoRouter(
     initialLocation: '/',
@@ -66,12 +74,34 @@ final _routerProvider = Provider<GoRouter>((ref) {
         name: 'landing',
         builder: (context, state) => const LandingPage(),
       ),
+      GoRoute(
+        path: '/post/:id',
+        name: 'public-post',
+        builder: (context, state) => PublicContentDetailPage(
+          contentId: state.pathParameters['id'] ?? '',
+        ),
+      ),
 
       // ── Auth ──
       GoRoute(
         path: '/login',
         name: 'login',
+        redirect: (context, state) {
+          final user = ref.read(authProvider).valueOrNull;
+          return user == null ? null : getDashboardRouteByRole(user.role);
+        },
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+
+      GoRoute(
+        path: '/unauthorized',
+        name: 'unauthorized',
+        builder: (context, state) => const UnauthorizedPage(),
       ),
 
       // ── Admin Routes ──
@@ -194,38 +224,42 @@ final _routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'kelas-wali',
                 name: 'guru-homeroom',
-                builder: (context, state) => const HomeroomDashboard(),
+                builder: (context, state) =>
+                    waliGuard(const HomeroomDashboard()),
               ),
               GoRoute(
                 path: 'homeroom',
                 name: 'guru-homeroom-alt',
-                builder: (context, state) => const HomeroomDashboard(),
+                builder: (context, state) =>
+                    waliGuard(const HomeroomDashboard()),
               ),
               GoRoute(
                 path: 'monitoring-kehadiran',
                 name: 'guru-kehadiran',
-                builder: (context, state) => const MonitoringKehadiran(),
+                builder: (context, state) =>
+                    waliGuard(const MonitoringKehadiran()),
               ),
               GoRoute(
                 path: 'catatan-akademik',
                 name: 'guru-catatan',
-                builder: (context, state) => const CatatanAkademik(),
+                builder: (context, state) => waliGuard(const CatatanAkademik()),
               ),
               GoRoute(
                 path: 'cetak-rapor',
                 name: 'guru-rapor',
-                builder: (context, state) => const CetakRapor(),
+                builder: (context, state) => waliGuard(const CetakRapor()),
               ),
               GoRoute(
                 path: 'penentuan-promosi',
                 name: 'guru-promosi',
-                builder: (context, state) => const PenentuanPromosiScreen(),
+                builder: (context, state) =>
+                    waliGuard(const PenentuanPromosiScreen()),
               ),
               GoRoute(
                 path: 'rapor-detail/:studentId',
                 name: 'guru-rapor-detail',
-                builder: (context, state) => StudentDeepDive(
-                  studentId: state.pathParameters['studentId'],
+                builder: (context, state) => waliGuard(
+                  StudentDeepDive(studentId: state.pathParameters['studentId']),
                 ),
               ),
             ],
@@ -294,8 +328,58 @@ final _routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseConfig.initialize();
   runApp(const ProviderScope(child: SiakadWebApp()));
+}
+
+class UnauthorizedPage extends ConsumerWidget {
+  const UnauthorizedPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).valueOrNull;
+
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Akses tidak diizinkan',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Akun Anda tidak memiliki izin untuk membuka halaman ini.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () {
+                    if (user == null) {
+                      context.go('/login');
+                    } else {
+                      context.go(getDashboardRouteByRole(user.role));
+                    }
+                  },
+                  child: const Text('Kembali'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SiakadWebApp extends ConsumerWidget {
@@ -310,6 +394,13 @@ class SiakadWebApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,
+      localizationsDelegates: const [
+        FlutterQuillLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('id', 'ID'), Locale('en', 'US')],
     );
   }
 }

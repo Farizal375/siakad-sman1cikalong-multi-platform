@@ -6,9 +6,11 @@
 
 import 'dart:math';
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_service.dart';
 
@@ -16,14 +18,19 @@ import '../../../core/network/api_service.dart';
 class _Student {
   final String id, name, nisn;
   String status; // HADIR / SAKIT / IZIN / ALPA
-  _Student({required this.id, required this.name, required this.nisn, this.status = 'ALPA'});
+  _Student({
+    required this.id,
+    required this.name,
+    required this.nisn,
+    this.status = 'ALPA',
+  });
 }
 
 class _GradeRow {
   final String name, nisn;
   double tugas, uh, uts, uas;
-  double keaktifan;          // input guru
-  final double kehadiran;    // auto dari absensi, read-only
+  double keaktifan; // input guru
+  final double kehadiran; // auto dari absensi, read-only
   _GradeRow({
     required this.name,
     required this.nisn,
@@ -32,19 +39,24 @@ class _GradeRow {
     this.uts = 0,
     this.uas = 0,
     this.keaktifan = 80,
-    this.kehadiran = 0,     // dihitung otomatis
+    this.kehadiran = 0, // dihitung otomatis
   });
   double getNaValue(
-    double wTugas, double wUh, double wUts, double wUas,
-    double wKeaktifan, double wKehadiran,
+    double wTugas,
+    double wUh,
+    double wUts,
+    double wUas,
+    double wKeaktifan,
+    double wKehadiran,
   ) {
-    return (tugas     * wTugas     / 100)
-         + (uh        * wUh        / 100)
-         + (uts       * wUts       / 100)
-         + (uas       * wUas       / 100)
-         + (keaktifan * wKeaktifan / 100)
-         + (kehadiran * wKehadiran / 100);
+    return (tugas * wTugas / 100) +
+        (uh * wUh / 100) +
+        (uts * wUts / 100) +
+        (uas * wUas / 100) +
+        (keaktifan * wKeaktifan / 100) +
+        (kehadiran * wKehadiran / 100);
   }
+
   String getGrade(double naValue) {
     if (naValue >= 90) return 'A';
     if (naValue >= 80) return 'B';
@@ -57,19 +69,30 @@ class _GradeRow {
 class _PastMeeting {
   final String id, date, pertemuanKe, materi;
   final List<_Student> students;
-  _PastMeeting({required this.id, required this.date, required this.pertemuanKe, required this.materi, required this.students});
+  _PastMeeting({
+    required this.id,
+    required this.date,
+    required this.pertemuanKe,
+    required this.materi,
+    required this.students,
+  });
 }
 
 class _RecapStudent {
   final String name, nisn;
   final List<String> attendance; // 'H', 'I', 'S', 'A', '-'
   final int persentase;
-  _RecapStudent({required this.name, required this.nisn, required this.attendance, this.persentase = 0});
+  _RecapStudent({
+    required this.name,
+    required this.nisn,
+    required this.attendance,
+    this.persentase = 0,
+  });
 
   int get totalHadir => attendance.where((a) => a == 'H').length;
-  int get totalIzin  => attendance.where((a) => a == 'I').length;
+  int get totalIzin => attendance.where((a) => a == 'I').length;
   int get totalSakit => attendance.where((a) => a == 'S').length;
-  int get totalAlpa  => attendance.where((a) => a == 'A').length;
+  int get totalAlpa => attendance.where((a) => a == 'A').length;
 }
 
 // ── Main Screen ────────────────────────────────────────────────────────────
@@ -81,7 +104,8 @@ class ClassDetail extends StatefulWidget {
   State<ClassDetail> createState() => _ClassDetailState();
 }
 
-class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStateMixin {
+class _ClassDetailState extends State<ClassDetail>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   // Jurnal tab state
   String _generatedQR = '';
@@ -115,8 +139,8 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   bool _gradesSaved = false;
 
   // Nilai Weights (dynamic) — total harus 100
-  double _bobotTugas     = 20;
-  double _bobotUH        = 20;
+  double _bobotTugas = 20;
+  double _bobotUH = 20;
   double _bobotUTS = 20;
   double _bobotUAS = 20;
   double _bobotKeaktifan = 10;
@@ -129,6 +153,7 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   bool _isLoading = true;
   String _className = '';
   String _subjectName = '';
+  String? _activeSemesterId;
 
   @override
   void initState() {
@@ -147,26 +172,40 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         setState(() {
           _className = data['className'];
           _subjectName = data['subjectName'];
-          
+          _activeSemesterId = data['activeSemesterId'];
+
           final studentsList = data['students'] as List;
-          _students = studentsList.map((s) => _Student(
-            id: s['id'],
-            name: s['name'],
-            nisn: s['nisn'],
-            status: 'ALPA', // Default: belum scan = Alpa
-          )).toList();
+          _students = studentsList
+              .map(
+                (s) => _Student(
+                  id: s['id'],
+                  name: s['name'],
+                  nisn: s['nisn'],
+                  status: s['currentStatus'] ?? 'ALPA',
+                ),
+              )
+              .toList();
 
           _grades = studentsList.map((s) {
             final double gradeData = ((s['grade'] ?? 0) as num).toDouble();
             // Default 0 jika belum ada data presensi (sesuai aturan: alpa=0, belum ada=0)
-            final double attendanceRate = ((s['attendanceRate'] ?? 0) as num).toDouble();
+            final double attendanceRate = ((s['attendanceRate'] ?? 0) as num)
+                .toDouble();
             return _GradeRow(
               name: s['name'] ?? '',
               nisn: s['nisn'] ?? '-',
-              tugas: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
-              uh: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
-              uts: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
-              uas: gradeData > 0 ? gradeData : (60 + Random().nextInt(40)).toDouble(),
+              tugas: gradeData > 0
+                  ? gradeData
+                  : (60 + Random().nextInt(40)).toDouble(),
+              uh: gradeData > 0
+                  ? gradeData
+                  : (60 + Random().nextInt(40)).toDouble(),
+              uts: gradeData > 0
+                  ? gradeData
+                  : (60 + Random().nextInt(40)).toDouble(),
+              uas: gradeData > 0
+                  ? gradeData
+                  : (60 + Random().nextInt(40)).toDouble(),
               keaktifan: (70 + Random().nextInt(30)).toDouble(),
               kehadiran: attendanceRate, // 0 jika belum ada presensi
             );
@@ -178,7 +217,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           final recapList = data['recap'] as List;
           _recapStudents = recapList.map((r) {
             final pertemuanList = r['pertemuan'] as List? ?? [];
-            final List<String> att = pertemuanList.map<String>((p) => (p['status'] ?? '-') as String).toList();
+            final List<String> att = pertemuanList
+                .map<String>((p) => (p['status'] ?? '-') as String)
+                .toList();
             return _RecapStudent(
               name: r['name'] ?? '',
               nisn: r['nisn'] ?? '-',
@@ -188,13 +229,22 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           }).toList();
 
           final historiesList = data['histories'] as List;
-          _histories = historiesList.map((h) => _PastMeeting(
-            id: h['id'] ?? '',
-            date: h['date'] ?? '',
-            pertemuanKe: h['session'].toString(),
-            materi: h['topic'] ?? '',
-            students: _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: 'ALPA')).toList(),
-          )).toList();
+          _histories = historiesList
+              .map(
+                (h) => _PastMeeting(
+                  id: h['id'] ?? '',
+                  date: h['date'] ?? '',
+                  pertemuanKe: h['session'].toString(),
+                  materi: h['topic'] ?? '',
+                  students: (h['students'] as List?)?.map((s) => _Student(
+                    id: s['id'],
+                    name: s['name'],
+                    nisn: s['nisn'],
+                    status: s['status'] ?? 'ALPA',
+                  )).toList() ?? _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: 'ALPA')).toList(),
+                ),
+              )
+              .toList();
 
           _isLoading = false;
         });
@@ -231,8 +281,12 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     }
     setState(() => _isGeneratingQR = true);
     try {
-      final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : _scheduleIds.first;
-      final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+      final jadwalId = _activeJadwalId.isNotEmpty
+          ? _activeJadwalId
+          : _scheduleIds.first;
+      final tanggal = _activeTanggal.isNotEmpty
+          ? _activeTanggal
+          : _todayString();
       final pertemuanKe = _activePertemuanKe;
 
       final res = await ApiService.generateQR({
@@ -263,8 +317,12 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Future<void> _refreshQR() async {
     if (_scheduleIds.isEmpty) return;
     try {
-      final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : _scheduleIds.first;
-      final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+      final jadwalId = _activeJadwalId.isNotEmpty
+          ? _activeJadwalId
+          : _scheduleIds.first;
+      final tanggal = _activeTanggal.isNotEmpty
+          ? _activeTanggal
+          : _todayString();
       final pertemuanKe = _activePertemuanKe;
 
       final res = await ApiService.refreshQR({
@@ -306,7 +364,10 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   // ── Real-time Polling (10 detik) ──────────────────────────────────────────
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _pollLiveAttendance());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _pollLiveAttendance(),
+    );
   }
 
   void _stopPolling() {
@@ -316,14 +377,22 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   Future<void> _pollLiveAttendance() async {
     if (!_sessionActive || !mounted) return;
-    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
-    final tanggal  = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+    final jadwalId = _activeJadwalId.isNotEmpty
+        ? _activeJadwalId
+        : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
     if (jadwalId.isEmpty) return;
 
     try {
-      final res = await ApiService.getLiveAttendance(jadwalId: jadwalId, tanggal: tanggal);
+      final res = await ApiService.getLiveAttendance(
+        jadwalId: jadwalId,
+        tanggal: tanggal,
+        pertemuanKe: _activePertemuanKe,
+      );
       final List<dynamic> hadirnList = res['data'] ?? [];
-      final Set<String> hadirIds = hadirnList.map((h) => h['siswaId'] as String).toSet();
+      final Set<String> hadirIds = hadirnList
+          .map((h) => h['siswaId'] as String)
+          .toSet();
 
       if (!mounted) return;
       setState(() {
@@ -342,12 +411,18 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Future<void> _endSession() async {
     _qrTimer?.cancel();
     _stopPolling(); // hentikan polling
-    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final jadwalId = _activeJadwalId.isNotEmpty
+        ? _activeJadwalId
+        : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
     final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
 
     if (jadwalId.isNotEmpty) {
       try {
-        await ApiService.endSession({'jadwalId': jadwalId, 'tanggal': tanggal});
+        await ApiService.endSession({
+          'jadwalId': jadwalId,
+          'tanggal': tanggal,
+          'pertemuanKe': _activePertemuanKe,
+        });
       } catch (_) {}
     }
 
@@ -371,14 +446,23 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Buka Sesi Pertemuan Baru', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+        title: const Text(
+          'Buka Sesi Pertemuan Baru',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Pertemuan Ke-', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Pertemuan Ke-',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: pertemuanCtrl,
@@ -386,14 +470,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 decoration: _inputDeco('Contoh: 1'),
               ),
               const SizedBox(height: 16),
-              const Text('Materi / Topik Pertemuan', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Materi / Topik Pertemuan',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: topicCtrl,
                 decoration: _inputDeco('Contoh: Integral Tak Tentu'),
               ),
               const SizedBox(height: 16),
-              const Text('Deskripsi Kegiatan', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Deskripsi Kegiatan',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: descCtrl,
@@ -404,23 +494,33 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               if (pertemuanCtrl.text.trim().isEmpty) {
-                _showErrorSnackbar('Pertemuan ke- wajib diisi'); return;
+                _showErrorSnackbar('Pertemuan ke- wajib diisi');
+                return;
               }
               if (topicCtrl.text.trim().isEmpty) {
-                _showErrorSnackbar('Materi / topik wajib diisi'); return;
+                _showErrorSnackbar('Materi / topik wajib diisi');
+                return;
               }
               if (_scheduleIds.isEmpty) {
-                _showErrorSnackbar('Tidak ada jadwal terkait'); return;
+                _showErrorSnackbar('Tidak ada jadwal terkait');
+                return;
               }
               try {
                 final jadwalId = _scheduleIds.first;
                 final tanggal = _todayString();
-                final pertemuanKe = int.tryParse(pertemuanCtrl.text.trim()) ?? 1;
+                final pertemuanKe =
+                    int.tryParse(pertemuanCtrl.text.trim()) ?? 1;
                 final materi = topicCtrl.text.trim();
 
                 await ApiService.createJurnal({
@@ -443,7 +543,11 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 await _loadData();
                 await _generateQR(); // sets _sessionActive=true inside
               } catch (e) {
-                _showErrorSnackbar('Gagal membuat sesi pertemuan. Periksa koneksi.');
+                var message = 'Gagal membuat sesi pertemuan. Periksa koneksi.';
+                if (e is DioException && e.response?.data is Map) {
+                  message = e.response?.data['message'] ?? message;
+                }
+                _showErrorSnackbar(message);
               }
             },
             child: const Text('Buka Sesi & Tampilkan QR'),
@@ -453,14 +557,18 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     );
   }
 
-
-
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      );
+    hintText: hint,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  );
 
   // ── Grade edit ────────────────────────────────────────────────────────
   TextEditingController _ctrl(String key, double value) {
@@ -470,25 +578,76 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     return _controllers[key]!;
   }
 
-  void _saveGrades() {
+  Future<void> _saveGrades() async {
     if (_getTotalBobot() != 100) {
-      _showErrorSnackbar('Total bobot penilaian harus 100% sebelum dapat menyimpan nilai');
+      _showErrorSnackbar(
+        'Total bobot penilaian harus 100% sebelum dapat menyimpan nilai',
+      );
       return;
     }
+    if (_activeSemesterId == null) {
+      _showErrorSnackbar('Semester aktif tidak ditemukan');
+      return;
+    }
+
     try {
+      final records = <Map<String, dynamic>>[];
       for (int i = 0; i < _grades.length; i++) {
         final g = _grades[i];
-        final tugasKey     = '${g.nisn}-tugas';
-        final uhKey        = '${g.nisn}-uh';
-        final utsKey       = '${g.nisn}-uts';
-        final uasKey       = '${g.nisn}-uas';
+        final student = _students.firstWhere((s) => s.nisn == g.nisn);
+        
+        final tugasKey = '${g.nisn}-tugas';
+        final uhKey = '${g.nisn}-uh';
+        final utsKey = '${g.nisn}-uts';
+        final uasKey = '${g.nisn}-uas';
         final keaktifanKey = '${g.nisn}-keaktifan';
-        if (_controllers.containsKey(tugasKey))     g.tugas     = double.tryParse(_controllers[tugasKey]!.text)     ?? g.tugas;
-        if (_controllers.containsKey(uhKey))        g.uh        = double.tryParse(_controllers[uhKey]!.text)        ?? g.uh;
-        if (_controllers.containsKey(utsKey))       g.uts       = double.tryParse(_controllers[utsKey]!.text)       ?? g.uts;
-        if (_controllers.containsKey(uasKey))       g.uas       = double.tryParse(_controllers[uasKey]!.text)       ?? g.uas;
-        if (_controllers.containsKey(keaktifanKey)) g.keaktifan = double.tryParse(_controllers[keaktifanKey]!.text) ?? g.keaktifan;
+
+        if (_controllers.containsKey(tugasKey)) {
+          g.tugas = double.tryParse(_controllers[tugasKey]!.text) ?? g.tugas;
+        }
+        if (_controllers.containsKey(uhKey)) {
+          g.uh = double.tryParse(_controllers[uhKey]!.text) ?? g.uh;
+        }
+        if (_controllers.containsKey(utsKey)) {
+          g.uts = double.tryParse(_controllers[utsKey]!.text) ?? g.uts;
+        }
+        if (_controllers.containsKey(uasKey)) {
+          g.uas = double.tryParse(_controllers[uasKey]!.text) ?? g.uas;
+        }
+        if (_controllers.containsKey(keaktifanKey)) {
+          g.keaktifan =
+              double.tryParse(_controllers[keaktifanKey]!.text) ?? g.keaktifan;
+        }
+
+        records.add({
+          'siswaId': student.id,
+          'tugas': g.tugas,
+          'uh': g.uh,
+          'uts': g.uts,
+          'uas': g.uas,
+          'keaktifan': g.keaktifan,
+          'kehadiran': g.kehadiran,
+        });
       }
+
+      final parts = widget.classId.split('_');
+      if (parts.length < 2) throw Exception('Invalid classId format');
+      final mapelId = parts[1];
+
+      await ApiService.saveNilaiBatch({
+        'mapelId': mapelId,
+        'semesterId': _activeSemesterId,
+        'bobot': {
+          'tugas': _bobotTugas,
+          'uh': _bobotUH,
+          'uts': _bobotUTS,
+          'uas': _bobotUAS,
+          'keaktifan': _bobotKeaktifan,
+          'kehadiran': _bobotKehadiran,
+        },
+        'records': records,
+      });
+
       setState(() {
         _editingId = '';
         _gradesSaved = true;
@@ -498,7 +657,7 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       });
       _showSaveSnackbar('Nilai berhasil disimpan!');
     } catch (e) {
-      _showErrorSnackbar('Koneksi terputus saat menyimpan nilai');
+      _showErrorSnackbar('Gagal menyimpan nilai. Periksa koneksi.');
     }
   }
 
@@ -509,7 +668,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       return const Center(child: CircularProgressIndicator());
     }
 
-    final subject = _subjectName.isNotEmpty ? _subjectName : widget.classId.toUpperCase();
+    final subject = _subjectName.isNotEmpty
+        ? _subjectName
+        : widget.classId.toUpperCase();
     final kelas = _className.isNotEmpty ? _className : '';
 
     return Stack(
@@ -540,8 +701,14 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 indicatorPadding: const EdgeInsets.all(4),
                 labelColor: Colors.white,
                 unselectedLabelColor: AppColors.gray600,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
                 dividerColor: Colors.transparent,
                 tabs: const [
                   Tab(text: 'Riwayat Pertemuan'),
@@ -568,7 +735,7 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
         // QR Modal overlay
         if (_showQRModal) _buildQRModal(),
-        
+
         // History Edit Modal overlay
         if (_showHistoryModal) _buildHistoryModal(),
       ],
@@ -582,8 +749,18 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         // Breadcrumb
         Row(
           children: [
-            const Text('Guru  >  ', style: TextStyle(color: AppColors.gray500, fontSize: 13)),
-            const Text('Detail Kelas', style: TextStyle(color: Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w600)),
+            const Text(
+              'Guru  >  ',
+              style: TextStyle(color: AppColors.gray500, fontSize: 13),
+            ),
+            const Text(
+              'Detail Kelas',
+              style: TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -594,7 +771,14 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             children: [
               Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
               SizedBox(width: 8),
-              Text('Kembali ke Daftar Kelas', style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w600)),
+              Text(
+                'Kembali ke Daftar Kelas',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -610,18 +794,35 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 children: [
                   Text(
                     '$subject - Kelas $kelas',
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.people_outline, color: AppColors.gray500, size: 20),
+                      const Icon(
+                        Icons.people_outline,
+                        color: AppColors.gray500,
+                        size: 20,
+                      ),
                       const SizedBox(width: 6),
-                      Text('Total: ${_students.length} Siswa', style: const TextStyle(color: AppColors.gray500, fontSize: 14)),
+                      Text(
+                        'Total: ${_students.length} Siswa',
+                        style: const TextStyle(
+                          color: AppColors.gray500,
+                          fontSize: 14,
+                        ),
+                      ),
                       if (_sessionActive) ...[
                         const SizedBox(width: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFD1FAE5),
                             borderRadius: BorderRadius.circular(20),
@@ -629,9 +830,23 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF059669), shape: BoxShape.circle)),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF059669),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 6),
-                              const Text('Sesi Absensi Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF065F46))),
+                              const Text(
+                                'Sesi Absensi Aktif',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF065F46),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -647,12 +862,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               ElevatedButton.icon(
                 onPressed: _endSession,
                 icon: const Icon(Icons.stop_circle_outlined, size: 20),
-                label: const Text('Akhiri Sesi Pertemuan', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Akhiri Sesi Pertemuan',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDC2626),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 0,
                 ),
               )
@@ -660,12 +883,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               ElevatedButton.icon(
                 onPressed: _openSessionDialog,
                 icon: const Icon(Icons.play_circle_outline, size: 20),
-                label: const Text('Buka Presensi', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Buka Presensi',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 0,
                 ),
               ),
@@ -684,7 +915,8 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   Future<void> _deleteHistory(_PastMeeting history) async {
     if (history.id.isEmpty) {
-      _showErrorSnackbar('ID pertemuan tidak valid'); return;
+      _showErrorSnackbar('ID pertemuan tidak valid');
+      return;
     }
     final confirmed = await showDialog<bool>(
       context: context,
@@ -694,7 +926,10 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626)),
             SizedBox(width: 10),
-            Text('Hapus Pertemuan?', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              'Hapus Pertemuan?',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: RichText(
@@ -702,17 +937,32 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
             children: [
               const TextSpan(text: 'Pertemuan '),
-              TextSpan(text: 'ke-${history.pertemuanKe} (${history.materi})', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+              TextSpan(
+                text: 'ke-${history.pertemuanKe} (${history.materi})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFDC2626),
+                ),
+              ),
               const TextSpan(text: ' dan seluruh data absensinya akan '),
-              const TextSpan(text: 'dihapus permanen', style: TextStyle(fontWeight: FontWeight.w700)),
+              const TextSpan(
+                text: 'dihapus permanen',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               const TextSpan(text: '.\n\nTindakan ini tidak dapat dibatalkan.'),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Ya, Hapus'),
           ),
@@ -753,11 +1003,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               children: [
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Text('Daftar Riwayat Pertemuan',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  child: Text(
+                    'Daftar Riwayat Pertemuan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   decoration: const BoxDecoration(
                     border: Border(
                       top: BorderSide(color: Color(0xFFF3F4F6)),
@@ -766,76 +1025,234 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   ),
                   child: const Row(
                     children: [
-                      SizedBox(width: 140, child: Text('Tanggal',            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
-                      SizedBox(width: 120, child: Text('Pertemuan Ke-',      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
-                      Expanded(            child: Text('Materi / KD',        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
-                      SizedBox(width: 320, child: Text('Ringkasan Kehadiran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
-                      SizedBox(width: 200, child: Text('Aksi',               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          'Tanggal',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          'Pertemuan Ke-',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Materi / KD',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 320,
+                        child: Text(
+                          'Ringkasan Kehadiran',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 200,
+                        child: Text(
+                          'Aksi',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 if (_histories.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(40),
-                    child: Center(child: Text('Belum ada riwayat pertemuan.', style: TextStyle(color: AppColors.gray500))),
+                    child: Center(
+                      child: Text(
+                        'Belum ada riwayat pertemuan.',
+                        style: TextStyle(color: AppColors.gray500),
+                      ),
+                    ),
                   )
                 else
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _histories.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: Color(0xFFF3F4F6)),
                     itemBuilder: (_, index) {
                       final h = _histories[index];
-                      final hadir = h.students.where((s) => s.status == 'HADIR').length;
-                      final izin  = h.students.where((s) => s.status == 'IZIN').length;
-                      final sakit = h.students.where((s) => s.status == 'SAKIT').length;
-                      final alpa  = h.students.where((s) => s.status == 'ALPA').length;
+                      final hadir = h.students
+                          .where((s) => s.status == 'HADIR')
+                          .length;
+                      final izin = h.students
+                          .where((s) => s.status == 'IZIN')
+                          .length;
+                      final sakit = h.students
+                          .where((s) => s.status == 'SAKIT')
+                          .length;
+                      final alpa = h.students
+                          .where((s) => s.status == 'ALPA')
+                          .length;
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
                         child: Row(
                           children: [
-                            SizedBox(width: 140, child: Row(children: [
-                              const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray500),
-                              const SizedBox(width: 8),
-                              Text(h.date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
-                            ])),
-                            SizedBox(width: 120, child: Text('Pertemuan ${h.pertemuanKe}', style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
-                            Expanded(child: Text(h.materi, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)))),
-                            SizedBox(width: 320, child: Row(children: [
-                              _buildSummaryText('Hadir', hadir, const Color(0xFF059669)),
-                              _buildSummaryDivider(),
-                              _buildSummaryText('Izin', izin, const Color(0xFFD97706)),
-                              _buildSummaryDivider(),
-                              _buildSummaryText('Sakit', sakit, const Color(0xFF2563EB)),
-                              _buildSummaryDivider(),
-                              _buildSummaryText('Alpa', alpa, const Color(0xFFDC2626)),
-                            ])),
-                            SizedBox(width: 200, child: Row(children: [
-                              OutlinedButton.icon(
-                                onPressed: () => _openHistoryModal(h),
-                                icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
-                                label: const Text('Lihat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: const BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            SizedBox(
+                              width: 140,
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 16,
+                                    color: AppColors.gray500,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    h.date,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 120,
+                              child: Text(
+                                'Pertemuan ${h.pertemuanKe}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray600,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              OutlinedButton.icon(
-                                onPressed: () => _deleteHistory(h),
-                                icon: const Icon(Icons.delete_outline, size: 16),
-                                label: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFFDC2626),
-                                  side: const BorderSide(color: Color(0xFFDC2626)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            Expanded(
+                              child: Text(
+                                h.materi,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1F2937),
                                 ),
                               ),
-                            ])),
+                            ),
+                            SizedBox(
+                              width: 320,
+                              child: Row(
+                                children: [
+                                  _buildSummaryText(
+                                    'Hadir',
+                                    hadir,
+                                    const Color(0xFF059669),
+                                  ),
+                                  _buildSummaryDivider(),
+                                  _buildSummaryText(
+                                    'Izin',
+                                    izin,
+                                    const Color(0xFFD97706),
+                                  ),
+                                  _buildSummaryDivider(),
+                                  _buildSummaryText(
+                                    'Sakit',
+                                    sakit,
+                                    const Color(0xFF2563EB),
+                                  ),
+                                  _buildSummaryDivider(),
+                                  _buildSummaryText(
+                                    'Alpa',
+                                    alpa,
+                                    const Color(0xFFDC2626),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 200,
+                              child: Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => _openHistoryModal(h),
+                                    icon: const Icon(
+                                      Icons.remove_red_eye_outlined,
+                                      size: 16,
+                                    ),
+                                    label: const Text(
+                                      'Lihat',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      side: const BorderSide(
+                                        color: AppColors.primary,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _deleteHistory(h),
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                    ),
+                                    label: const Text(
+                                      'Hapus',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFDC2626),
+                                      side: const BorderSide(
+                                        color: Color(0xFFDC2626),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -853,9 +1270,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   // ── Real-time Attendance Management Panel ──────────────────────────────────
   Widget _buildRealTimeAttendance() {
     final hadirCount = _students.where((s) => s.status == 'HADIR').length;
-    final izinCount  = _students.where((s) => s.status == 'IZIN').length;
+    final izinCount = _students.where((s) => s.status == 'IZIN').length;
     final sakitCount = _students.where((s) => s.status == 'SAKIT').length;
-    final alpaCount  = _students.where((s) => s.status == 'ALPA').length;
+    final alpaCount = _students.where((s) => s.status == 'ALPA').length;
 
     return Container(
       decoration: BoxDecoration(
@@ -871,17 +1288,43 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
             child: Row(
               children: [
-                const Text('Manajemen Absensi Real-time',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                const Text(
+                  'Manajemen Absensi Real-time',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
                 const Spacer(),
                 // Live counters
-                _liveCounter('Hadir',  hadirCount,  const Color(0xFF059669), const Color(0xFFD1FAE5)),
+                _liveCounter(
+                  'Hadir',
+                  hadirCount,
+                  const Color(0xFF059669),
+                  const Color(0xFFD1FAE5),
+                ),
                 const SizedBox(width: 8),
-                _liveCounter('Izin',   izinCount,   const Color(0xFFD97706), const Color(0xFFFEF3C7)),
+                _liveCounter(
+                  'Izin',
+                  izinCount,
+                  const Color(0xFFD97706),
+                  const Color(0xFFFEF3C7),
+                ),
                 const SizedBox(width: 8),
-                _liveCounter('Sakit',  sakitCount,  const Color(0xFF2563EB), const Color(0xFFDBEAFE)),
+                _liveCounter(
+                  'Sakit',
+                  sakitCount,
+                  const Color(0xFF2563EB),
+                  const Color(0xFFDBEAFE),
+                ),
                 const SizedBox(width: 8),
-                _liveCounter('Alpa',   alpaCount,   const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+                _liveCounter(
+                  'Alpa',
+                  alpaCount,
+                  const Color(0xFFDC2626),
+                  const Color(0xFFFEE2E2),
+                ),
               ],
             ),
           ),
@@ -900,13 +1343,82 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             color: AppColors.primary,
             child: const Row(
               children: [
-                SizedBox(width: 40,  child: Text('No',         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                SizedBox(width: 48,  child: Text('Foto',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                Expanded(            child: Text('Nama Siswa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                SizedBox(width: 130, child: Text('NISN',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                SizedBox(width: 100, child: Text('Waktu Scan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                SizedBox(width: 80,  child: Text('Status',     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                SizedBox(width: 260, child: Text('Aksi',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    'No',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 48,
+                  child: Text(
+                    'Foto',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Nama Siswa',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    'NISN',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  child: Text(
+                    'Waktu Scan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    'Status',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 260,
+                  child: Text(
+                    'Aksi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -916,35 +1428,97 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _students.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
             itemBuilder: (_, idx) {
               final s = _students[idx];
               final isOdd = idx % 2 == 1;
               return Container(
                 color: isOdd ? const Color(0xFFF9FAFB) : Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     // No
-                    SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(fontSize: 13, color: AppColors.gray500))),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '${idx + 1}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                    ),
                     // Avatar
-                    SizedBox(width: 48, child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      child: Text(s.name[0], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                    )),
+                    SizedBox(
+                      width: 48,
+                      child: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: Text(
+                          s.name[0],
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
                     // Name
-                    Expanded(child: Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        s.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     // NISN
-                    SizedBox(width: 130, child: Text(s.nisn, style: const TextStyle(fontSize: 12, color: AppColors.gray500, fontFamily: 'monospace'))),
+                    SizedBox(
+                      width: 130,
+                      child: Text(
+                        s.nisn,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
                     // Waktu Scan
-                    SizedBox(width: 100, child: s.status == 'HADIR'
-                      ? Row(children: [
-                          const Icon(Icons.access_time, size: 13, color: AppColors.gray500),
-                          const SizedBox(width: 4),
-                          Text('${(7 + idx ~/ 6).toString().padLeft(2,'0')}:${((idx * 3) % 60).toString().padLeft(2,'0')}', style: const TextStyle(fontSize: 12, color: AppColors.gray600)),
-                        ])
-                      : const Text('–', style: TextStyle(color: AppColors.gray400))),
+                    SizedBox(
+                      width: 100,
+                      child: s.status == 'HADIR'
+                          ? Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 13,
+                                  color: AppColors.gray500,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${(7 + idx ~/ 6).toString().padLeft(2, '0')}:${((idx * 3) % 60).toString().padLeft(2, '0')}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.gray600,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Text(
+                              '–',
+                              style: TextStyle(color: AppColors.gray400),
+                            ),
+                    ),
                     // Status badge
                     SizedBox(width: 80, child: _statusBadge(s.status)),
                     // 4-Button Actions
@@ -952,13 +1526,37 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                       width: 260,
                       child: Row(
                         children: [
-                          _attendanceBtn('Hadir', s.status == 'HADIR', const Color(0xFF059669), const Color(0xFFD1FAE5), () => setState(() => s.status = 'HADIR')),
+                          _attendanceBtn(
+                            'Hadir',
+                            s.status == 'HADIR',
+                            const Color(0xFF059669),
+                            const Color(0xFFD1FAE5),
+                            () => setState(() => s.status = 'HADIR'),
+                          ),
                           const SizedBox(width: 6),
-                          _attendanceBtn('Izin',  s.status == 'IZIN',  const Color(0xFFD97706), const Color(0xFFFEF3C7), () => setState(() => s.status = 'IZIN')),
+                          _attendanceBtn(
+                            'Izin',
+                            s.status == 'IZIN',
+                            const Color(0xFFD97706),
+                            const Color(0xFFFEF3C7),
+                            () => setState(() => s.status = 'IZIN'),
+                          ),
                           const SizedBox(width: 6),
-                          _attendanceBtn('Sakit', s.status == 'SAKIT', const Color(0xFF2563EB), const Color(0xFFDBEAFE), () => setState(() => s.status = 'SAKIT')),
+                          _attendanceBtn(
+                            'Sakit',
+                            s.status == 'SAKIT',
+                            const Color(0xFF2563EB),
+                            const Color(0xFFDBEAFE),
+                            () => setState(() => s.status = 'SAKIT'),
+                          ),
                           const SizedBox(width: 6),
-                          _attendanceBtn('Alpa',  s.status == 'ALPA',  const Color(0xFFDC2626), const Color(0xFFFEE2E2), () => setState(() => s.status = 'ALPA')),
+                          _attendanceBtn(
+                            'Alpa',
+                            s.status == 'ALPA',
+                            const Color(0xFFDC2626),
+                            const Color(0xFFFEE2E2),
+                            () => setState(() => s.status = 'ALPA'),
+                          ),
                         ],
                       ),
                     ),
@@ -977,17 +1575,31 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('${_students.length} siswa', style: const TextStyle(color: AppColors.gray500, fontSize: 13)),
+                Text(
+                  '${_students.length} siswa',
+                  style: const TextStyle(
+                    color: AppColors.gray500,
+                    fontSize: 13,
+                  ),
+                ),
                 const Spacer(),
                 ElevatedButton.icon(
                   onPressed: _saveAttendanceChanges,
                   icon: const Icon(Icons.save_outlined, size: 18),
-                  label: const Text('Simpan Perubahan Absensi', style: TextStyle(fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Simpan Perubahan Absensi',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -1002,19 +1614,39 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Widget _liveCounter(String label, int count, Color color, Color bg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 5),
-          Text('$label: $count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+          Text(
+            '$label: $count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _attendanceBtn(String label, bool isActive, Color activeColor, Color activeBg, VoidCallback onTap) {
+  Widget _attendanceBtn(
+    String label,
+    bool isActive,
+    Color activeColor,
+    Color activeBg,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1023,7 +1655,11 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         decoration: BoxDecoration(
           color: isActive ? activeBg : const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: isActive ? activeColor.withValues(alpha: 0.5) : Colors.transparent),
+          border: Border.all(
+            color: isActive
+                ? activeColor.withValues(alpha: 0.5)
+                : Colors.transparent,
+          ),
         ),
         child: Text(
           label,
@@ -1039,8 +1675,10 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   Future<void> _saveAttendanceChanges() async {
     if (_students.isEmpty) return;
-    final jadwalId = _activeJadwalId.isNotEmpty ? _activeJadwalId : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
-    final tanggal  = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
+    final jadwalId = _activeJadwalId.isNotEmpty
+        ? _activeJadwalId
+        : (_scheduleIds.isNotEmpty ? _scheduleIds.first : '');
+    final tanggal = _activeTanggal.isNotEmpty ? _activeTanggal : _todayString();
 
     if (jadwalId.isEmpty) {
       _showErrorSnackbar('Tidak ada sesi aktif untuk disimpan');
@@ -1052,7 +1690,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         'tanggal': tanggal,
         'pertemuanKe': _activePertemuanKe,
         'topik': _activeMateri,
-        'records': _students.map((s) => {'siswaId': s.id, 'status': s.status}).toList(),
+        'records': _students
+            .map((s) => {'siswaId': s.id, 'status': s.status})
+            .toList(),
       });
       _showSaveSnackbar('Perubahan absensi berhasil disimpan!');
       await _loadData();
@@ -1061,12 +1701,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     }
   }
 
-
   Widget _buildSummaryText(String label, int count, Color color) {
     return Row(
       children: [
-        Text('$label: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-        Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+        Text(
+          '$count',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -1074,20 +1727,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Widget _buildSummaryDivider() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 8),
-      child: Text('|', style: TextStyle(color: Color(0xFFD1D5DB), fontSize: 12)),
+      child: Text(
+        '|',
+        style: TextStyle(color: Color(0xFFD1D5DB), fontSize: 12),
+      ),
     );
   }
-
-
-
 
   Widget _buildHistoryModal() {
     if (_selectedHistory == null) return const SizedBox();
     final h = _selectedHistory!;
     final hadirCount = h.students.where((s) => s.status == 'HADIR').length;
-    final izinCount  = h.students.where((s) => s.status == 'IZIN').length;
+    final izinCount = h.students.where((s) => s.status == 'IZIN').length;
     final sakitCount = h.students.where((s) => s.status == 'SAKIT').length;
-    final alpaCount  = h.students.where((s) => s.status == 'ALPA').length;
+    final alpaCount = h.students.where((s) => s.status == 'ALPA').length;
 
     return GestureDetector(
       onTap: () => setState(() => _showHistoryModal = false),
@@ -1098,8 +1751,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           onTap: () {},
           child: Container(
             width: 780,
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.88),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1107,7 +1765,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
                   decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFF3F4F6)),
+                    ),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1116,11 +1776,22 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Edit Absensi – ${h.date}',
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            Text(
+                              'Edit Absensi – ${h.date}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text('Pertemuan ${h.pertemuanKe}  •  ${h.materi}',
-                                style: const TextStyle(fontSize: 13, color: AppColors.gray500)),
+                            Text(
+                              'Pertemuan ${h.pertemuanKe}  •  ${h.materi}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.gray500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1145,32 +1816,122 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         // Stat boxes
                         Row(
                           children: [
-                            _modalStatBox('Hadir',  hadirCount, const Color(0xFF15803D), const Color(0xFFF0FDF4), const Color(0xFFBBF7D0)),
+                            _modalStatBox(
+                              'Hadir',
+                              hadirCount,
+                              const Color(0xFF15803D),
+                              const Color(0xFFF0FDF4),
+                              const Color(0xFFBBF7D0),
+                            ),
                             const SizedBox(width: 12),
-                            _modalStatBox('Izin',   izinCount,  const Color(0xFFB45309), const Color(0xFFFFFBEB), const Color(0xFFFDE68A)),
+                            _modalStatBox(
+                              'Izin',
+                              izinCount,
+                              const Color(0xFFB45309),
+                              const Color(0xFFFFFBEB),
+                              const Color(0xFFFDE68A),
+                            ),
                             const SizedBox(width: 12),
-                            _modalStatBox('Sakit',  sakitCount, const Color(0xFF1D4ED8), const Color(0xFFEFF6FF), const Color(0xFFBFDBFE)),
+                            _modalStatBox(
+                              'Sakit',
+                              sakitCount,
+                              const Color(0xFF1D4ED8),
+                              const Color(0xFFEFF6FF),
+                              const Color(0xFFBFDBFE),
+                            ),
                             const SizedBox(width: 12),
-                            _modalStatBox('Alpa',   alpaCount,  const Color(0xFFB91C1C), const Color(0xFFFFF5F5), const Color(0xFFFECACA)),
+                            _modalStatBox(
+                              'Alpa',
+                              alpaCount,
+                              const Color(0xFFB91C1C),
+                              const Color(0xFFFFF5F5),
+                              const Color(0xFFFECACA),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),
 
                         // Table header
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 12,
+                          ),
                           decoration: const BoxDecoration(
                             color: AppColors.primary,
-                            borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(12),
+                              topRight: Radius.circular(12),
+                            ),
                           ),
                           child: const Row(
                             children: [
-                              SizedBox(width: 40,  child: Text('#',          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                              Expanded(flex: 3,    child: Text('NAMA SISWA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                              SizedBox(width: 120, child: Text('NISN',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                              SizedBox(width: 100, child: Text('SCAN',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                              SizedBox(width: 80,  child: Text('STATUS',     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-                              SizedBox(width: 100, child: Text('UBAH',       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  '#',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  'NAMA SISWA',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  'NISN',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  'SCAN',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 80,
+                                child: Text(
+                                  'STATUS',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 100,
+                                child: Text(
+                                  'UBAH',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1179,47 +1940,108 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFFE5E7EB)),
-                            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
                           ),
                           child: Column(
                             children: h.students.asMap().entries.map((entry) {
                               final idx = entry.key;
-                              final s   = entry.value;
+                              final s = entry.value;
                               final isOdd = idx % 2 == 1;
                               return Container(
-                                color: isOdd ? const Color(0xFFF9FAFB) : Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                color: isOdd
+                                    ? const Color(0xFFF9FAFB)
+                                    : Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 child: Row(
                                   children: [
-                                    SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(fontSize: 13, color: AppColors.gray500))),
+                                    SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        '${idx + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.gray500,
+                                        ),
+                                      ),
+                                    ),
                                     Expanded(
                                       flex: 3,
                                       child: Row(
                                         children: [
                                           CircleAvatar(
                                             radius: 14,
-                                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                            child: Text(s.name[0], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                            backgroundColor: AppColors.primary
+                                                .withValues(alpha: 0.1),
+                                            child: Text(
+                                              s.name[0],
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Flexible(child: Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                                          Flexible(
+                                            child: Text(
+                                              s.name,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
-                                    SizedBox(width: 120, child: Text(s.nisn, style: const TextStyle(fontSize: 12, color: AppColors.gray500, fontFamily: 'monospace'))),
+                                    SizedBox(
+                                      width: 120,
+                                      child: Text(
+                                        s.nisn,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.gray500,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ),
                                     SizedBox(
                                       width: 100,
                                       child: s.status == 'HADIR'
                                           ? Row(
                                               children: [
-                                                const Icon(Icons.access_time, size: 13, color: AppColors.gray500),
+                                                const Icon(
+                                                  Icons.access_time,
+                                                  size: 13,
+                                                  color: AppColors.gray500,
+                                                ),
                                                 const SizedBox(width: 4),
-                                                Text('07:${10 + idx}:${20 + idx}', style: const TextStyle(fontSize: 12, color: AppColors.gray600)),
+                                                Text(
+                                                  '07:${10 + idx}:${20 + idx}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppColors.gray600,
+                                                  ),
+                                                ),
                                               ],
                                             )
-                                          : const Text('–', style: TextStyle(color: AppColors.gray400)),
+                                          : const Text(
+                                              '–',
+                                              style: TextStyle(
+                                                color: AppColors.gray400,
+                                              ),
+                                            ),
                                     ),
-                                    SizedBox(width: 80, child: _statusBadge(s.status)),
+                                    SizedBox(
+                                      width: 80,
+                                      child: _statusBadge(s.status),
+                                    ),
                                     SizedBox(
                                       width: 100,
                                       child: _buildHistoryStatusDropdown(h, s),
@@ -1252,27 +2074,45 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.foreground,
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          'Tutup',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: () {
-                          _showSaveSnackbar('Perubahan data absensi berhasil disimpan!');
+                          _showSaveSnackbar(
+                            'Perubahan data absensi berhasil disimpan!',
+                          );
                           setState(() {
                             _showHistoryModal = false;
                             _selectedHistory = null;
                           });
                         },
-                        child: const Text('Simpan Perubahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ],
                   ),
@@ -1285,7 +2125,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     );
   }
 
-  Widget _modalStatBox(String label, int count, Color textColor, Color bgColor, Color borderColor) {
+  Widget _modalStatBox(
+    String label,
+    int count,
+    Color textColor,
+    Color bgColor,
+    Color borderColor,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -1297,9 +2143,23 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 13, color: textColor, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: textColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: textColor)),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
           ],
         ),
       ),
@@ -1309,15 +2169,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Widget _statusBadge(String status) {
     final Map<String, List<Color>> colors = {
       'HADIR': [const Color(0xFFDCFCE7), const Color(0xFF15803D)],
-      'IZIN':  [const Color(0xFFFEF3C7), const Color(0xFFB45309)],
+      'IZIN': [const Color(0xFFFEF3C7), const Color(0xFFB45309)],
       'SAKIT': [const Color(0xFFDBEAFE), const Color(0xFF1D4ED8)],
-      'ALPA':  [const Color(0xFFFEE2E2), const Color(0xFFB91C1C)],
+      'ALPA': [const Color(0xFFFEE2E2), const Color(0xFFB91C1C)],
     };
     final c = colors[status] ?? [const Color(0xFFF3F4F6), AppColors.gray600];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c[0], borderRadius: BorderRadius.circular(8)),
-      child: Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c[1])),
+      decoration: BoxDecoration(
+        color: c[0],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: c[1],
+        ),
+      ),
     );
   }
 
@@ -1327,7 +2197,14 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       value: s.status,
       isDense: true,
       underline: const SizedBox(),
-      items: statuses.map((v) => DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 12)))).toList(),
+      items: statuses
+          .map(
+            (v) => DropdownMenuItem(
+              value: v,
+              child: Text(v, style: const TextStyle(fontSize: 12)),
+            ),
+          )
+          .toList(),
       onChanged: (val) {
         if (val != null) setState(() => s.status = val);
       },
@@ -1336,7 +2213,11 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   // ══════════════════ REKAPITULASI TAB ════════════════════════════════════
   Widget _buildRekapTab() {
-    final totalPertemuan = _totalPertemuanDibuat > 0 ? _totalPertemuanDibuat : (_recapStudents.isNotEmpty ? _recapStudents.first.attendance.length : 0);
+    final totalPertemuan = _totalPertemuanDibuat > 0
+        ? _totalPertemuanDibuat
+        : (_recapStudents.isNotEmpty
+              ? _recapStudents.first.attendance.length
+              : 0);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1347,36 +2228,68 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 const Icon(Icons.table_rows_rounded, color: AppColors.primary),
                 const SizedBox(width: 10),
-                const Text('Rekapitulasi Kehadiran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                const Text(
+                  'Rekapitulasi Kehadiran',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
                 const Spacer(),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   icon: const Icon(Icons.print_outlined, size: 16),
-                  label: const Text('Cetak PDF', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  onPressed: () => _showSaveSnackbar('Rekapitulasi sedang dicetak ke PDF...'),
+                  label: const Text(
+                    'Cetak PDF',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  onPressed: () => _showSaveSnackbar(
+                    'Rekapitulasi sedang dicetak ke PDF...',
+                  ),
                 ),
                 const SizedBox(width: 10),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   icon: const Icon(Icons.download_outlined, size: 16),
-                  label: const Text('Export Excel', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  onPressed: () => _showSaveSnackbar('Rekapitulasi diekspor ke Excel!'),
+                  label: const Text(
+                    'Export Excel',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  onPressed: () =>
+                      _showSaveSnackbar('Rekapitulasi diekspor ke Excel!'),
                 ),
               ],
             ),
@@ -1388,45 +2301,170 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 headingRowColor: WidgetStateProperty.all(AppColors.primary),
-                headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                headingTextStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
                 dataRowMinHeight: 40,
                 dataRowMaxHeight: 48,
                 columnSpacing: 8,
                 columns: [
-                  const DataColumn(label: SizedBox(width: 30,  child: Text('No'))),
-                  const DataColumn(label: SizedBox(width: 110, child: Text('NISN'))),
-                  const DataColumn(label: SizedBox(width: 160, child: Text('Nama Siswa'))),
-                  ...List.generate(totalPertemuan, (i) => DataColumn(label: SizedBox(width: 36, child: Text('P${i + 1}')))),
-                  const DataColumn(label: SizedBox(width: 60,  child: Text('Hadir', style: TextStyle(color: Color(0xFF86EFAC))))),
-                  const DataColumn(label: SizedBox(width: 50,  child: Text('Izin',  style: TextStyle(color: Color(0xFFFDE68A))))),
-                  const DataColumn(label: SizedBox(width: 50,  child: Text('Sakit', style: TextStyle(color: Color(0xFFBFDBFE))))),
-                  const DataColumn(label: SizedBox(width: 50,  child: Text('Alpa',  style: TextStyle(color: Color(0xFFFCA5A5))))),
-                  const DataColumn(label: SizedBox(width: 55,  child: Text('%',     style: TextStyle(color: Color(0xFFE2E8F0))))),
+                  const DataColumn(
+                    label: SizedBox(width: 30, child: Text('No')),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(width: 110, child: Text('NISN')),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(width: 160, child: Text('Nama Siswa')),
+                  ),
+                  ...List.generate(
+                    totalPertemuan,
+                    (i) => DataColumn(
+                      label: SizedBox(width: 36, child: Text('P${i + 1}')),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(
+                      width: 60,
+                      child: Text(
+                        'Hadir',
+                        style: TextStyle(color: Color(0xFF86EFAC)),
+                      ),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(
+                      width: 50,
+                      child: Text(
+                        'Izin',
+                        style: TextStyle(color: Color(0xFFFDE68A)),
+                      ),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(
+                      width: 50,
+                      child: Text(
+                        'Sakit',
+                        style: TextStyle(color: Color(0xFFBFDBFE)),
+                      ),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(
+                      width: 50,
+                      child: Text(
+                        'Alpa',
+                        style: TextStyle(color: Color(0xFFFCA5A5)),
+                      ),
+                    ),
+                  ),
+                  const DataColumn(
+                    label: SizedBox(
+                      width: 55,
+                      child: Text(
+                        '%',
+                        style: TextStyle(color: Color(0xFFE2E8F0)),
+                      ),
+                    ),
+                  ),
                 ],
                 rows: _recapStudents.asMap().entries.map((entry) {
                   final idx = entry.key;
-                  final s   = entry.value;
-                  final Color pctColor = s.persentase >= 90 ? const Color(0xFF15803D) : s.persentase >= 75 ? const Color(0xFFB45309) : const Color(0xFFB91C1C);
-                  final Color pctBg = s.persentase >= 90 ? const Color(0xFFF0FDF4) : s.persentase >= 75 ? const Color(0xFFFFFBEB) : const Color(0xFFFEE2E2);
+                  final s = entry.value;
+                  final Color pctColor = s.persentase >= 90
+                      ? const Color(0xFF15803D)
+                      : s.persentase >= 75
+                      ? const Color(0xFFB45309)
+                      : const Color(0xFFB91C1C);
+                  final Color pctBg = s.persentase >= 90
+                      ? const Color(0xFFF0FDF4)
+                      : s.persentase >= 75
+                      ? const Color(0xFFFFFBEB)
+                      : const Color(0xFFFEE2E2);
                   return DataRow(
-                    color: WidgetStateProperty.all(idx % 2 == 0 ? Colors.white : const Color(0xFFF9FAFB)),
+                    color: WidgetStateProperty.all(
+                      idx % 2 == 0 ? Colors.white : const Color(0xFFF9FAFB),
+                    ),
                     cells: [
-                      DataCell(Text('${idx + 1}', style: const TextStyle(fontSize: 12, color: AppColors.gray500))),
-                      DataCell(Text(s.nisn, style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: AppColors.gray600))),
-                      DataCell(Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                      ...s.attendance.map((code) => DataCell(_attendanceCell(code))),
-                      DataCell(_rekapTotalCell('${s.totalHadir}', const Color(0xFF15803D), const Color(0xFFF0FDF4))),
-                      DataCell(_rekapTotalCell('${s.totalIzin}',  const Color(0xFFB45309), const Color(0xFFFFFBEB))),
-                      DataCell(_rekapTotalCell('${s.totalSakit}', const Color(0xFF1D4ED8), const Color(0xFFEFF6FF))),
-                      DataCell(_rekapTotalCell('${s.totalAlpa}',  const Color(0xFFB91C1C),
-                          s.totalAlpa > 3 ? const Color(0xFFFEE2E2) : const Color(0xFFFFF5F5))),
-                      DataCell(_rekapTotalCell('${s.persentase}%', pctColor, pctBg)),
+                      DataCell(
+                        Text(
+                          '${idx + 1}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          s.nisn,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          s.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      ...s.attendance.map(
+                        (code) => DataCell(_attendanceCell(code)),
+                      ),
+                      DataCell(
+                        _rekapTotalCell(
+                          '${s.totalHadir}',
+                          const Color(0xFF15803D),
+                          const Color(0xFFF0FDF4),
+                        ),
+                      ),
+                      DataCell(
+                        _rekapTotalCell(
+                          '${s.totalIzin}',
+                          const Color(0xFFB45309),
+                          const Color(0xFFFFFBEB),
+                        ),
+                      ),
+                      DataCell(
+                        _rekapTotalCell(
+                          '${s.totalSakit}',
+                          const Color(0xFF1D4ED8),
+                          const Color(0xFFEFF6FF),
+                        ),
+                      ),
+                      DataCell(
+                        _rekapTotalCell(
+                          '${s.totalAlpa}',
+                          const Color(0xFFB91C1C),
+                          s.totalAlpa > 3
+                              ? const Color(0xFFFEE2E2)
+                              : const Color(0xFFFFF5F5),
+                        ),
+                      ),
+                      DataCell(
+                        _rekapTotalCell('${s.persentase}%', pctColor, pctBg),
+                      ),
                     ],
                   );
                 }).toList(),
@@ -1440,11 +2478,36 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             spacing: 16,
             runSpacing: 8,
             children: [
-              _legendItem('H', 'Hadir',  const Color(0xFF059669), const Color(0xFFDCFCE7)),
-              _legendItem('I', 'Izin',   const Color(0xFFB45309), const Color(0xFFFEF3C7)),
-              _legendItem('S', 'Sakit',  const Color(0xFF1D4ED8), const Color(0xFFDBEAFE)),
-              _legendItem('A', 'Alpa',   const Color(0xFFB91C1C), const Color(0xFFFEE2E2)),
-              _legendItem('-', 'Kosong', AppColors.gray500,       const Color(0xFFF3F4F6)),
+              _legendItem(
+                'H',
+                'Hadir',
+                const Color(0xFF059669),
+                const Color(0xFFDCFCE7),
+              ),
+              _legendItem(
+                'I',
+                'Izin',
+                const Color(0xFFB45309),
+                const Color(0xFFFEF3C7),
+              ),
+              _legendItem(
+                'S',
+                'Sakit',
+                const Color(0xFF1D4ED8),
+                const Color(0xFFDBEAFE),
+              ),
+              _legendItem(
+                'A',
+                'Alpa',
+                const Color(0xFFB91C1C),
+                const Color(0xFFFEE2E2),
+              ),
+              _legendItem(
+                '-',
+                'Kosong',
+                AppColors.gray500,
+                const Color(0xFFF3F4F6),
+              ),
             ],
           ),
         ],
@@ -1472,7 +2535,11 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       ),
       child: Text(
         code == 'H' ? '✓' : code,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c[1]),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: c[1],
+        ),
       ),
     );
   }
@@ -1482,8 +2549,14 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       width: 36,
       height: 28,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
-      child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        value,
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+      ),
     );
   }
 
@@ -1492,21 +2565,44 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 28, height: 28,
+          width: 28,
+          height: 28,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
-          child: Text(code == 'H' ? '✓' : code, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: fg)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            code == 'H' ? '✓' : code,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.gray600)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.gray600),
+        ),
       ],
     );
   }
 
   // ══════════════════ NILAI TAB ══════════════════════════════════════════
   Widget _buildNilaiTab() {
-    double calculateNa(g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran);
-    final avg = _grades.isEmpty ? 0.0 : _grades.map(calculateNa).reduce((a, b) => a + b) / _grades.length;
+    double calculateNa(g) => g.getNaValue(
+      _bobotTugas,
+      _bobotUH,
+      _bobotUTS,
+      _bobotUAS,
+      _bobotKeaktifan,
+      _bobotKehadiran,
+    );
+    final avg = _grades.isEmpty
+        ? 0.0
+        : _grades.map(calculateNa).reduce((a, b) => a + b) / _grades.length;
 
     return SingleChildScrollView(
       child: Column(
@@ -1517,15 +2613,65 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           const SizedBox(height: 20),
 
           // ─ Stats row ─
-          Row(children: [
-            _nilaiStatCard('Rata-rata Kelas',  avg.toStringAsFixed(1),                                              Icons.bar_chart,          AppColors.primary),
-            const SizedBox(width: 12),
-            _nilaiStatCard('Nilai Tertinggi', _grades.isEmpty ? '0.0' : _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(max).toStringAsFixed(1), Icons.trending_up,   const Color(0xFF059669)),
-            const SizedBox(width: 12),
-            _nilaiStatCard('Nilai Terendah',  _grades.isEmpty ? '0.0' : _grades.map((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran)).reduce(min).toStringAsFixed(1), Icons.trending_down, const Color(0xFFDC2626)),
-            const SizedBox(width: 12),
-            _nilaiStatCard('Lulus (≥70)',      '${_grades.where((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran) >= 70).length}/${_grades.length}', Icons.check_circle_outline, const Color(0xFF7C3AED)),
-          ]),
+          Row(
+            children: [
+              _nilaiStatCard(
+                'Rata-rata Kelas',
+                avg.toStringAsFixed(1),
+                Icons.bar_chart,
+                AppColors.primary,
+              ),
+              const SizedBox(width: 12),
+              _nilaiStatCard(
+                'Nilai Tertinggi',
+                _grades.isEmpty
+                    ? '0.0'
+                    : _grades
+                          .map(
+                            (g) => g.getNaValue(
+                              _bobotTugas,
+                              _bobotUH,
+                              _bobotUTS,
+                              _bobotUAS,
+                              _bobotKeaktifan,
+                              _bobotKehadiran,
+                            ),
+                          )
+                          .reduce(max)
+                          .toStringAsFixed(1),
+                Icons.trending_up,
+                const Color(0xFF059669),
+              ),
+              const SizedBox(width: 12),
+              _nilaiStatCard(
+                'Nilai Terendah',
+                _grades.isEmpty
+                    ? '0.0'
+                    : _grades
+                          .map(
+                            (g) => g.getNaValue(
+                              _bobotTugas,
+                              _bobotUH,
+                              _bobotUTS,
+                              _bobotUAS,
+                              _bobotKeaktifan,
+                              _bobotKehadiran,
+                            ),
+                          )
+                          .reduce(min)
+                          .toStringAsFixed(1),
+                Icons.trending_down,
+                const Color(0xFFDC2626),
+              ),
+              const SizedBox(width: 12),
+              _nilaiStatCard(
+                'Lulus (≥70)',
+                '${_grades.where((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran) >= 70).length}/${_grades.length}',
+                Icons.check_circle_outline,
+                const Color(0xFF7C3AED),
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
 
           // ─ Save success toast ─
@@ -1533,12 +2679,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             Container(
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(color: const Color(0xFFD1FAE5), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: const Row(
                 children: [
-                  Icon(Icons.check_circle_outline, color: Color(0xFF059669), size: 18),
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Color(0xFF059669),
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
-                  Text('Nilai berhasil disimpan!', style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                  Text(
+                    'Nilai berhasil disimpan!',
+                    style: TextStyle(
+                      color: Color(0xFF059669),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1548,28 +2707,58 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 // Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   child: Row(
                     children: [
-                      const Icon(Icons.table_chart_outlined, color: AppColors.primary),
+                      const Icon(
+                        Icons.table_chart_outlined,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 8),
-                      const Text('Tabel Nilai Siswa', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      const Text(
+                        'Tabel Nilai Siswa',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                       const Spacer(),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         icon: const Icon(Icons.save_outlined, size: 16),
-                        label: const Text('Simpan Semua Nilai', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        label: const Text(
+                          'Simpan Semua Nilai',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         onPressed: _saveGrades,
                       ),
                     ],
@@ -1580,17 +2769,49 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                 // Column headers
                 Container(
                   color: const Color(0xFFF9FAFB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
-                      const SizedBox(width: 32, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
-                      const Expanded(flex: 3, child: Text('NAMA SISWA', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12))),
-                      _NilaiHeader('TUGAS (${_bobotTugas.toInt()}%)', width: 110),
+                      const SizedBox(
+                        width: 32,
+                        child: Text(
+                          '#',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.gray500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const Expanded(
+                        flex: 3,
+                        child: Text(
+                          'NAMA SISWA',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.gray500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      _NilaiHeader(
+                        'TUGAS (${_bobotTugas.toInt()}%)',
+                        width: 110,
+                      ),
                       _NilaiHeader('UH (${_bobotUH.toInt()}%)', width: 100),
                       _NilaiHeader('UTS (${_bobotUTS.toInt()}%)', width: 100),
                       _NilaiHeader('UAS (${_bobotUAS.toInt()}%)', width: 100),
-                      _NilaiHeader('KEAKTIFAN (${_bobotKeaktifan.toInt()}%)', width: 120),
-                      NilaiHeaderAuto('KEHADIRAN (${_bobotKehadiran.toInt()}%)', width: 140),
+                      _NilaiHeader(
+                        'KEAKTIFAN (${_bobotKeaktifan.toInt()}%)',
+                        width: 120,
+                      ),
+                      NilaiHeaderAuto(
+                        'KEHADIRAN (${_bobotKehadiran.toInt()}%)',
+                        width: 140,
+                      ),
                       const _NilaiHeader('NA', width: 70),
                       const _NilaiHeader('GRADE', width: 70),
                     ],
@@ -1602,7 +2823,8 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _grades.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
                   itemBuilder: (ctx, i) => _buildGradeRow(_grades[i], i),
                 ),
               ],
@@ -1628,11 +2850,32 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             children: [
               const Icon(Icons.tune, color: AppColors.primary, size: 20),
               const SizedBox(width: 10),
-              const Text('Persentase Bobot Penilaian', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w700)),
+              const Text(
+                'Persentase Bobot Penilaian',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const Spacer(),
               _getTotalBobot() == 100
-                  ? const Text('Total: 100% ✓', style: TextStyle(color: Color(0xFF059669), fontSize: 13, fontWeight: FontWeight.w600))
-                  : Text('Total: ${_getTotalBobot().toInt()}% (Harus 100%)', style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13, fontWeight: FontWeight.w600)),
+                  ? const Text(
+                      'Total: 100% ✓',
+                      style: TextStyle(
+                        color: Color(0xFF059669),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : Text(
+                      'Total: ${_getTotalBobot().toInt()}% (Harus 100%)',
+                      style: const TextStyle(
+                        color: Color(0xFFDC2626),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ],
           ),
           const SizedBox(height: 4),
@@ -1645,13 +2888,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           // Row 1: Tugas, UH, UTS, UAS
           Row(
             children: [
-              _bobotInput('Tugas', _bobotTugas, (v) => setState(() => _bobotTugas = v)),
+              _bobotInput(
+                'Tugas',
+                _bobotTugas,
+                (v) => setState(() => _bobotTugas = v),
+              ),
               const SizedBox(width: 12),
               _bobotInput('UH', _bobotUH, (v) => setState(() => _bobotUH = v)),
               const SizedBox(width: 12),
-              _bobotInput('UTS', _bobotUTS, (v) => setState(() => _bobotUTS = v)),
+              _bobotInput(
+                'UTS',
+                _bobotUTS,
+                (v) => setState(() => _bobotUTS = v),
+              ),
               const SizedBox(width: 12),
-              _bobotInput('UAS', _bobotUAS, (v) => setState(() => _bobotUAS = v)),
+              _bobotInput(
+                'UAS',
+                _bobotUAS,
+                (v) => setState(() => _bobotUAS = v),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1659,9 +2914,17 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
           // Row 2: Keaktifan & Kehadiran (Both editable now)
           Row(
             children: [
-              _bobotInput('Keaktifan', _bobotKeaktifan, (v) => setState(() => _bobotKeaktifan = v)),
+              _bobotInput(
+                'Keaktifan',
+                _bobotKeaktifan,
+                (v) => setState(() => _bobotKeaktifan = v),
+              ),
               const SizedBox(width: 12),
-              _bobotInput('Kehadiran', _bobotKehadiran, (v) => setState(() => _bobotKehadiran = v)),
+              _bobotInput(
+                'Kehadiran',
+                _bobotKehadiran,
+                (v) => setState(() => _bobotKehadiran = v),
+              ),
               const Spacer(),
               const Spacer(),
             ],
@@ -1671,7 +2934,10 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             children: [
               Icon(Icons.info_outline, color: AppColors.gray400, size: 14),
               SizedBox(width: 6),
-              Text('Klik baris pada tabel untuk mulai mengedit. Nilai kehadiran dihitung otomatis dari data absensi.', style: TextStyle(color: AppColors.gray500, fontSize: 12)),
+              Text(
+                'Klik baris pada tabel untuk mulai mengedit. Nilai kehadiran dihitung otomatis dari data absensi.',
+                style: TextStyle(color: AppColors.gray500, fontSize: 12),
+              ),
             ],
           ),
         ],
@@ -1679,14 +2945,27 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     );
   }
 
-  double _getTotalBobot() => _bobotTugas + _bobotUH + _bobotUTS + _bobotUAS + _bobotKeaktifan + _bobotKehadiran;
+  double _getTotalBobot() =>
+      _bobotTugas +
+      _bobotUH +
+      _bobotUTS +
+      _bobotUAS +
+      _bobotKeaktifan +
+      _bobotKehadiran;
 
   Widget _bobotInput(String label, double value, Function(double) onChanged) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label (%)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gray600)),
+          Text(
+            '$label (%)',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.gray600,
+            ),
+          ),
           const SizedBox(height: 6),
           TextFormField(
             initialValue: value.toStringAsFixed(0),
@@ -1694,9 +2973,21 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
             ),
             onChanged: (val) {
               final parsed = double.tryParse(val);
@@ -1709,28 +3000,55 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     );
   }
 
-  Widget _nilaiStatCard(String label, String value, IconData icon, Color color) {
+  Widget _nilaiStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
-                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray500)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.gray500,
+                  ),
+                ),
               ],
             ),
           ],
@@ -1741,15 +3059,29 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
 
   Widget _buildGradeRow(_GradeRow g, int idx) {
     final isEditing = _editingId == g.nisn;
-    final na = g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran);
+    final na = g.getNaValue(
+      _bobotTugas,
+      _bobotUH,
+      _bobotUTS,
+      _bobotUAS,
+      _bobotKeaktifan,
+      _bobotKehadiran,
+    );
     final passed = na >= 70;
 
     final Color gradeColor;
     switch (g.getGrade(na)) {
-      case 'A': gradeColor = const Color(0xFF059669); break;
-      case 'B': gradeColor = const Color(0xFF2563EB); break;
-      case 'C': gradeColor = const Color(0xFFD97706); break;
-      default: gradeColor = const Color(0xFFDC2626);
+      case 'A':
+        gradeColor = const Color(0xFF059669);
+        break;
+      case 'B':
+        gradeColor = const Color(0xFF2563EB);
+        break;
+      case 'C':
+        gradeColor = const Color(0xFFD97706);
+        break;
+      default:
+        gradeColor = const Color(0xFFDC2626);
     }
 
     // Kehadiran color coding
@@ -1770,7 +3102,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(fontSize: 12, color: AppColors.gray500))),
+            SizedBox(
+              width: 32,
+              child: Text(
+                '${idx + 1}',
+                style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+              ),
+            ),
             Expanded(
               flex: 3,
               child: Row(
@@ -1778,10 +3116,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   CircleAvatar(
                     radius: 14,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    child: Text(g.name[0], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    child: Text(
+                      g.name[0],
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Flexible(child: Text(g.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                  Flexible(
+                    child: Text(
+                      g.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1790,13 +3143,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               _editableNilaiCell(_ctrl('${g.nisn}-uh', g.uh), 100),
               _editableNilaiCell(_ctrl('${g.nisn}-uts', g.uts), 100),
               _editableNilaiCell(_ctrl('${g.nisn}-uas', g.uas), 100),
-              _editableNilaiCell(_ctrl('${g.nisn}-keaktifan', g.keaktifan), 120),
+              _editableNilaiCell(
+                _ctrl('${g.nisn}-keaktifan', g.keaktifan),
+                120,
+              ),
             ] else ...[
               _nilaiCell(g.tugas.toStringAsFixed(0), 110, passed),
               _nilaiCell(g.uh.toStringAsFixed(0), 100, passed),
               _nilaiCell(g.uts.toStringAsFixed(0), 100, passed),
               _nilaiCell(g.uas.toStringAsFixed(0), 100, passed),
-              _nilaiCell(g.keaktifan.toStringAsFixed(0), 120, g.keaktifan >= 70),
+              _nilaiCell(
+                g.keaktifan.toStringAsFixed(0),
+                120,
+                g.keaktifan >= 70,
+              ),
             ],
             // Kehadiran — read-only, auto dari absensi
             SizedBox(
@@ -1804,20 +3164,33 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: kehadiranColor.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: kehadiranColor.withValues(alpha: 0.30)),
+                      border: Border.all(
+                        color: kehadiranColor.withValues(alpha: 0.30),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.lock_outlined, size: 11, color: kehadiranColor),
+                        Icon(
+                          Icons.lock_outlined,
+                          size: 11,
+                          color: kehadiranColor,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${g.kehadiran.toStringAsFixed(0)}%',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kehadiranColor),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: kehadiranColor,
+                          ),
                         ),
                       ],
                     ),
@@ -1830,7 +3203,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
               width: 70,
               child: Text(
                 na.toStringAsFixed(1),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: passed ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: passed
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFDC2626),
+                ),
               ),
             ),
             // Grade badge
@@ -1844,7 +3223,14 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   color: gradeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(g.getGrade(na), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: gradeColor)),
+                child: Text(
+                  g.getGrade(na),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: gradeColor,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1856,7 +3242,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
   Widget _nilaiCell(String value, double width, bool ok) {
     return SizedBox(
       width: width,
-      child: Text(value, style: TextStyle(fontSize: 13, color: ok ? AppColors.foreground : const Color(0xFFDC2626))),
+      child: Text(
+        value,
+        style: TextStyle(
+          fontSize: 13,
+          color: ok ? AppColors.foreground : const Color(0xFFDC2626),
+        ),
+      ),
     );
   }
 
@@ -1868,13 +3260,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
         child: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(3),
+          ],
           style: const TextStyle(fontSize: 13),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 6,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.accent, width: 2),
+            ),
           ),
         ),
       ),
@@ -1886,7 +3290,9 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     final minutes = (_qrCountdown ~/ 60).toString().padLeft(2, '0');
     final seconds = (_qrCountdown % 60).toString().padLeft(2, '0');
     final isUrgent = _qrCountdown <= 30;
-    final timerColor = isUrgent ? const Color(0xFFDC2626) : const Color(0xFF059669);
+    final timerColor = isUrgent
+        ? const Color(0xFFDC2626)
+        : const Color(0xFF059669);
 
     return GestureDetector(
       onTap: () {}, // Don't close on outer tap — session stays active
@@ -1898,7 +3304,13 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 40, offset: const Offset(0, 12))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 40,
+                  offset: const Offset(0, 12),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1908,13 +3320,19 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
                   decoration: const BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
                   ),
                   child: Row(
                     children: [
                       // Status pill
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -1922,9 +3340,23 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF6EE7B7), shape: BoxShape.circle)),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF6EE7B7),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                             const SizedBox(width: 6),
-                            const Text('Sesi Absensi Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                            const Text(
+                              'Sesi Absensi Aktif',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1933,9 +3365,17 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                       GestureDetector(
                         onTap: _closeQRModal,
                         child: Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                          child: const Icon(Icons.minimize_rounded, color: Colors.white, size: 20),
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.minimize_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
@@ -1948,11 +3388,21 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   child: Column(
                     children: [
                       // Title
-                      const Text('QR Absensi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      const Text(
+                        'QR Absensi',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Pertemuan ke-$_activePertemuanKe  •  $_activeMateri',
-                        style: const TextStyle(fontSize: 13, color: AppColors.gray500),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.gray500,
+                        ),
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1972,10 +3422,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.timer_outlined, size: 15, color: timerColor),
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 15,
+                            color: timerColor,
+                          ),
                           const SizedBox(width: 5),
-                          Text('QR diperbarui dalam $minutes:$seconds',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: timerColor)),
+                          Text(
+                            'QR diperbarui dalam $minutes:$seconds',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: timerColor,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -1988,37 +3448,35 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-                        ),
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CustomPaint(
-                                size: const Size(240, 240),
-                                painter: _QRPainter(_generatedQR),
-                              ),
-                            ),
-                            Center(
-                              child: Container(
-                                width: 52, height: 52,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
-                                ),
-                                child: const Center(child: Icon(Icons.school, color: AppColors.primary, size: 30)),
-                              ),
+                          border: Border.all(
+                            color: const Color(0xFFE5E7EB),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
                           ],
+                        ),
+                        child: QrImageView(
+                          data: _generatedQR,
+                          version: QrVersions.auto,
+                          size: 240,
+                          backgroundColor: Colors.white,
+                          padding: EdgeInsets.zero,
+                          errorCorrectionLevel: QrErrorCorrectLevel.M,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Siswa scan melalui aplikasi mobile masing-masing',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11, color: AppColors.gray500),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray500,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -2034,12 +3492,17 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                           children: [
                             _qrInfoCell('Pertemuan Ke-', '$_activePertemuanKe'),
                             const _QRInfoDivider(),
-                            _qrInfoCell('Waktu Mulai',
+                            _qrInfoCell(
+                              'Waktu Mulai',
                               _sessionStartTime != null
-                                ? '${_sessionStartTime!.hour.toString().padLeft(2,'0')}:${_sessionStartTime!.minute.toString().padLeft(2,'0')}'
-                                : '--:--'),
+                                  ? '${_sessionStartTime!.hour.toString().padLeft(2, '0')}:${_sessionStartTime!.minute.toString().padLeft(2, '0')}'
+                                  : '--:--',
+                            ),
                             const _QRInfoDivider(),
-                            _qrInfoCell('Hadir', '${_students.where((s) => s.status == 'HADIR').length}/${_students.length}'),
+                            _qrInfoCell(
+                              'Hadir',
+                              '${_students.where((s) => s.status == 'HADIR').length}/${_students.length}',
+                            ),
                           ],
                         ),
                       ),
@@ -2048,8 +3511,24 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                           padding: const EdgeInsets.only(top: 10),
                           child: Row(
                             children: [
-                              const Text('Materi: ', style: TextStyle(fontSize: 13, color: AppColors.gray500)),
-                              Expanded(child: Text(_activeMateri, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary), overflow: TextOverflow.ellipsis)),
+                              const Text(
+                                'Materi: ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _activeMateri,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -2067,12 +3546,20 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
                   child: ElevatedButton.icon(
                     onPressed: _endSession,
                     icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                    label: const Text('Akhiri Sesi Pertemuan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    label: const Text(
+                      'Akhiri Sesi Pertemuan',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFDC2626),
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                   ),
@@ -2089,16 +3576,25 @@ class _ClassDetailState extends State<ClassDetail> with SingleTickerProviderStat
     return Expanded(
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray500)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.gray500),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
         ],
       ),
     );
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
-
 
   void _showSaveSnackbar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2145,7 +3641,14 @@ class _NilaiHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray500, fontSize: 12)),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: AppColors.gray500,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }
@@ -2172,63 +3675,16 @@ class NilaiHeaderAuto extends StatelessWidget {
   }
 }
 
-// ── QR Painter (mock QR code grid) ─────────────────────────────────────────
-class _QRPainter extends CustomPainter {
-  final String data;
-  _QRPainter(this.data);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF1E3A8A);
-    final bgPaint = Paint()..color = Colors.white;
-    canvas.drawRect(Offset.zero & size, bgPaint);
-
-    final rng = Random(data.hashCode);
-    final cellSize = size.width / 25;
-    const quietZone = 2; // cells
-
-    // Draw cells (mimic QR density)
-    for (int row = 0; row < 25; row++) {
-      for (int col = 0; col < 25; col++) {
-        // Skip finder pattern areas (corners)
-        final inTopLeft = row < 9 && col < 9;
-        final inTopRight = row < 9 && col > 15;
-        final inBottomLeft = row > 15 && col < 9;
-
-        if (inTopLeft || inTopRight || inBottomLeft) continue;
-        if (row < quietZone || col < quietZone || row >= 25 - quietZone || col >= 25 - quietZone) continue;
-
-        if (rng.nextBool()) {
-          final rect = Rect.fromLTWH(col * cellSize + 1, row * cellSize + 1, cellSize - 1, cellSize - 1);
-          canvas.drawRect(rect, paint);
-        }
-      }
-    }
-
-    // Draw finder patterns (corners)
-    _drawFinder(canvas, paint, bgPaint, cellSize, 0, 0);
-    _drawFinder(canvas, paint, bgPaint, cellSize, 18, 0);
-    _drawFinder(canvas, paint, bgPaint, cellSize, 0, 18);
-  }
-
-  void _drawFinder(Canvas canvas, Paint dark, Paint light, double cs, double startCol, double startRow) {
-    // Outer 7x7 black
-    canvas.drawRect(Rect.fromLTWH(startCol * cs, startRow * cs, 7 * cs, 7 * cs), dark);
-    // Inner 5x5 white
-    canvas.drawRect(Rect.fromLTWH((startCol + 1) * cs, (startRow + 1) * cs, 5 * cs, 5 * cs), light);
-    // Inner 3x3 black
-    canvas.drawRect(Rect.fromLTWH((startCol + 2) * cs, (startRow + 2) * cs, 3 * cs, 3 * cs), dark);
-  }
-
-  @override
-  bool shouldRepaint(_QRPainter old) => old.data != data;
-}
-
 // ── QR Info Divider helper ────────────────────────────────────────────────────
 class _QRInfoDivider extends StatelessWidget {
   const _QRInfoDivider();
   @override
   Widget build(BuildContext context) {
-    return Container(width: 1, height: 36, color: const Color(0xFFE5E7EB), margin: const EdgeInsets.symmetric(horizontal: 8));
+    return Container(
+      width: 1,
+      height: 36,
+      color: const Color(0xFFE5E7EB),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+    );
   }
 }

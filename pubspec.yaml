@@ -22,6 +22,7 @@ dependencies:
 
   # Networking
   dio: ^5.7.0
+  supabase_flutter: ^2.8.4
 
   # Local Storage
   shared_preferences: ^2.3.4
@@ -44,9 +45,19 @@ dependencies:
 
   # Cupertino Icons
   cupertino_icons: ^1.0.8
+  image_picker: ^1.2.2
+  qr_flutter: ^4.1.0
+  url_launcher: ^6.3.2
+  flutter_quill: ^11.5.0
+  flutter_quill_delta_from_html: ^1.5.3
+  flutter_localizations:
+    sdk: flutter
+  html: ^0.15.6
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
 

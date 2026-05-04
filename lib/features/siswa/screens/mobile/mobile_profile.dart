@@ -12,6 +12,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/providers/theme_provider.dart';
+import '../../../../shared_widgets/profile_photo_editor.dart';
 import '../../providers/student_providers.dart';
 
 class MobileProfile extends ConsumerStatefulWidget {
@@ -21,19 +22,34 @@ class MobileProfile extends ConsumerStatefulWidget {
 }
 
 class _MobileProfileState extends ConsumerState<MobileProfile> {
+  static const bool _enableEmailOtp = bool.fromEnvironment(
+    'ENABLE_EMAIL_OTP',
+    defaultValue: false,
+  );
+
   bool _loading = true;
   bool _saving = false;
   bool _editing = false;
+  bool _emailOtpSending = false;
+  bool _emailOtpVerifying = false;
+  String _emailOtpMessage = '';
+  String _emailOtpError = '';
+  String _devOtp = '';
 
   final _fullNameCtrl = TextEditingController();
   final _motherCtrl = TextEditingController();
   final _birthPlaceCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _personalEmailCtrl = TextEditingController();
+  final _personalEmailOtpCtrl = TextEditingController();
   String _gender = 'Laki-laki';
   String _religion = 'Islam';
   String _email = '';
   String _nisn = '';
   String _initials = '';
+  String _avatarUrl = '';
+  String _personalEmail = '';
+  String _personalEmailPending = '';
 
   @override
   void initState() {
@@ -73,6 +89,12 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       if (mounted) {
         setState(() {
           _email = data['email'] ?? '';
+          _avatarUrl = data['avatarUrl'] ?? '';
+          _personalEmail = data['personalEmail'] ?? '';
+          _personalEmailPending = data['personalEmailPending'] ?? '';
+          _personalEmailCtrl.text = _personalEmailPending.isNotEmpty
+              ? _personalEmailPending
+              : _personalEmail;
           _nisn = data['nomorInduk'] ?? '';
           _fullNameCtrl.text = data['namaLengkap'] ?? '';
           _motherCtrl.text = data['namaIbuKandung'] ?? '';
@@ -87,7 +109,9 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
           final names = (data['namaLengkap'] ?? '').toString().split(' ');
           _initials = names.length >= 2
               ? '${names[0][0]}${names[1][0]}'.toUpperCase()
-              : (names.isNotEmpty && names[0].isNotEmpty ? names[0][0].toUpperCase() : '?');
+              : (names.isNotEmpty && names[0].isNotEmpty
+                    ? names[0][0].toUpperCase()
+                    : '?');
           _loading = false;
         });
       }
@@ -108,26 +132,37 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         'detailAlamat': _addressCtrl.text,
       });
       if (mounted) {
-        setState(() { _saving = false; _editing = false; });
+        setState(() {
+          _saving = false;
+          _editing = false;
+        });
         // Sync name to authProvider so TopBar updates
-        await ref.read(authProvider.notifier).updateUserName(_fullNameCtrl.text);
+        await ref
+            .read(authProvider.notifier)
+            .updateUserName(_fullNameCtrl.text);
         final names = _fullNameCtrl.text.split(' ');
         if (mounted) {
           setState(() {
             _initials = names.length >= 2
                 ? '${names[0][0]}${names[1][0]}'.toUpperCase()
-                : (names.isNotEmpty && names[0].isNotEmpty ? names[0][0].toUpperCase() : '?');
+                : (names.isNotEmpty && names[0].isNotEmpty
+                      ? names[0][0].toUpperCase()
+                      : '?');
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('Profil berhasil diperbarui'),
-              ]),
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('Profil berhasil diperbarui'),
+                ],
+              ),
               backgroundColor: const Color(0xFF16A34A),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               margin: const EdgeInsets.all(16),
             ),
           );
@@ -141,10 +176,114 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
             content: const Text('Gagal menyimpan profil'),
             backgroundColor: AppColors.destructive,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _handleAvatarChanged(String? avatarUrl) {
+    setState(() => _avatarUrl = avatarUrl ?? '');
+  }
+
+  Future<void> _requestPersonalEmailOtp() async {
+    final email = _personalEmailCtrl.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _emailOtpError = 'Email pribadi wajib diisi.';
+        _emailOtpMessage = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _emailOtpSending = true;
+      _emailOtpError = '';
+      _emailOtpMessage = '';
+      _devOtp = '';
+    });
+    try {
+      final response = await ApiService.requestPersonalEmailOtp(email);
+      final data = response['data'] ?? {};
+      final pendingEmail = data['personalEmailPending'] ?? email;
+      final devOtp = data['devOtp']?.toString() ?? '';
+      if (mounted) {
+        setState(() {
+          _personalEmailPending = pendingEmail;
+          _devOtp = devOtp;
+          if (devOtp.isNotEmpty) {
+            _personalEmailOtpCtrl.text = devOtp;
+          }
+          _emailOtpMessage =
+              response['message'] ?? 'OTP email pemulihan telah dikirim.';
+          _emailOtpSending = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _emailOtpSending = false;
+          _emailOtpError =
+              'Gagal mengirim OTP. Periksa email atau konfigurasi SMTP backend.';
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyPersonalEmailOtp() async {
+    if (_personalEmailOtpCtrl.text.trim().isEmpty) {
+      setState(() {
+        _emailOtpError = 'Kode OTP wajib diisi.';
+        _emailOtpMessage = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _emailOtpVerifying = true;
+      _emailOtpError = '';
+      _emailOtpMessage = '';
+    });
+    try {
+      await ApiService.verifyPersonalEmailOtp(
+        _personalEmailOtpCtrl.text.trim(),
+      );
+      await _loadProfile();
+      if (mounted) {
+        setState(() {
+          _personalEmailOtpCtrl.clear();
+          _devOtp = '';
+          _emailOtpMessage = 'Email pemulihan berhasil diverifikasi.';
+          _emailOtpVerifying = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _emailOtpVerifying = false;
+          _emailOtpError = 'Kode OTP tidak valid atau sudah kadaluarsa.';
+        });
       }
     }
   }
@@ -154,7 +293,10 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Keluar',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         content: const Text('Apakah Anda yakin ingin keluar dari akun?'),
         actions: [
           TextButton(
@@ -170,7 +312,9 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.destructive,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Keluar'),
           ),
@@ -185,6 +329,8 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
     _motherCtrl.dispose();
     _birthPlaceCtrl.dispose();
     _addressCtrl.dispose();
+    _personalEmailCtrl.dispose();
+    _personalEmailOtpCtrl.dispose();
     super.dispose();
   }
 
@@ -203,24 +349,48 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       children: [
         // ── Avatar Header ──
-        Center(child: Column(children: [
-          Container(
-            width: 90, height: 90,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.accent, AppColors.accentHover]),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Center(child: Text(_initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 32))),
+        Center(
+          child: Column(
+            children: [
+              ProfilePhotoEditor(
+                initials: _initials,
+                avatarUrl: _avatarUrl,
+                size: 90,
+                borderRadius: 24,
+                onAvatarChanged: _handleAvatarChanged,
+                onMessage: _showSnack,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _fullNameCtrl.text,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: fgColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Kelas $kelas',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(_fullNameCtrl.text, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: fgColor)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-            child: Text('Kelas $kelas', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-          ),
-        ])),
+        ),
         const SizedBox(height: 24),
 
         // ── Account Info ──
@@ -231,72 +401,148 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         ]),
         const SizedBox(height: 16),
 
+        if (_enableEmailOtp) ...[
+          _sectionCard('Email Pemulihan', Icons.verified_user_outlined, [
+            _infoRow(
+              'Terverifikasi',
+              _personalEmail,
+              Icons.mark_email_read_outlined,
+            ),
+            if (_emailOtpError.isNotEmpty) ...[
+              _statusBox(_emailOtpError, false),
+              const SizedBox(height: 12),
+            ],
+            if (_emailOtpMessage.isNotEmpty) ...[
+              _statusBox(_emailOtpMessage, true),
+              const SizedBox(height: 12),
+            ],
+            _editField('Email Pribadi', _personalEmailCtrl),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _emailOtpSending
+                        ? null
+                        : _requestPersonalEmailOtp,
+                    icon: _emailOtpSending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.mail_outline, size: 18),
+                    label: const Text('Kirim OTP'),
+                  ),
+                ),
+              ],
+            ),
+            if (_personalEmailPending.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _otpVerificationBox(),
+            ],
+          ]),
+          const SizedBox(height: 16),
+        ],
+
         // ── Personal Info ──
         _sectionCard(
           'Data Pribadi',
           Icons.edit_note,
           [
-            if (!_editing)
-              ...[
-                _infoRow('Nama Lengkap', _fullNameCtrl.text, Icons.person),
-                _infoRow('Jenis Kelamin', _gender, Icons.wc),
-                _infoRow('Tempat Lahir', _birthPlaceCtrl.text, Icons.location_city),
-                _infoRow('Agama', _religion, Icons.mosque_outlined),
-                _infoRow('Nama Ibu', _motherCtrl.text, Icons.family_restroom),
-                _infoRow('Alamat', _addressCtrl.text, Icons.home_outlined),
-              ]
-            else
-              ...[
-                _editField('Nama Lengkap', _fullNameCtrl),
-                _editField('Tempat Lahir', _birthPlaceCtrl),
-                _editField('Nama Ibu Kandung', _motherCtrl),
-                _editField('Alamat', _addressCtrl, maxLines: 2),
-                const SizedBox(height: 8),
-                _dropdownField('Jenis Kelamin', ['Laki-laki', 'Perempuan'], _gender, (v) => setState(() => _gender = v!)),
-                const SizedBox(height: 8),
-                _dropdownField('Agama', ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'], _religion, (v) => setState(() => _religion = v!)),
-              ],
+            if (!_editing) ...[
+              _infoRow('Nama Lengkap', _fullNameCtrl.text, Icons.person),
+              _infoRow('Jenis Kelamin', _gender, Icons.wc),
+              _infoRow(
+                'Tempat Lahir',
+                _birthPlaceCtrl.text,
+                Icons.location_city,
+              ),
+              _infoRow('Agama', _religion, Icons.mosque_outlined),
+              _infoRow('Nama Ibu', _motherCtrl.text, Icons.family_restroom),
+              _infoRow('Alamat', _addressCtrl.text, Icons.home_outlined),
+            ] else ...[
+              _editField('Nama Lengkap', _fullNameCtrl),
+              _editField('Tempat Lahir', _birthPlaceCtrl),
+              _editField('Nama Ibu Kandung', _motherCtrl),
+              _editField('Alamat', _addressCtrl, maxLines: 2),
+              const SizedBox(height: 8),
+              _dropdownField(
+                'Jenis Kelamin',
+                ['Laki-laki', 'Perempuan'],
+                _gender,
+                (v) => setState(() => _gender = v!),
+              ),
+              const SizedBox(height: 8),
+              _dropdownField(
+                'Agama',
+                ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'],
+                _religion,
+                (v) => setState(() => _religion = v!),
+              ),
+            ],
           ],
           trailing: !_editing
               ? TextButton.icon(
                   onPressed: () => setState(() => _editing = true),
                   icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w600)),
+                  label: const Text(
+                    'Edit',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 )
               : null,
         ),
 
         if (_editing) ...[
           const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () { _loadProfile(); setState(() => _editing = false); },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.gray600,
-                  side: const BorderSide(color: AppColors.gray300),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    _loadProfile();
+                    setState(() => _editing = false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gray600,
+                    side: const BorderSide(color: AppColors.gray300),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Batal'),
                 ),
-                child: const Text('Batal'),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _saving ? null : _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Simpan',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
                 ),
-                child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Simpan', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
-            ),
-          ]),
+            ],
+          ),
         ],
         const SizedBox(height: 24),
 
@@ -304,9 +550,20 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
         _sectionCard('Pengaturan', Icons.settings_outlined, [
           Row(
             children: [
-              Icon(Icons.dark_mode_outlined, size: 18, color: AppColors.gray400),
+              Icon(
+                Icons.dark_mode_outlined,
+                size: 18,
+                color: AppColors.gray400,
+              ),
               const SizedBox(width: 10),
-              Text('Mode Gelap', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: fgColor)),
+              Text(
+                'Mode Gelap',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: fgColor,
+                ),
+              ),
               const Spacer(),
               Switch(
                 value: isDark,
@@ -326,12 +583,17 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
           child: OutlinedButton.icon(
             onPressed: _showLogoutDialog,
             icon: const Icon(Icons.logout, size: 18),
-            label: const Text('Keluar dari Akun', style: TextStyle(fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Keluar dari Akun',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.destructive,
               side: const BorderSide(color: AppColors.destructive),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ),
@@ -339,7 +601,12 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
     );
   }
 
-  Widget _sectionCard(String title, IconData icon, List<Widget> children, {Widget? trailing}) {
+  Widget _sectionCard(
+    String title,
+    IconData icon,
+    List<Widget> children, {
+    Widget? trailing,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fgColor = isDark ? Colors.white : AppColors.foreground;
@@ -348,18 +615,38 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
       decoration: BoxDecoration(
         color: theme.cardTheme.color ?? Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(icon, size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: fgColor))),
-          if (trailing != null) trailing,
-        ]),
-        const SizedBox(height: 14),
-        ...children,
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: fgColor,
+                  ),
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
     );
   }
 
@@ -367,15 +654,91 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(children: [
-        Icon(icon, size: 16, color: AppColors.gray400),
-        const SizedBox(width: 10),
-        SizedBox(width: 100, child: Text(label, style: TextStyle(fontSize: 12, color: AppColors.gray500))),
-        Expanded(child: Text(value.isEmpty ? '-' : value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : AppColors.foreground))),
-      ]),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.gray400),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: AppColors.gray500),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : AppColors.foreground,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
-  Widget _editField(String label, TextEditingController ctrl, {int maxLines = 1}) {
+
+  Widget _statusBox(String message, bool success) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: success ? const Color(0xFFEFFDF4) : AppColors.red50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: success ? const Color(0xFF86EFAC) : AppColors.red200,
+        ),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontSize: 12,
+          color: success ? const Color(0xFF166534) : AppColors.destructive,
+        ),
+      ),
+    );
+  }
+
+  Widget _otpVerificationBox() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _infoRow('Pending', _personalEmailPending, Icons.pending_outlined),
+          if (_devOtp.isNotEmpty) ...[
+            _statusBox('Kode OTP dev: $_devOtp', true),
+            const SizedBox(height: 12),
+          ],
+          _editField('Masukkan Kode OTP', _personalEmailOtpCtrl),
+          OutlinedButton.icon(
+            onPressed: _emailOtpVerifying ? null : _verifyPersonalEmailOtp,
+            icon: _emailOtpVerifying
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.verified_outlined, size: 18),
+            label: const Text('Verifikasi OTP'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editField(
+    String label,
+    TextEditingController ctrl, {
+    int maxLines = 1,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -386,29 +749,62 @@ class _MobileProfileState extends ConsumerState<MobileProfile> {
           labelStyle: TextStyle(fontSize: 13, color: AppColors.gray500),
           filled: true,
           fillColor: AppColors.gray50,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray200),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
         ),
       ),
     );
   }
 
-  Widget _dropdownField(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
+  Widget _dropdownField(
+    String label,
+    List<String> items,
+    String value,
+    ValueChanged<String?> onChanged,
+  ) {
     final currentValue = items.contains(value) ? value : items.first;
     return DropdownButtonFormField<String>(
       initialValue: currentValue,
-      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+      items: items
+          .map(
+            (e) => DropdownMenuItem(
+              value: e,
+              child: Text(e, style: const TextStyle(fontSize: 14)),
+            ),
+          )
+          .toList(),
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(fontSize: 13, color: AppColors.gray500),
         filled: true,
         fillColor: AppColors.gray50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray200)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.gray200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.gray200),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
       ),
     );
   }

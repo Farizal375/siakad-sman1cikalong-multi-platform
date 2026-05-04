@@ -64,7 +64,7 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
       } catch (_) {}
 
       final grouped = <String, Map<String, dynamic>>{};
-      if (kelasId != null) {
+      if (kelasId != null && kelasId.trim().isNotEmpty) {
         try {
           final jadwalRes = await ApiService.getJadwal(kelasId: kelasId);
           final List jadwalData = jadwalRes['data'] ?? [];
@@ -266,6 +266,13 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != next && next != null) {
+        _selectedSemesterId = null;
+        _load();
+      }
+    });
+
     final hadir = _count('HADIR');
     final sakit = _count('SAKIT');
     final izin = _count('IZIN');

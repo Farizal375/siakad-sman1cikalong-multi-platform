@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../providers/student_providers.dart';
 
 class MobileSchedule extends ConsumerStatefulWidget {
@@ -51,7 +52,7 @@ class _MobileScheduleState extends ConsumerState<MobileSchedule> {
       final dashboard = await ref.read(studentDashboardProvider.future);
       final kelasId = dashboard['kelasId'] as String?;
 
-      if (kelasId == null) {
+      if (kelasId == null || kelasId.trim().isEmpty) {
         setState(() => _loading = false);
         return;
       }
@@ -91,6 +92,13 @@ class _MobileScheduleState extends ConsumerState<MobileSchedule> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != next && next != null) {
+        _loadSchedule();
+        _loadSemester();
+      }
+    });
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fgColor = isDark ? Colors.white : AppColors.foreground;

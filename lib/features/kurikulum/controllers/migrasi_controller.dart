@@ -14,7 +14,7 @@ import '../../../../core/network/api_service.dart';
 // DATA MODELS
 // ═══════════════════════════════════════════════
 
-enum StatusKenaikan { naik, tinggal }
+enum StatusKenaikan { naik, tinggal, perluCek }
 
 class SiswaPromosi {
   final String id;
@@ -22,6 +22,8 @@ class SiswaPromosi {
   final String nisn;
   final double nilaiRataRata;
   final int persentaseKehadiran;
+  final bool isDataComplete;
+  final List<String> missingData;
   StatusKenaikan status;
 
   SiswaPromosi({
@@ -30,6 +32,8 @@ class SiswaPromosi {
     required this.nisn,
     required this.nilaiRataRata,
     required this.persentaseKehadiran,
+    this.isDataComplete = true,
+    this.missingData = const [],
     this.status = StatusKenaikan.naik,
   });
 
@@ -40,18 +44,29 @@ class SiswaPromosi {
       nisn: nisn,
       nilaiRataRata: nilaiRataRata,
       persentaseKehadiran: persentaseKehadiran,
+      isDataComplete: isDataComplete,
+      missingData: missingData,
       status: status ?? this.status,
     );
   }
 
   factory SiswaPromosi.fromJson(Map<String, dynamic> json) {
+    final rawStatus = json['status']?.toString();
     return SiswaPromosi(
       id: json['id'],
       nama: json['nama'],
       nisn: json['nisn'] ?? '-',
       nilaiRataRata: (json['nilaiRataRata'] ?? 0).toDouble(),
       persentaseKehadiran: json['persentaseKehadiran'] ?? 0,
-      status: json['status'] == 'tinggal' ? StatusKenaikan.tinggal : StatusKenaikan.naik,
+      isDataComplete: json['isDataComplete'] != false,
+      missingData: (json['missingData'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      status: rawStatus == 'tinggal'
+          ? StatusKenaikan.tinggal
+          : (rawStatus == 'perluCek'
+                ? StatusKenaikan.perluCek
+                : StatusKenaikan.naik),
     );
   }
 }
@@ -111,7 +126,7 @@ class PromosiStatusNotifier extends StateNotifier<PromosiStatusState> {
   /// Toggle individual student status locally before locking
   void toggleStatus(String siswaId) {
     if (state.isLocked) return;
-    
+
     final newList = state.siswaList.map((s) {
       if (s.id == siswaId) {
         return s.copyWith(
@@ -122,19 +137,26 @@ class PromosiStatusNotifier extends StateNotifier<PromosiStatusState> {
       }
       return s;
     }).toList();
-    
+
     state = state.copyWith(siswaList: newList);
   }
 
   /// Lock/validate all decisions (POST to backend)
   Future<bool> validasiDanKunci() async {
     if (_currentRombelId == null) return false;
+    if (state.siswaList.any((s) => s.status == StatusKenaikan.perluCek)) {
+      return false;
+    }
 
     try {
-      final decisions = state.siswaList.map((s) => {
-        'siswaId': s.id,
-        'status': s.status == StatusKenaikan.naik ? 'naik' : 'tinggal',
-      }).toList();
+      final decisions = state.siswaList
+          .map(
+            (s) => {
+              'siswaId': s.id,
+              'status': s.status == StatusKenaikan.naik ? 'naik' : 'tinggal',
+            },
+          )
+          .toList();
 
       await ApiService.lockPromosi({
         'rombelId': _currentRombelId,
@@ -148,14 +170,18 @@ class PromosiStatusNotifier extends StateNotifier<PromosiStatusState> {
     }
   }
 
-  int get jumlahNaik => state.siswaList.where((s) => s.status == StatusKenaikan.naik).length;
-  int get jumlahTinggal => state.siswaList.where((s) => s.status == StatusKenaikan.tinggal).length;
+  int get jumlahNaik =>
+      state.siswaList.where((s) => s.status == StatusKenaikan.naik).length;
+  int get jumlahTinggal =>
+      state.siswaList.where((s) => s.status == StatusKenaikan.tinggal).length;
+  int get jumlahPerluCek =>
+      state.siswaList.where((s) => s.status == StatusKenaikan.perluCek).length;
 }
 
 final promosiStatusProvider =
     StateNotifierProvider<PromosiStatusNotifier, PromosiStatusState>((ref) {
-  return PromosiStatusNotifier();
-});
+      return PromosiStatusNotifier();
+    });
 
 // ═══════════════════════════════════════════════
 // KURIKULUM — Migrasi Wizard State
@@ -167,7 +193,7 @@ class MigrasiState {
   final String? tahunAjaranBaruId;
   final String? rombelTujuanId;
   final List<SiswaPromosi> siswaList;
-  
+
   final List<dynamic> tahunAjaranList;
   final List<dynamic> rombelList;
 
@@ -265,11 +291,8 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
       final response = await ApiService.getSiswaPromosi(id);
       final rawData = response['data'] as List;
       final siswaList = rawData.map((e) => SiswaPromosi.fromJson(e)).toList();
-      
-      state = state.copyWith(
-        siswaList: siswaList,
-        isLoadingData: false,
-      );
+
+      state = state.copyWith(siswaList: siswaList, isLoadingData: false);
     } catch (e) {
       state = state.copyWith(isLoadingData: false);
     }
@@ -312,7 +335,8 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
     } catch (e) {
       state = state.copyWith(isProcessing: false);
       if (e is DioException && e.response?.data != null) {
-        return e.response!.data['message']?.toString() ?? 'Terjadi kesalahan saat mengeksekusi migrasi';
+        return e.response!.data['message']?.toString() ??
+            'Terjadi kesalahan saat mengeksekusi migrasi';
       }
       return 'Terjadi kesalahan saat mengeksekusi migrasi';
     }
@@ -327,7 +351,8 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
   }
 }
 
-final migrasiProvider =
-    StateNotifierProvider<MigrasiNotifier, MigrasiState>((ref) {
+final migrasiProvider = StateNotifierProvider<MigrasiNotifier, MigrasiState>((
+  ref,
+) {
   return MigrasiNotifier();
 });

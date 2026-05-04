@@ -4,6 +4,8 @@
 // All backend API calls in one place
 // ===========================================
 
+import 'package:dio/dio.dart';
+
 import 'api_client.dart';
 
 class ApiService {
@@ -14,18 +16,45 @@ class ApiService {
   // ═══════════════════════════════════════════
 
   static Future<Map<String, dynamic>> login(
-    String email,
+    String identifier,
     String password,
   ) async {
     final response = await _client.post(
       '/auth/login',
-      data: {'email': email, 'password': password},
+      data: {'identifier': identifier, 'password': password},
+    );
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> requestPasswordReset(
+    String identifier,
+  ) async {
+    final response = await _client.post(
+      '/auth/password-reset/request',
+      data: {'identifier': identifier},
+    );
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> confirmPasswordReset({
+    required String identifier,
+    required String otp,
+    required String password,
+  }) async {
+    final response = await _client.post(
+      '/auth/password-reset/confirm',
+      data: {'identifier': identifier, 'otp': otp, 'password': password},
     );
     return response.data;
   }
 
   static Future<Map<String, dynamic>> getMe() async {
     final response = await _client.get('/auth/me');
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> logout() async {
+    final response = await _client.post('/auth/logout');
     return response.data;
   }
 
@@ -45,6 +74,18 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getWaliKelasDashboard() async {
     final response = await _client.get('/dashboard/wali-kelas');
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getWaliKelasKehadiranMapel({
+    String? semesterId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (semesterId != null) params['semesterId'] = semesterId;
+    final response = await _client.get(
+      '/dashboard/wali-kelas/kehadiran-mapel',
+      queryParameters: params,
+    );
     return response.data;
   }
 
@@ -144,6 +185,24 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final response = await _client.put('/profile', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> requestPersonalEmailOtp(
+    String personalEmail,
+  ) async {
+    final response = await _client.post(
+      '/profile/personal-email/request-otp',
+      data: {'personalEmail': personalEmail},
+    );
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> verifyPersonalEmailOtp(String otp) async {
+    final response = await _client.post(
+      '/profile/personal-email/verify',
+      data: {'otp': otp},
+    );
     return response.data;
   }
 
@@ -479,8 +538,16 @@ class ApiService {
     return response.data;
   }
 
-  static Future<Map<String, dynamic>> getRekapKehadiran(String jadwalId) async {
-    final response = await _client.get('/kehadiran/rekap/$jadwalId');
+  static Future<Map<String, dynamic>> getRekapKehadiran(
+    String jadwalId, {
+    String? semesterId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (semesterId != null) params['semesterId'] = semesterId;
+    final response = await _client.get(
+      '/kehadiran/rekap/$jadwalId',
+      queryParameters: params,
+    );
     return response.data;
   }
 
@@ -540,10 +607,15 @@ class ApiService {
   static Future<Map<String, dynamic>> getLiveAttendance({
     required String jadwalId,
     required String tanggal,
+    required int pertemuanKe,
   }) async {
     final response = await _client.get(
       '/kehadiran/live-attendance',
-      queryParameters: {'jadwalId': jadwalId, 'tanggal': tanggal},
+      queryParameters: {
+        'jadwalId': jadwalId,
+        'tanggal': tanggal,
+        'pertemuanKe': pertemuanKe,
+      },
     );
     return response.data;
   }
@@ -662,6 +734,11 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> deleteCatatanAkademik(String id) async {
+    final response = await _client.delete('/catatan-akademik/$id');
+    return response.data;
+  }
+
   // ═══════════════════════════════════════════
   // E-RAPOR
   // ═══════════════════════════════════════════
@@ -671,6 +748,17 @@ class ApiService {
     String semesterId,
   ) async {
     final response = await _client.get('/rapor/preview/$siswaId/$semesterId');
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getRaporStatusRombel(
+    String rombelId,
+    String semesterId,
+  ) async {
+    final response = await _client.get(
+      '/rapor/status/rombel/$rombelId',
+      queryParameters: {'semesterId': semesterId},
+    );
     return response.data;
   }
 
@@ -687,6 +775,18 @@ class ApiService {
     return response.data ?? <int>[];
   }
 
+  static Future<List<int>> downloadBulkRaporPdf(
+    String semesterId,
+    List<String> siswaIds,
+  ) async {
+    final response = await _client.dio.post<List<int>>(
+      '/rapor/bulk',
+      data: {'semesterId': semesterId, 'siswaIds': siswaIds},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? <int>[];
+  }
+
   static Future<List<int>> downloadTranskripPdf(String siswaId) async {
     final response = await _client.downloadBytes('/rapor/transkrip/$siswaId');
     return response.data ?? <int>[];
@@ -700,6 +800,11 @@ class ApiService {
     final params = <String, dynamic>{};
     if (tipe != null) params['tipe'] = tipe;
     final response = await _client.get('/cms', queryParameters: params);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> getPublicContentById(String id) async {
+    final response = await _client.get('/cms/$id');
     return response.data;
   }
 
@@ -748,9 +853,58 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> uploadAvatarBytes(
+    List<int> bytes,
+    String filename,
+  ) async {
+    final response = await _client.uploadBytes(
+      '/upload/avatar',
+      bytes: bytes,
+      filename: filename,
+      fieldName: 'avatar',
+    );
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> uploadCmsImage(String filePath) async {
+    final response = await _client.uploadFile(
+      '/upload/cms-image',
+      filePath: filePath,
+      fieldName: 'image',
+    );
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> uploadCmsImageBytes(
+    List<int> bytes,
+    String filename,
+  ) async {
+    final response = await _client.uploadBytes(
+      '/upload/cms-image',
+      bytes: bytes,
+      filename: filename,
+      fieldName: 'image',
+    );
+    return response.data;
+  }
+
   static Future<Map<String, dynamic>> deleteAvatar() async {
     final response = await _client.delete('/upload/avatar');
     return response.data;
+  }
+
+  static String resolveFileUrl(String url) {
+    if (url.isEmpty ||
+        url.startsWith('http://') ||
+        url.startsWith('https://')) {
+      return url;
+    }
+
+    final apiBaseUrl = _client.baseUrl;
+    final origin = apiBaseUrl.endsWith('/api')
+        ? apiBaseUrl.substring(0, apiBaseUrl.length - 4)
+        : apiBaseUrl;
+    return '$origin$url';
   }
 
   // ═══════════════════════════════════════════

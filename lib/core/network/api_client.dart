@@ -7,10 +7,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
+import '../config/supabase_config.dart';
 
 class ApiClient {
   // Use current machine IP for physical Android device, localhost for web/desktop
   // Run `hostname -I` to get current IP if login fails on mobile
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+  );
   static const String _defaultBaseUrl = 'http://10.140.173.125:3001/api';
   static const String _webBaseUrl = 'http://localhost:3001/api';
 
@@ -22,7 +27,9 @@ class ApiClient {
   ApiClient._internal() {
     // Detect platform for base URL
     // kIsWeb is true when running in browser; 10.0.2.2 is only for Android emulator
-    final baseUrl = kIsWeb ? _webBaseUrl : _defaultBaseUrl;
+    final baseUrl = _configuredBaseUrl.isNotEmpty
+        ? _configuredBaseUrl
+        : (kIsWeb ? _webBaseUrl : _defaultBaseUrl);
 
     _dio = Dio(
       BaseOptions(
@@ -43,10 +50,33 @@ class ApiClient {
           }
           handler.next(options);
         },
-        onError: (error, handler) {
+        onError: (error, handler) async {
           if (error.response?.statusCode == 401) {
-            // Token expired or invalid — clear stored token
-            clearToken();
+            final hadAuthHeader =
+                error.requestOptions.headers['Authorization'] != null;
+            final alreadyRetried =
+                error.requestOptions.extra['authRetried'] == true;
+
+            if (!hadAuthHeader && !alreadyRetried) {
+              final token = await getToken();
+              if (token != null && token.isNotEmpty) {
+                final retryOptions = error.requestOptions;
+                retryOptions.headers['Authorization'] = 'Bearer $token';
+                retryOptions.extra['authRetried'] = true;
+
+                try {
+                  final response = await _dio.fetch(retryOptions);
+                  return handler.resolve(response);
+                } catch (_) {
+                  // Keep the original 401 path below if retry also fails.
+                }
+              }
+            }
+
+            if (hadAuthHeader) {
+              // Token was sent but rejected — clear stored token.
+              await clearToken();
+            }
           }
           handler.next(error);
         },
@@ -56,8 +86,10 @@ class ApiClient {
     // Logging interceptor (dev only)
     _dio.interceptors.add(
       LogInterceptor(
-        requestBody: true,
-        responseBody: true,
+        requestHeader: false,
+        responseHeader: false,
+        requestBody: kDebugMode,
+        responseBody: kDebugMode,
         logPrint: (obj) => debugPrint('[API] $obj'),
       ),
     );
@@ -65,18 +97,34 @@ class ApiClient {
 
   // ─── Token Management ─────────────────────────
   static const String _tokenKey = 'auth_token';
+  static String? _cachedToken;
 
   static Future<String?> getToken() async {
+    try {
+      if (SupabaseConfig.isConfigured) {
+        final accessToken =
+            Supabase.instance.client.auth.currentSession?.accessToken;
+        if (accessToken != null && accessToken.isNotEmpty) {
+          return accessToken;
+        }
+      }
+    } catch (_) {
+      // Supabase is optional in tests and local development without dart-define.
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    _cachedToken ??= prefs.getString(_tokenKey);
+    return _cachedToken;
   }
 
   static Future<void> saveToken(String token) async {
+    _cachedToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
   }
 
   static Future<void> clearToken() async {
+    _cachedToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }
@@ -147,4 +195,6 @@ class ApiClient {
 
   /// Get Dio instance for advanced usage
   Dio get dio => _dio;
+
+  String get baseUrl => _dio.options.baseUrl;
 }

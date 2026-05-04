@@ -55,6 +55,7 @@ class _UserManagementState extends State<UserManagement> {
                 'id': u['id'] ?? '',
                 'name': u['name'] ?? '',
                 'email': u['email'] ?? '',
+                'username': u['username'] ?? '',
                 'idNumber': u['idNumber'] ?? '-',
                 'role': u['role'] ?? 'Siswa',
                 'status': u['status'] ?? 'Aktif',
@@ -264,9 +265,7 @@ class _UserManagementState extends State<UserManagement> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -755,6 +754,7 @@ class UserFormModal extends StatefulWidget {
 class _UserFormModalState extends State<UserFormModal> {
   late TextEditingController _nameCtrl;
   late TextEditingController _idNumberCtrl;
+  late TextEditingController _usernameCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _passwordCtrl;
   String _role = '';
@@ -768,6 +768,9 @@ class _UserFormModalState extends State<UserFormModal> {
     _nameCtrl = TextEditingController(text: widget.initialData?['name']);
     _idNumberCtrl = TextEditingController(
       text: widget.initialData?['idNumber'],
+    );
+    _usernameCtrl = TextEditingController(
+      text: widget.initialData?['username'],
     );
     _emailCtrl = TextEditingController(text: widget.initialData?['email']);
     _passwordCtrl = TextEditingController();
@@ -783,6 +786,7 @@ class _UserFormModalState extends State<UserFormModal> {
   void dispose() {
     _nameCtrl.dispose();
     _idNumberCtrl.dispose();
+    _usernameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -826,6 +830,7 @@ class _UserFormModalState extends State<UserFormModal> {
       final payload = {
         'name': _nameCtrl.text.trim(),
         'idNumber': _idNumberCtrl.text.trim(),
+        'username': _usernameCtrl.text.trim(),
         'email': _emailCtrl.text.trim(),
         'role': _role,
         'password': _passwordCtrl.text,
@@ -949,6 +954,24 @@ class _UserFormModalState extends State<UserFormModal> {
                       ),
                     ),
                     const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Username'),
+                          TextField(
+                            controller: _usernameCtrl,
+                            decoration: _inputDecoration('contoh: ahmad.siswa'),
+                            enabled: !widget.forcePasswordReset,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

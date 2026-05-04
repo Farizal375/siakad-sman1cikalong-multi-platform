@@ -94,7 +94,7 @@ class _MobileQRScannerState extends State<MobileQRScanner>
       // Parse QR data — expected JSON: { "token": "...", "jadwalId": "...", "tanggal": "..." }
       Map<String, dynamic> qrPayload;
       try {
-        qrPayload = jsonDecode(qrData) as Map<String, dynamic>;
+        qrPayload = jsonDecode(qrData.trim()) as Map<String, dynamic>;
       } catch (_) {
         _showFeedback(
           400,
@@ -104,7 +104,7 @@ class _MobileQRScannerState extends State<MobileQRScanner>
         return;
       }
 
-      final token = qrPayload['token'] as String?;
+      final token = (qrPayload['token'] ?? qrPayload['qrToken']) as String?;
       final jadwalId = qrPayload['jadwalId'] as String?;
       final tanggal = qrPayload['tanggal'] as String?;
 

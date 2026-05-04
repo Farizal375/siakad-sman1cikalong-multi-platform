@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../kurikulum/controllers/migrasi_controller.dart';
+import '../../providers/homeroom_provider.dart';
 
 class PenentuanPromosiScreen extends ConsumerStatefulWidget {
   const PenentuanPromosiScreen({super.key});
@@ -22,14 +23,13 @@ class PenentuanPromosiScreen extends ConsumerStatefulWidget {
 class _PenentuanPromosiScreenState
     extends ConsumerState<PenentuanPromosiScreen> {
   bool _loading = true;
-  bool _isLocked = false;
   bool _saving = false;
   String _searchQuery = '';
 
-  // Simulated: Wali Kelas is assigned to this rombel
-  final String _assignedRombelId = 'b3fedb45-5fa1-4fd6-9916-e50e099cdd45';
-  final String _assignedRombelName = 'X-1';
-  final String _tahunAjaran = '2025/2026';
+  String? _assignedRombelId;
+  String _assignedRombelName = '-';
+  String _tahunAjaran = '-';
+  String _semesterLabel = '-';
 
   @override
   void initState() {
@@ -38,9 +38,20 @@ class _PenentuanPromosiScreenState
   }
 
   Future<void> _loadData() async {
+    final homeroom = await ref.read(homeroomContextProvider.future);
+    if (!homeroom.hasClass || homeroom.rombelId == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    _assignedRombelId = homeroom.rombelId;
+    _assignedRombelName = homeroom.kelas;
+    _tahunAjaran = homeroom.tahunAjaran;
+    _semesterLabel = homeroom.semesterAktif?.label ?? '-';
+
     await ref
         .read(promosiStatusProvider.notifier)
-        .loadSiswa(_assignedRombelId);
+        .loadSiswa(homeroom.rombelId!);
     if (mounted) setState(() => _loading = false);
   }
 
@@ -53,6 +64,20 @@ class _PenentuanPromosiScreenState
   Future<void> _validasiDanKunci() async {
     final notifier = ref.read(promosiStatusProvider.notifier);
     final jumlahTinggal = notifier.jumlahTinggal;
+    final jumlahPerluCek = notifier.jumlahPerluCek;
+
+    if (jumlahPerluCek > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$jumlahPerluCek siswa masih perlu dicek sebelum data dikunci.',
+          ),
+          backgroundColor: AppColors.destructive,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     // Confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -69,16 +94,22 @@ class _PenentuanPromosiScreenState
                 color: AppColors.amber50,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.lock_outline, color: AppColors.accent,
-                  size: 24),
+              child: const Icon(
+                Icons.lock_outline,
+                color: AppColors.accent,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 16),
             const Expanded(
-              child: Text('Validasi & Kunci Data',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.foreground)),
+              child: Text(
+                'Validasi & Kunci Data',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.foreground,
+                ),
+              ),
             ),
           ],
         ),
@@ -128,14 +159,19 @@ class _PenentuanPromosiScreenState
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber, size: 18,
-                        color: AppColors.destructive),
+                    const Icon(
+                      Icons.warning_amber,
+                      size: 18,
+                      color: AppColors.destructive,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '$jumlahTinggal siswa akan tinggal kelas. Pastikan keputusan sudah final.',
                         style: const TextStyle(
-                            fontSize: 13, color: AppColors.destructive),
+                          fontSize: 13,
+                          color: AppColors.destructive,
+                        ),
                       ),
                     ),
                   ],
@@ -147,8 +183,10 @@ class _PenentuanPromosiScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal',
-                style: TextStyle(color: AppColors.gray600)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.gray600),
+            ),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
@@ -157,10 +195,10 @@ class _PenentuanPromosiScreenState
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -185,13 +223,16 @@ class _PenentuanPromosiScreenState
               children: [
                 Icon(Icons.check_circle, color: Colors.white, size: 20),
                 SizedBox(width: 12),
-                Text('Data kenaikan berhasil dikunci! Kurikulum dapat memproses migrasi.'),
+                Text(
+                  'Data kenaikan berhasil dikunci! Kurikulum dapat memproses migrasi.',
+                ),
               ],
             ),
             backgroundColor: AppColors.green600,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -212,19 +253,28 @@ class _PenentuanPromosiScreenState
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(label,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.foreground)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.foreground,
+            ),
+          ),
         ),
-        Text(value,
-            style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
       ],
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(promosiStatusProvider);
     final siswaList = state.siswaList;
@@ -233,14 +283,22 @@ class _PenentuanPromosiScreenState
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (_assignedRombelId == null) {
+      return const Center(
+        child: Text('Anda belum ditugaskan sebagai wali kelas'),
+      );
+    }
+
     // Filter by search
     final filteredList = _searchQuery.isEmpty
         ? siswaList
         : siswaList
-            .where((s) =>
-                s.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                s.nisn.contains(_searchQuery))
-            .toList();
+              .where(
+                (s) =>
+                    s.nama.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                    s.nisn.contains(_searchQuery),
+              )
+              .toList();
 
     final notifier = ref.read(promosiStatusProvider.notifier);
 
@@ -257,23 +315,28 @@ class _PenentuanPromosiScreenState
                   const Text(
                     'Penentuan Status Kenaikan Kelas',
                     style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Rombel $_assignedRombelName • Tahun Ajaran $_tahunAjaran • Semester Genap',
+                    'Rombel $_assignedRombelName • Tahun Ajaran $_tahunAjaran • $_semesterLabel',
                     style: const TextStyle(
-                        fontSize: 14, color: AppColors.gray600),
+                      fontSize: 14,
+                      color: AppColors.gray600,
+                    ),
                   ),
                 ],
               ),
             ),
             if (state.isLocked)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.green50,
                   borderRadius: BorderRadius.circular(12),
@@ -284,10 +347,13 @@ class _PenentuanPromosiScreenState
                   children: [
                     Icon(Icons.verified, color: AppColors.green600, size: 20),
                     SizedBox(width: 8),
-                    Text('Data Terkunci',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.green600)),
+                    Text(
+                      'Data Terkunci',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.green600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -321,6 +387,14 @@ class _PenentuanPromosiScreenState
               AppColors.destructive,
               const Color(0xFFDC2626),
             ),
+            const SizedBox(width: 16),
+            _buildKpiCard(
+              'Perlu Cek',
+              '${notifier.jumlahPerluCek}',
+              Icons.rule,
+              AppColors.accent,
+              const Color(0xFFF59E0B),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -333,9 +407,10 @@ class _PenentuanPromosiScreenState
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
-                    color: Color(0x15000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 4)),
+                  color: Color(0x15000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
               ],
             ),
             child: Column(
@@ -345,63 +420,82 @@ class _PenentuanPromosiScreenState
                   padding: const EdgeInsets.all(20),
                   decoration: const BoxDecoration(
                     border: Border(
-                        bottom:
-                            BorderSide(color: AppColors.borderLight)),
+                      bottom: BorderSide(color: AppColors.borderLight),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.table_chart_outlined,
-                          color: AppColors.primary, size: 20),
+                      const Icon(
+                        Icons.table_chart_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       const Text(
                         'Daftar Siswa',
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.foreground),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.foreground,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(99),
                         ),
-                        child: Text('${filteredList.length}',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary)),
+                        child: Text(
+                          '${filteredList.length}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
                       const Spacer(),
                       // Search
                       SizedBox(
                         width: 280,
                         child: TextField(
-                          onChanged: (v) =>
-                              setState(() => _searchQuery = v),
+                          onChanged: (v) => setState(() => _searchQuery = v),
                           decoration: InputDecoration(
                             hintText: 'Cari nama / NISN...',
-                            prefixIcon: const Icon(Icons.search,
-                                size: 18, color: AppColors.gray400),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 18,
+                              color: AppColors.gray400,
+                            ),
                             isDense: true,
                             filled: true,
                             fillColor: AppColors.gray50,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                            ),
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                    color: AppColors.gray300)),
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppColors.gray300,
+                              ),
+                            ),
                             enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                    color: AppColors.gray300)),
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppColors.gray300,
+                              ),
+                            ),
                             focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 2)),
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 2,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -416,14 +510,17 @@ class _PenentuanPromosiScreenState
                       width: double.infinity,
                       child: DataTable(
                         headingRowColor: WidgetStatePropertyAll(
-                            AppColors.gray50),
+                          AppColors.gray50,
+                        ),
                         headingTextStyle: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.gray700),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.gray700,
+                        ),
                         dataTextStyle: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.foreground),
+                          fontSize: 14,
+                          color: AppColors.foreground,
+                        ),
                         columnSpacing: 24,
                         horizontalMargin: 20,
                         columns: const [
@@ -431,19 +528,19 @@ class _PenentuanPromosiScreenState
                           DataColumn(label: Text('Nama Siswa')),
                           DataColumn(label: Text('NISN')),
                           DataColumn(
-                              label: Text('Rata-rata Nilai'),
-                              numeric: true),
-                          DataColumn(
-                              label: Text('Kehadiran'),
-                              numeric: true),
+                            label: Text('Rata-rata Nilai'),
+                            numeric: true,
+                          ),
+                          DataColumn(label: Text('Kehadiran'), numeric: true),
                           DataColumn(label: Text('Status Kenaikan')),
                           DataColumn(label: Text('Aksi')),
                         ],
                         rows: filteredList.asMap().entries.map((entry) {
                           final idx = entry.key;
                           final s = entry.value;
-                          final isNaik =
-                              s.status == StatusKenaikan.naik;
+                          final isNaik = s.status == StatusKenaikan.naik;
+                          final isPerluCek =
+                              s.status == StatusKenaikan.perluCek;
                           return DataRow(
                             color: WidgetStatePropertyAll(
                               idx.isEven
@@ -462,23 +559,32 @@ class _PenentuanPromosiScreenState
                                       child: Text(
                                         s.nama[0],
                                         style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.primary),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    Text(s.nama,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w500)),
+                                    Text(
+                                      s.nama,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              DataCell(Text(s.nisn,
+                              DataCell(
+                                Text(
+                                  s.nisn,
                                   style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 13,
-                                      color: AppColors.gray600))),
+                                    fontFamily: 'monospace',
+                                    fontSize: 13,
+                                    color: AppColors.gray600,
+                                  ),
+                                ),
+                              ),
                               DataCell(
                                 Text(
                                   s.nilaiRataRata.toStringAsFixed(1),
@@ -497,16 +603,12 @@ class _PenentuanPromosiScreenState
                                     SizedBox(
                                       width: 60,
                                       child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(99),
+                                        borderRadius: BorderRadius.circular(99),
                                         child: LinearProgressIndicator(
-                                          value:
-                                              s.persentaseKehadiran / 100,
+                                          value: s.persentaseKehadiran / 100,
                                           minHeight: 6,
-                                          backgroundColor:
-                                              AppColors.gray200,
-                                          valueColor:
-                                              AlwaysStoppedAnimation(
+                                          backgroundColor: AppColors.gray200,
+                                          valueColor: AlwaysStoppedAnimation(
                                             s.persentaseKehadiran >= 80
                                                 ? AppColors.green600
                                                 : AppColors.destructive,
@@ -520,44 +622,51 @@ class _PenentuanPromosiScreenState
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color:
-                                            s.persentaseKehadiran >= 80
-                                                ? AppColors.green600
-                                                : AppColors.destructive,
+                                        color: s.persentaseKehadiran >= 80
+                                            ? AppColors.green600
+                                            : AppColors.destructive,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              DataCell(_buildStatusBadge(isNaik)),
+                              DataCell(_buildStatusBadge(s)),
                               DataCell(
                                 state.isLocked
-                                    ? const Icon(Icons.lock,
+                                    ? const Icon(
+                                        Icons.lock,
                                         size: 16,
-                                        color: AppColors.gray400)
+                                        color: AppColors.gray400,
+                                      )
                                     : IconButton(
-                                        onPressed: () =>
-                                            _toggleStatus(s.id),
+                                        onPressed: () => _toggleStatus(s.id),
                                         icon: Icon(
                                           isNaik
                                               ? Icons.thumb_down_outlined
                                               : Icons.thumb_up_outlined,
                                           size: 18,
-                                          color: isNaik
+                                          color: isPerluCek
+                                              ? AppColors.accent
+                                              : isNaik
                                               ? AppColors.destructive
                                               : AppColors.green600,
                                         ),
-                                        tooltip: isNaik
+                                        tooltip: isPerluCek
+                                            ? 'Tetapkan Naik Kelas'
+                                            : isNaik
                                             ? 'Ubah ke Tinggal Kelas'
                                             : 'Ubah ke Naik Kelas',
                                         style: IconButton.styleFrom(
-                                          backgroundColor: isNaik
+                                          backgroundColor: isPerluCek
+                                              ? AppColors.amber50
+                                              : isNaik
                                               ? AppColors.red50
                                               : AppColors.green50,
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                       ),
                               ),
@@ -574,14 +683,17 @@ class _PenentuanPromosiScreenState
                   padding: const EdgeInsets.all(20),
                   decoration: const BoxDecoration(
                     border: Border(
-                        top: BorderSide(color: AppColors.borderLight)),
+                      top: BorderSide(color: AppColors.borderLight),
+                    ),
                   ),
                   child: Row(
                     children: [
                       // Info
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.amber50,
                           borderRadius: BorderRadius.circular(8),
@@ -589,13 +701,18 @@ class _PenentuanPromosiScreenState
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.info_outline,
-                                size: 16, color: AppColors.accent),
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: AppColors.accent,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               'Klik ikon aksi untuk mengubah status kenaikan siswa',
                               style: TextStyle(
-                                  fontSize: 13, color: AppColors.gray700),
+                                fontSize: 13,
+                                color: AppColors.gray700,
+                              ),
                             ),
                           ],
                         ),
@@ -605,14 +722,18 @@ class _PenentuanPromosiScreenState
                         SizedBox(
                           height: 48,
                           child: ElevatedButton.icon(
-                            onPressed: _saving ? null : _validasiDanKunci,
+                            onPressed: _saving || notifier.jumlahPerluCek > 0
+                                ? null
+                                : _validasiDanKunci,
                             icon: _saving
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white))
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
                                 : const Icon(Icons.lock, size: 20),
                             label: Text(
                               _saving
@@ -623,13 +744,15 @@ class _PenentuanPromosiScreenState
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 28),
+                                horizontal: 28,
+                              ),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               textStyle: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -644,8 +767,13 @@ class _PenentuanPromosiScreenState
     );
   }
 
-  Widget _buildKpiCard(String title, String value, IconData icon,
-      Color color, Color gradientEnd) {
+  Widget _buildKpiCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    Color gradientEnd,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -654,9 +782,10 @@ class _PenentuanPromosiScreenState
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Row(
@@ -665,15 +794,22 @@ class _PenentuanPromosiScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.gray600)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.gray600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(value,
-                      style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: color)),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -696,7 +832,37 @@ class _PenentuanPromosiScreenState
     );
   }
 
-  Widget _buildStatusBadge(bool isNaik) {
+  Widget _buildStatusBadge(SiswaPromosi siswa) {
+    if (siswa.status == StatusKenaikan.perluCek) {
+      final label = siswa.missingData.isEmpty
+          ? 'Perlu Cek'
+          : 'Perlu Cek: ${siswa.missingData.join(', ')}';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.amber50,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.rule, size: 14, color: AppColors.accent),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.accent,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final isNaik = siswa.status == StatusKenaikan.naik;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

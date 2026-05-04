@@ -6,8 +6,11 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_colors.dart';
 
 class LandingPage extends StatefulWidget {
@@ -33,9 +36,11 @@ class _LandingPageState extends State<LandingPage> {
   void _scrollToSection(GlobalKey key) {
     final ctx = key.currentContext;
     if (ctx != null) {
-      Scrollable.ensureVisible(ctx,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOutCubic);
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
     }
   }
 
@@ -49,11 +54,21 @@ class _LandingPageState extends State<LandingPage> {
             onLoginTap: () => context.go('/login'),
             onNavTap: (index) {
               switch (index) {
-                case 0: _scrollToSection(_heroKey); break;
-                case 1: _scrollToSection(_newsKey); break;
-                case 2: _scrollToSection(_newsKey); break;
-                case 3: _scrollToSection(_newsKey); break;
-                case 4: _scrollToSection(_achievementsKey); break;
+                case 0:
+                  _scrollToSection(_heroKey);
+                  break;
+                case 1:
+                  _scrollToSection(_newsKey);
+                  break;
+                case 2:
+                  _scrollToSection(_newsKey);
+                  break;
+                case 3:
+                  _scrollToSection(_newsKey);
+                  break;
+                case 4:
+                  _scrollToSection(_achievementsKey);
+                  break;
               }
             },
           ),
@@ -112,20 +127,28 @@ class _HeaderBar extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.all(4),
-                    child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
+                    child: Image.asset(
+                      'assets/images/logoSekolah.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
                       'SMA NEGERI 1 CIKALONG',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -133,10 +156,13 @@ class _HeaderBar extends StatelessWidget {
                   // Desktop nav links with hover
                   if (screenWidth >= 768) ...[
                     const SizedBox(width: 32),
-                    ...List.generate(_navLinks.length, (i) => _NavLinkButton(
-                      label: _navLinks[i],
-                      onTap: () => onNavTap(i),
-                    )),
+                    ...List.generate(
+                      _navLinks.length,
+                      (i) => _NavLinkButton(
+                        label: _navLinks[i],
+                        onTap: () => onNavTap(i),
+                      ),
+                    ),
                   ],
 
                   // Mobile hamburger
@@ -148,25 +174,62 @@ class _HeaderBar extends StatelessWidget {
                           context: context,
                           backgroundColor: AppColors.primary,
                           shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
                           ),
                           builder: (_) => SafeArea(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const SizedBox(height: 8),
-                                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
+                                Container(
+                                  width: 40,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white38,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
                                 const SizedBox(height: 16),
-                                ...List.generate(_navLinks.length, (i) => ListTile(
-                                  title: Text(_navLinks[i], style: const TextStyle(color: Colors.white, fontSize: 16)),
-                                  leading: const Icon(Icons.chevron_right, color: AppColors.accent),
-                                  onTap: () { Navigator.pop(context); onNavTap(i); },
-                                )),
+                                ...List.generate(
+                                  _navLinks.length,
+                                  (i) => ListTile(
+                                    title: Text(
+                                      _navLinks[i],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    leading: const Icon(
+                                      Icons.chevron_right,
+                                      color: AppColors.accent,
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      onNavTap(i);
+                                    },
+                                  ),
+                                ),
                                 const Divider(color: Colors.white24),
                                 ListTile(
-                                  title: const Text('Login Akademik', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 16)),
-                                  leading: const Icon(Icons.login, color: AppColors.accent),
-                                  onTap: () { Navigator.pop(context); onLoginTap(); },
+                                  title: const Text(
+                                    'Login Akademik',
+                                    style: TextStyle(
+                                      color: AppColors.accent,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  leading: const Icon(
+                                    Icons.login,
+                                    color: AppColors.accent,
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    onLoginTap();
+                                  },
                                 ),
                                 const SizedBox(height: 16),
                               ],
@@ -183,10 +246,18 @@ class _HeaderBar extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white, width: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('Login Akademik', style: TextStyle(fontWeight: FontWeight.w500)),
+                      child: const Text(
+                        'Login Akademik',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ],
                 ],
@@ -225,10 +296,14 @@ class _NavLinkButtonState extends State<_NavLinkButton> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(widget.label, style: TextStyle(
-                color: _hovered ? AppColors.accent : Colors.white,
-                fontSize: 14, fontWeight: _hovered ? FontWeight.w600 : FontWeight.w400,
-              )),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: _hovered ? AppColors.accent : Colors.white,
+                  fontSize: 14,
+                  fontWeight: _hovered ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
               const SizedBox(height: 2),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -256,7 +331,8 @@ class _HeroSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height - 64; // calc(100vh - 4rem)
+    final screenHeight =
+        MediaQuery.of(context).size.height - 64; // calc(100vh - 4rem)
 
     return SizedBox(
       height: screenHeight,
@@ -305,7 +381,8 @@ class _HeroSection extends StatelessWidget {
                             TextSpan(
                               text: 'Selamat Datang di SMA NEGERI 1 CIKALONG\n',
                               style: TextStyle(
-                                fontSize: 48, // text-4xl sm:text-5xl md:text-6xl
+                                fontSize:
+                                    48, // text-4xl sm:text-5xl md:text-6xl
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                                 height: 1.2,
@@ -325,10 +402,11 @@ class _HeroSection extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24), // mb-6 mapped to hero spacing
-
                     // Subtitle
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 672), // max-w-2xl
+                      constraints: const BoxConstraints(
+                        maxWidth: 672,
+                      ), // max-w-2xl
                       child: const Text(
                         'Institusi modern yang berdedikasi untuk pertumbuhan akademik dan pengembangan holistik',
                         style: TextStyle(
@@ -340,7 +418,6 @@ class _HeroSection extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 32), // mb-8
-
                     // CTA Button
                     ElevatedButton(
                       onPressed: onLearnMore,
@@ -390,19 +467,40 @@ class _NewsSection extends StatelessWidget {
             children: [
               const Text(
                 'Berita & Pengumuman Terbaru',
-                style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary),
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024 ? 3 : constraints.maxWidth >= 768 ? 2 : 1;
-                  return Wrap(
-                    spacing: 32, runSpacing: 32,
-                    children: List.generate(_newsData.length, (i) {
-                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 32) / crossAxisCount;
-                      return SizedBox(width: cardWidth, child: _NewsCard(news: _newsData[i], index: i));
-                    }),
+              FutureBuilder<List<Map<String, String>>>(
+                future: _loadPublicContent('BERITA', _newsData),
+                builder: (context, snapshot) {
+                  final items = snapshot.data ?? _newsData;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = constraints.maxWidth >= 1024
+                          ? 3
+                          : constraints.maxWidth >= 768
+                          ? 2
+                          : 1;
+                      return Wrap(
+                        spacing: 32,
+                        runSpacing: 32,
+                        children: List.generate(items.length, (i) {
+                          final cardWidth =
+                              (constraints.maxWidth -
+                                  (crossAxisCount - 1) * 32) /
+                              crossAxisCount;
+                          return SizedBox(
+                            width: cardWidth,
+                            child: _NewsCard(news: items[i], index: i),
+                          );
+                        }),
+                      );
+                    },
                   );
                 },
               ),
@@ -423,7 +521,8 @@ class _NewsCard extends StatefulWidget {
   State<_NewsCard> createState() => _NewsCardState();
 }
 
-class _NewsCardState extends State<_NewsCard> with SingleTickerProviderStateMixin {
+class _NewsCardState extends State<_NewsCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -432,17 +531,25 @@ class _NewsCardState extends State<_NewsCard> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     Future.delayed(Duration(milliseconds: 150 * widget.index), () {
       if (mounted) _ctrl.forward();
     });
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -456,7 +563,11 @@ class _NewsCardState extends State<_NewsCard> with SingleTickerProviderStateMixi
           cursor: SystemMouseCursors.click,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            transform: Matrix4.diagonal3Values(_hovered ? 1.03 : 1.0, _hovered ? 1.03 : 1.0, 1.0),
+            transform: Matrix4.diagonal3Values(
+              _hovered ? 1.03 : 1.0,
+              _hovered ? 1.03 : 1.0,
+              1.0,
+            ),
             transformAlignment: Alignment.center,
             height: 420,
             decoration: BoxDecoration(
@@ -464,57 +575,110 @@ class _NewsCardState extends State<_NewsCard> with SingleTickerProviderStateMixi
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  color: _hovered
+                      ? const Color(0x30000000)
+                      : const Color(0x15000000),
                   blurRadius: _hovered ? 20 : 10,
                   offset: Offset(0, _hovered ? 8 : 4),
                 ),
               ],
             ),
             clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 192, width: double.infinity,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.news['image']!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: AppColors.gray200),
-                    errorWidget: (_, __, ___) => Container(
-                      color: AppColors.gray200,
-                      child: const Icon(Icons.image, size: 48, color: AppColors.gray400),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.news['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.foreground), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 8),
-                        Text(widget.news['excerpt']!, style: const TextStyle(fontSize: 14, color: AppColors.gray600), maxLines: 3, overflow: TextOverflow.ellipsis),
-                        const Spacer(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(widget.news['date']!, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
-                            InkWell(
-                              onTap: () {},
-                              child: const Row(children: [
-                                Text('Baca Selengkapnya', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.accent, fontSize: 14)),
-                                SizedBox(width: 4),
-                                Text('→', style: TextStyle(color: AppColors.accent)),
-                              ]),
-                            ),
-                          ],
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                final id = widget.news['id'] ?? '';
+                if (id.isNotEmpty) context.go('/post/$id');
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 192,
+                    width: double.infinity,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.news['image']!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) =>
+                          Container(color: AppColors.gray200),
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.gray200,
+                        child: const Icon(
+                          Icons.image,
+                          size: 48,
+                          color: AppColors.gray400,
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.news['title']!,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              color: AppColors.foreground,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.news['excerpt']!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.gray600,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Spacer(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                widget.news['date']!,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  final id = widget.news['id'] ?? '';
+                                  if (id.isNotEmpty) context.go('/post/$id');
+                                },
+                                child: const Row(
+                                  children: [
+                                    Text(
+                                      'Baca Selengkapnya',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.accent,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      '→',
+                                      style: TextStyle(color: AppColors.accent),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -539,17 +703,42 @@ class _AchievementsSection extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1280),
           child: Column(
             children: [
-              const Text('Prestasi yang Membanggakan', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary), textAlign: TextAlign.center),
+              const Text(
+                'Prestasi yang Membanggakan',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 48),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024 ? 4 : constraints.maxWidth >= 768 ? 2 : 1;
-                  return Wrap(
-                    spacing: 24, runSpacing: 24,
-                    children: List.generate(_achievementsData.length, (i) {
-                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 24) / crossAxisCount;
-                      return SizedBox(width: cardWidth, child: _AchievementCard(data: _achievementsData[i], index: i));
-                    }),
+              FutureBuilder<List<Map<String, String>>>(
+                future: _loadPublicContent('PRESTASI', _achievementsData),
+                builder: (context, snapshot) {
+                  final items = snapshot.data ?? _achievementsData;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = constraints.maxWidth >= 1024
+                          ? 4
+                          : constraints.maxWidth >= 768
+                          ? 2
+                          : 1;
+                      return Wrap(
+                        spacing: 24,
+                        runSpacing: 24,
+                        children: List.generate(items.length, (i) {
+                          final cardWidth =
+                              (constraints.maxWidth -
+                                  (crossAxisCount - 1) * 24) /
+                              crossAxisCount;
+                          return SizedBox(
+                            width: cardWidth,
+                            child: _AchievementCard(data: items[i], index: i),
+                          );
+                        }),
+                      );
+                    },
                   );
                 },
               ),
@@ -570,7 +759,8 @@ class _AchievementCard extends StatefulWidget {
   State<_AchievementCard> createState() => _AchievementCardState();
 }
 
-class _AchievementCardState extends State<_AchievementCard> with SingleTickerProviderStateMixin {
+class _AchievementCardState extends State<_AchievementCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -579,17 +769,25 @@ class _AchievementCardState extends State<_AchievementCard> with SingleTickerPro
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     Future.delayed(Duration(milliseconds: 120 * widget.index), () {
       if (mounted) _ctrl.forward();
     });
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -603,7 +801,11 @@ class _AchievementCardState extends State<_AchievementCard> with SingleTickerPro
           cursor: SystemMouseCursors.click,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            transform: Matrix4.diagonal3Values(_hovered ? 1.05 : 1.0, _hovered ? 1.05 : 1.0, 1.0),
+            transform: Matrix4.diagonal3Values(
+              _hovered ? 1.05 : 1.0,
+              _hovered ? 1.05 : 1.0,
+              1.0,
+            ),
             transformAlignment: Alignment.center,
             height: 260,
             padding: const EdgeInsets.all(24),
@@ -612,37 +814,84 @@ class _AchievementCardState extends State<_AchievementCard> with SingleTickerPro
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  color: _hovered
+                      ? const Color(0x30000000)
+                      : const Color(0x15000000),
                   blurRadius: _hovered ? 20 : 10,
                   offset: Offset(0, _hovered ? 8 : 4),
                 ),
               ],
-              border: const Border(left: BorderSide(color: AppColors.accent, width: 4)),
+              border: const Border(
+                left: BorderSide(color: AppColors.accent, width: 4),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 64, height: 64,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: widget.data['icon']!, fit: BoxFit.cover,
-                      placeholder: (_, __) => const Icon(Icons.emoji_events, color: Colors.white, size: 32),
-                      errorWidget: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 32),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                final id = widget.data['id'] ?? '';
+                if (id.isNotEmpty) context.go('/post/$id');
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.accent, AppColors.accentHover],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: widget.data['icon']!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => const Icon(
+                          Icons.emoji_events,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        errorWidget: (_, __, ___) => const Icon(
+                          Icons.emoji_events,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(widget.data['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.foreground)),
-                const SizedBox(height: 8),
-                Expanded(child: Text(widget.data['description']!, style: const TextStyle(fontSize: 14, color: AppColors.gray600))),
-                Text(widget.data['year']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.accent)),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.data['title']!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.foreground,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Text(
+                      widget.data['description']!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.gray600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    widget.data['year']!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -667,17 +916,42 @@ class _VideoSection extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1280),
           child: Column(
             children: [
-              const Text('Video Unggulan & Kehidupan Kampus', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary), textAlign: TextAlign.center),
+              const Text(
+                'Video Unggulan & Kehidupan Kampus',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 48),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 1024 ? 3 : constraints.maxWidth >= 768 ? 2 : 1;
-                  return Wrap(
-                    spacing: 32, runSpacing: 32,
-                    children: List.generate(_videoData.length, (i) {
-                      final cardWidth = (constraints.maxWidth - (crossAxisCount - 1) * 32) / crossAxisCount;
-                      return SizedBox(width: cardWidth, child: _VideoCard(data: _videoData[i], index: i));
-                    }),
+              FutureBuilder<List<Map<String, String>>>(
+                future: _loadPublicContent('VIDEO', _videoData),
+                builder: (context, snapshot) {
+                  final items = snapshot.data ?? _videoData;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = constraints.maxWidth >= 1024
+                          ? 3
+                          : constraints.maxWidth >= 768
+                          ? 2
+                          : 1;
+                      return Wrap(
+                        spacing: 32,
+                        runSpacing: 32,
+                        children: List.generate(items.length, (i) {
+                          final cardWidth =
+                              (constraints.maxWidth -
+                                  (crossAxisCount - 1) * 32) /
+                              crossAxisCount;
+                          return SizedBox(
+                            width: cardWidth,
+                            child: _VideoCard(data: items[i], index: i),
+                          );
+                        }),
+                      );
+                    },
                   );
                 },
               ),
@@ -698,7 +972,8 @@ class _VideoCard extends StatefulWidget {
   State<_VideoCard> createState() => _VideoCardState();
 }
 
-class _VideoCardState extends State<_VideoCard> with SingleTickerProviderStateMixin {
+class _VideoCardState extends State<_VideoCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -707,17 +982,25 @@ class _VideoCardState extends State<_VideoCard> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     Future.delayed(Duration(milliseconds: 150 * widget.index), () {
       if (mounted) _ctrl.forward();
     });
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -731,7 +1014,11 @@ class _VideoCardState extends State<_VideoCard> with SingleTickerProviderStateMi
           cursor: SystemMouseCursors.click,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            transform: Matrix4.diagonal3Values(_hovered ? 1.03 : 1.0, _hovered ? 1.03 : 1.0, 1.0),
+            transform: Matrix4.diagonal3Values(
+              _hovered ? 1.03 : 1.0,
+              _hovered ? 1.03 : 1.0,
+              1.0,
+            ),
             transformAlignment: Alignment.center,
             height: 340,
             decoration: BoxDecoration(
@@ -739,57 +1026,95 @@ class _VideoCardState extends State<_VideoCard> with SingleTickerProviderStateMi
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: _hovered ? const Color(0x30000000) : const Color(0x15000000),
+                  color: _hovered
+                      ? const Color(0x30000000)
+                      : const Color(0x15000000),
                   blurRadius: _hovered ? 20 : 10,
                   offset: Offset(0, _hovered ? 8 : 4),
                 ),
               ],
             ),
             clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 224, width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: widget.data['thumbnail']!, fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(color: AppColors.gray900),
-                        errorWidget: (_, __, ___) => Container(color: AppColors.gray900),
-                      ),
-                      Container(color: Colors.black.withValues(alpha: 0.3)),
-                      Center(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          width: _hovered ? 72 : 64,
-                          height: _hovered ? 72 : 64,
-                          decoration: BoxDecoration(
-                            color: _hovered ? AppColors.accentHover : AppColors.accent,
-                            shape: BoxShape.circle,
-                            boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 15, offset: Offset(0, 4))],
-                          ),
-                          child: const Icon(Icons.play_arrow, size: 32, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                final id = widget.data['id'] ?? '';
+                if (id.isNotEmpty) context.go('/post/$id');
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 224,
+                    width: double.infinity,
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Text(widget.data['title']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.foreground)),
-                        const Spacer(),
-                        Text(widget.data['duration']!, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
+                        CachedNetworkImage(
+                          imageUrl: widget.data['thumbnail']!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) =>
+                              Container(color: AppColors.gray900),
+                          errorWidget: (_, __, ___) =>
+                              Container(color: AppColors.gray900),
+                        ),
+                        Container(color: Colors.black.withValues(alpha: 0.3)),
+                        Center(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            width: _hovered ? 72 : 64,
+                            height: _hovered ? 72 : 64,
+                            decoration: BoxDecoration(
+                              color: _hovered
+                                  ? AppColors.accentHover
+                                  : AppColors.accent,
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x40000000),
+                                  blurRadius: 15,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow,
+                              size: 32,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.data['title']!,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              color: AppColors.foreground,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            widget.data['duration']!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.gray500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -808,7 +1133,10 @@ class _Footer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.foreground, // bg-[#0F172A]
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16), // py-12
+      padding: const EdgeInsets.symmetric(
+        vertical: 48,
+        horizontal: 16,
+      ), // py-12
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1280),
@@ -844,7 +1172,6 @@ class _Footer extends StatelessWidget {
               ),
 
               const SizedBox(height: 32), // mb-8
-
               // Bottom border + copyright
               Container(
                 decoration: const BoxDecoration(
@@ -883,7 +1210,10 @@ class _Footer extends StatelessWidget {
               ),
               clipBehavior: Clip.antiAlias,
               padding: const EdgeInsets.all(4),
-              child: Image.asset('assets/images/logoSekolah.png', fit: BoxFit.contain),
+              child: Image.asset(
+                'assets/images/logoSekolah.png',
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -915,13 +1245,22 @@ class _Footer extends StatelessWidget {
       children: [
         const Text(
           'Tautan Cepat',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 16),
-        ...links.map((link) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(link, style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
-            )),
+        ...links.map(
+          (link) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              link,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -932,10 +1271,17 @@ class _Footer extends StatelessWidget {
       children: [
         const Text(
           'Hubungi Kami',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 16),
-        _contactRow(Icons.location_on, 'Jl. Raya Cikalong, Kec. Cikalong, Kab. Bandung Barat'),
+        _contactRow(
+          Icons.location_on,
+          'Jl. Raya Cikalong, Kec. Cikalong, Kab. Bandung Barat',
+        ),
         const SizedBox(height: 12),
         _contactRow(Icons.phone, '(022) 123-4567'),
         const SizedBox(height: 12),
@@ -951,20 +1297,32 @@ class _Footer extends StatelessWidget {
         Icon(icon, size: 16, color: AppColors.accent),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildSocialMedia() {
-    final socialIcons = [Icons.facebook, Icons.close, Icons.camera_alt, Icons.play_circle];
+    final socialIcons = [
+      Icons.facebook,
+      Icons.close,
+      Icons.camera_alt,
+      Icons.play_circle,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Ikuti Kami',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -987,6 +1345,661 @@ class _Footer extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class PublicContentDetailPage extends StatelessWidget {
+  final String contentId;
+
+  const PublicContentDetailPage({super.key, required this.contentId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          _PublicDetailHeader(
+            onHomeTap: () => context.go('/'),
+            onLoginTap: () => context.go('/login'),
+          ),
+          Expanded(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: ApiService.getPublicContentById(contentId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final raw = snapshot.data?['data'];
+                if (snapshot.hasError || raw is! Map) {
+                  return _PublicDetailEmpty(onBack: () => context.go('/'));
+                }
+
+                final item = Map<String, dynamic>.from(raw);
+                return _PublicDetailBody(item: item);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicDetailHeader extends StatelessWidget {
+  final VoidCallback onHomeTap;
+  final VoidCallback onLoginTap;
+
+  const _PublicDetailHeader({
+    required this.onHomeTap,
+    required this.onLoginTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 768;
+
+    return Container(
+      color: AppColors.primary,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: SizedBox(
+            height: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    padding: const EdgeInsets.all(4),
+                    child: Image.asset(
+                      'assets/images/logoSekolah.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'SMA NEGERI 1 CIKALONG',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onHomeTap,
+                    child: const Text(
+                      'Beranda',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  if (isDesktop) ...[
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      onPressed: onLoginTap,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white, width: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Login Akademik'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicDetailBody extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _PublicDetailBody({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _stringValue(item['title']);
+    final type = _stringValue(item['type']);
+    final content = _stringValue(item['content']);
+    final imageUrl = ApiService.resolveFileUrl(_stringValue(item['imageUrl']));
+    final videoUrl = _stringValue(item['videoUrl']);
+    final date = _formatCmsDate(_stringValue(item['createdAt']));
+
+    return SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 980),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 48),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_typeLabel(type)} • $date',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.accent,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.foreground,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                if (imageUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: double.infinity,
+                      height: 420,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) =>
+                          Container(height: 420, color: AppColors.gray200),
+                      errorWidget: (_, __, ___) => Container(
+                        height: 420,
+                        color: AppColors.gray200,
+                        child: const Icon(
+                          Icons.image,
+                          color: AppColors.gray400,
+                          size: 56,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (imageUrl.isNotEmpty) const SizedBox(height: 32),
+                if (videoUrl.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 28),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.gray200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.play_circle_fill,
+                          color: AppColors.accent,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SelectableText(
+                            videoUrl,
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                _CmsRichContent(
+                  content: content.isNotEmpty
+                      ? content
+                      : 'Konten belum memiliki isi.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicDetailEmpty extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _PublicDetailEmpty({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.article_outlined,
+              size: 64,
+              color: AppColors.gray400,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Konten tidak ditemukan',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.foreground,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Konten mungkin belum aktif atau sudah dihapus.',
+              style: TextStyle(color: AppColors.gray600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onBack,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Kembali ke Beranda'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CmsRichContent extends StatefulWidget {
+  final String content;
+
+  const _CmsRichContent({required this.content});
+
+  @override
+  State<_CmsRichContent> createState() => _CmsRichContentState();
+}
+
+class _CmsRichContentState extends State<_CmsRichContent> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  @override
+  void dispose() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final blocks = _parseBlocks(widget.content);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final block in blocks) ...[
+          if (block.type == _CmsBlockType.orderedList)
+            _buildOrderedList(block.items)
+          else
+            Text.rich(
+              TextSpan(
+                children: _parseInlineSpans(block.content, _baseStyle()),
+              ),
+              textAlign: block.align,
+            ),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOrderedList(List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < items.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 32,
+                  child: Text(
+                    '${i + 1}.',
+                    style: _baseStyle().copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: _parseInlineSpans(items[i], _baseStyle()),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<TextSpan> _parseInlineSpans(
+    String value,
+    TextStyle style, {
+    TapGestureRecognizer? recognizer,
+  }) {
+    final spans = <TextSpan>[];
+    final pattern = RegExp(
+      r'<a\s+href="([^"]+)">([\s\S]*?)</a>|<(strong|em|u)>([\s\S]*?)</\3>',
+      caseSensitive: false,
+    );
+    var cursor = 0;
+
+    for (final match in pattern.allMatches(value)) {
+      if (match.start > cursor) {
+        spans.add(
+          TextSpan(
+            text: _decodeHtml(value.substring(cursor, match.start)),
+            style: style,
+            recognizer: recognizer,
+          ),
+        );
+      }
+
+      final linkUrl = match.group(1);
+      if (linkUrl != null) {
+        final linkRecognizer = TapGestureRecognizer()
+          ..onTap = () => _openLink(linkUrl);
+        _recognizers.add(linkRecognizer);
+        spans.addAll(
+          _parseInlineSpans(
+            match.group(2) ?? '',
+            style.copyWith(
+              color: AppColors.primary,
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.w600,
+            ),
+            recognizer: linkRecognizer,
+          ),
+        );
+      } else {
+        final tag = (match.group(3) ?? '').toLowerCase();
+        final inner = match.group(4) ?? '';
+        final nextStyle = switch (tag) {
+          'strong' => style.copyWith(fontWeight: FontWeight.w800),
+          'em' => style.copyWith(fontStyle: FontStyle.italic),
+          'u' => style.copyWith(decoration: TextDecoration.underline),
+          _ => style,
+        };
+        spans.addAll(
+          _parseInlineSpans(inner, nextStyle, recognizer: recognizer),
+        );
+      }
+
+      cursor = match.end;
+    }
+
+    if (cursor < value.length) {
+      spans.add(
+        TextSpan(
+          text: _decodeHtml(value.substring(cursor)),
+          style: style,
+          recognizer: recognizer,
+        ),
+      );
+    }
+
+    return spans;
+  }
+
+  Future<void> _openLink(String rawUrl) async {
+    final normalized = rawUrl.contains('://') ? rawUrl : 'https://$rawUrl';
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  TextStyle _baseStyle() {
+    return const TextStyle(
+      fontSize: 18,
+      height: 1.7,
+      color: AppColors.foreground,
+    );
+  }
+
+  List<_CmsBlock> _parseBlocks(String value) {
+    final blocks = <_CmsBlock>[];
+    final pattern = RegExp(
+      r'<ol>([\s\S]*?)</ol>|<div style="text-align:(left|center|right|justify)">([\s\S]*?)</div>',
+      caseSensitive: false,
+    );
+    var cursor = 0;
+
+    for (final match in pattern.allMatches(value)) {
+      if (match.start > cursor) {
+        blocks.addAll(_plainBlocks(value.substring(cursor, match.start)));
+      }
+
+      final olContent = match.group(1);
+      if (olContent != null) {
+        final items = RegExp(r'<li>([\s\S]*?)</li>', caseSensitive: false)
+            .allMatches(olContent)
+            .map((m) => m.group(1)?.trim() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toList();
+        if (items.isNotEmpty) {
+          blocks.add(_CmsBlock.orderedList(items));
+        }
+      } else {
+        blocks.add(
+          _CmsBlock.paragraph(
+            match.group(3)?.trim() ?? '',
+            _textAlign(match.group(2)),
+          ),
+        );
+      }
+
+      cursor = match.end;
+    }
+
+    if (cursor < value.length) {
+      blocks.addAll(_plainBlocks(value.substring(cursor)));
+    }
+
+    return blocks.isEmpty
+        ? [_CmsBlock.paragraph(value, TextAlign.left)]
+        : blocks;
+  }
+
+  List<_CmsBlock> _plainBlocks(String value) {
+    return value
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .split(RegExp(r'\n\s*\n'))
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .map((part) => _CmsBlock.paragraph(part, TextAlign.left))
+        .toList();
+  }
+
+  TextAlign _textAlign(String? value) {
+    switch ((value ?? '').toLowerCase()) {
+      case 'center':
+        return TextAlign.center;
+      case 'right':
+        return TextAlign.right;
+      case 'justify':
+        return TextAlign.justify;
+      default:
+        return TextAlign.left;
+    }
+  }
+}
+
+enum _CmsBlockType { paragraph, orderedList }
+
+class _CmsBlock {
+  final _CmsBlockType type;
+  final String content;
+  final List<String> items;
+  final TextAlign align;
+
+  const _CmsBlock.paragraph(this.content, this.align)
+    : type = _CmsBlockType.paragraph,
+      items = const [];
+
+  const _CmsBlock.orderedList(this.items)
+    : type = _CmsBlockType.orderedList,
+      content = '',
+      align = TextAlign.left;
+}
+
+Future<List<Map<String, String>>> _loadPublicContent(
+  String type,
+  List<Map<String, String>> fallback,
+) async {
+  try {
+    final response = await ApiService.getPublicContent(tipe: type);
+    final rawItems = response['data'];
+    if (rawItems is! List || rawItems.isEmpty) return fallback;
+
+    final items = <Map<String, String>>[];
+    for (final raw in rawItems) {
+      if (raw is Map) {
+        final item = Map<String, dynamic>.from(raw);
+        final mapped = _mapCmsItem(type, item, fallback);
+        if ((mapped['title'] ?? '').isNotEmpty) items.add(mapped);
+      }
+    }
+
+    return items.isEmpty ? fallback : items;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+Map<String, String> _mapCmsItem(
+  String type,
+  Map<String, dynamic> item,
+  List<Map<String, String>> fallback,
+) {
+  final fallbackItem = fallback.isNotEmpty
+      ? fallback.first
+      : const <String, String>{};
+  final title = _stringValue(item['title']);
+  final content = _stringValue(item['content']);
+  final imageUrl = ApiService.resolveFileUrl(_stringValue(item['imageUrl']));
+  final fallbackImage =
+      fallbackItem['image'] ??
+      fallbackItem['icon'] ??
+      fallbackItem['thumbnail'] ??
+      '';
+  final date = _formatCmsDate(_stringValue(item['createdAt']));
+
+  switch (type) {
+    case 'PRESTASI':
+      return {
+        'id': _stringValue(item['id']),
+        'title': title,
+        'description': _excerpt(content, maxLength: 140),
+        'year': date,
+        'icon': imageUrl.isNotEmpty ? imageUrl : fallbackImage,
+      };
+    case 'VIDEO':
+      return {
+        'id': _stringValue(item['id']),
+        'title': title,
+        'duration': content.isNotEmpty ? content : 'Video',
+        'thumbnail': imageUrl.isNotEmpty ? imageUrl : fallbackImage,
+        'videoUrl': _stringValue(item['videoUrl']),
+      };
+    case 'BERITA':
+    default:
+      return {
+        'id': _stringValue(item['id']),
+        'title': title,
+        'excerpt': _excerpt(content),
+        'date': date,
+        'image': imageUrl.isNotEmpty ? imageUrl : fallbackImage,
+      };
+  }
+}
+
+String _stringValue(Object? value) => value?.toString().trim() ?? '';
+
+String _excerpt(String value, {int maxLength = 170}) {
+  final plain = _plainCmsText(value).replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (plain.length <= maxLength) return plain;
+  return '${plain.substring(0, maxLength).trimRight()}...';
+}
+
+String _plainCmsText(String value) {
+  final withoutTags = value
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), ' ')
+      .replaceAll(RegExp(r'</(div|p|li|ol)>', caseSensitive: false), ' ')
+      .replaceAll(RegExp(r'<[^>]+>'), ' ');
+  return _decodeHtml(withoutTags);
+}
+
+String _decodeHtml(String value) {
+  return value
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'");
+}
+
+String _formatCmsDate(String value) {
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) return value.isEmpty ? 'Terbaru' : value;
+
+  const months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+  final local = parsed.toLocal();
+  return '${local.day} ${months[local.month - 1]} ${local.year}';
+}
+
+String _typeLabel(String type) {
+  switch (type) {
+    case 'PRESTASI':
+      return 'Prestasi';
+    case 'VIDEO':
+      return 'Video';
+    case 'BERITA':
+      return 'Berita & Pengumuman';
+    default:
+      return 'Konten Publik';
   }
 }
 
@@ -1030,7 +2043,8 @@ const List<Map<String, String>> _achievementsData = [
   },
   {
     'title': 'Penghargaan Keunggulan Akademik',
-    'description': 'Sekolah berprestasi terbaik di wilayah untuk pencapaian akademik',
+    'description':
+        'Sekolah berprestasi terbaik di wilayah untuk pencapaian akademik',
     'year': '2025-2026',
     'icon':
         'https://images.unsplash.com/photo-1762345127396-ac4a970436c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=200',
@@ -1044,7 +2058,8 @@ const List<Map<String, String>> _achievementsData = [
   },
   {
     'title': 'Sertifikasi Sekolah Hijau',
-    'description': 'Penghargaan untuk keunggulan dalam praktik keberlanjutan lingkungan',
+    'description':
+        'Penghargaan untuk keunggulan dalam praktik keberlanjutan lingkungan',
     'year': '2025',
     'icon':
         'https://images.unsplash.com/photo-1764408721535-2dcb912db83e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=200',
