@@ -16,7 +16,7 @@ class ApiClient {
   static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
   );
-  static const String _defaultBaseUrl = 'http://10.140.173.125:3001/api';
+  static const String _defaultBaseUrl = 'https://sman1cikalong.up.railway.app/api';
   static const String _webBaseUrl = 'https://sman1cikalong.up.railway.app/api';
 
   static final ApiClient _instance = ApiClient._internal();

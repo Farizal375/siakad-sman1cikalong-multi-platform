@@ -320,6 +320,7 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage> {
         const SizedBox(height: 8),
         TextField(
           controller: _identifierController,
+          style: const TextStyle(color: AppColors.foreground),
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
@@ -349,6 +350,7 @@ class _MobileLoginPageState extends ConsumerState<MobileLoginPage> {
         const SizedBox(height: 8),
         TextField(
           controller: _passwordController,
+          style: const TextStyle(color: AppColors.foreground),
           obscureText: _obscurePassword,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _loading ? null : _handleLocalLogin(),
