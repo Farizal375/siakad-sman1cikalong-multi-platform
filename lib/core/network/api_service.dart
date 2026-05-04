@@ -764,7 +764,7 @@ class ApiService {
 
   /// Returns the URL for downloading the PDF rapor
   static String getRaporPdfUrl(String siswaId, String semesterId) {
-    return 'http://localhost:3001/api/rapor/$siswaId/$semesterId';
+    return '${ApiClient().baseUrl}/rapor/$siswaId/$semesterId';
   }
 
   static Future<List<int>> downloadRaporPdf(
