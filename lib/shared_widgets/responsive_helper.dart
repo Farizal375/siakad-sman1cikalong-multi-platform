@@ -5,14 +5,20 @@
 // ===========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// Breakpoint tunggal yang digunakan seluruh layout SIAKAD.
 /// Dibawah 768px dianggap mobile (smartphone atau tablet kecil).
 const double kMobileBreakpoint = 768;
 
+/// Web browser dipaksa tetap desktop sampai benar-benar sempit.
+/// Ini menjaga tampilan desktop tetap stabil seperti panel admin.
+const double kWebMobileBreakpoint = 600;
+
 extension ResponsiveContext on BuildContext {
   double get screenWidth => MediaQuery.sizeOf(this).width;
-  bool get isMobile => screenWidth < kMobileBreakpoint;
+  bool get isMobile =>
+      screenWidth < (kIsWeb ? kWebMobileBreakpoint : kMobileBreakpoint);
   bool get isDesktop => !isMobile;
 }
 
