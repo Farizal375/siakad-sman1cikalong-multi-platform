@@ -943,7 +943,14 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
               color: Colors.white,
               child: Stack(
                 children: [
-                  const QRScanner(),
+                  // Langsung reload riwayat begitu scan sukses, tanpa tutup dialog
+                  QRScanner(
+                    onSuccess: () {
+                      // Invalidate dashboard provider agar KPI kehadiran ikut update
+                      ref.invalidate(studentDashboardProvider);
+                      if (mounted) _load();
+                    },
+                  ),
                   Positioned(
                     top: 12,
                     right: 12,
@@ -963,6 +970,7 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
         );
       },
     );
+    // Reload sekali lagi setelah dialog ditutup sebagai safety net
     if (mounted) _load();
   }
 

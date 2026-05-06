@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/network/api_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../providers/student_providers.dart';
 
 class StudentDashboard extends ConsumerStatefulWidget {
   const StudentDashboard({super.key});
@@ -20,42 +20,48 @@ class StudentDashboard extends ConsumerStatefulWidget {
 }
 
 class _StudentDashboardState extends ConsumerState<StudentDashboard> {
-  bool _loading = true;
-  Map<String, dynamic> _data = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDashboard();
-  }
-
-  Future<void> _loadDashboard() async {
-    try {
-      final response = await ApiService.getSiswaDashboard();
-      if (mounted) {
-        setState(() {
-          _data = response['data'] ?? {};
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Listen ke studentDashboardProvider — otomatis rebuild saat scan QR berhasil
+    final dashboardAsync = ref.watch(studentDashboardProvider);
+
     ref.listen<String?>(currentUserIdProvider, (previous, next) {
       if (previous != next && next != null) {
-        _loadDashboard();
+        ref.invalidate(studentDashboardProvider);
       }
     });
 
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    return dashboardAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: AppColors.gray300),
+            const SizedBox(height: 16),
+            const Text('Gagal memuat data', style: TextStyle(color: AppColors.gray600)),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(studentDashboardProvider),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+      data: (rawData) => _buildContent(context, rawData),
+    );
+  }
 
-    final kelas = _data['kelas'] ?? '-';
-    final hari = _data['hari'] ?? '-';
-    final todaySchedule = (_data['jadwalHariIni'] as List? ?? [])
+  Widget _buildContent(BuildContext context, Map<String, dynamic> data) {
+
+    final kelas = data['kelas'] ?? '-';
+    final hari = data['hari'] ?? '-';
+    final todaySchedule = (data['jadwalHariIni'] as List? ?? [])
         .map<Map<String, dynamic>>(
           (j) => {
             'id': j['id'] ?? '',
@@ -73,7 +79,7 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
       todaySchedule[0]['isActive'] = true;
     }
 
-    final announcements = (_data['pengumuman'] as List? ?? [])
+    final announcements = (data['pengumuman'] as List? ?? [])
         .map<Map<String, dynamic>>((a) {
           final createdAt = a['createdAt'] ?? '';
           String dateStr = '';
@@ -92,7 +98,7 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
         })
         .toList();
 
-    final kehadiran = _data['kehadiran'] as Map<String, dynamic>? ?? {};
+    final kehadiran = data['kehadiran'] as Map<String, dynamic>? ?? {};
     final totalHadir = kehadiran['hadir'] ?? 0;
     final totalSakit = kehadiran['sakit'] ?? 0;
     final totalIzin = kehadiran['izin'] ?? 0;

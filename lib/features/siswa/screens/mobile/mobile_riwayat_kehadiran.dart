@@ -477,10 +477,14 @@ class _State extends ConsumerState<MobileRiwayatKehadiran>
         height: MediaQuery.of(context).size.height * 0.9,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: const MobileQRScanner(),
+          // onSuccess: langsung reload riwayat tanpa tutup bottom sheet
+          child: MobileQRScanner(onSuccess: _load),
         ),
       ),
-    );
+    ).then((_) {
+      // Reload juga saat bottom sheet ditutup (jaga-jaga jika callback tidak terpanggil)
+      if (mounted) _load();
+    });
   }
 
   Widget _summaryCard(

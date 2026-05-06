@@ -54,19 +54,39 @@ import 'shared_widgets/not_found_page.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/models/user.dart';
 
+// Listenable untuk memberitahu GoRouter ketika auth state berubah
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Ref ref) {
+    ref.listen<AsyncValue<User?>>(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
+
+final _authChangeNotifierProvider = Provider<_AuthChangeNotifier>((ref) {
+  return _AuthChangeNotifier(ref);
+});
+
 final _routerProvider = Provider<GoRouter>((ref) {
   // ── Role-based redirect helper ──
+  // Gunakan ref.watch agar reaktif + jangan redirect saat masih loading
   String? roleRedirect(GoRouterState state, List<UserRole> allowedRoles) {
-    final user = ref.read(authProvider).valueOrNull;
+    final authState = ref.read(authProvider);
+    // Jika masih loading (sedang restore session), jangan redirect dulu
+    if (authState.isLoading) return null;
+    final user = authState.valueOrNull;
     if (user == null) return '/login';
     if (!allowedRoles.contains(user.role)) return '/unauthorized';
     return null;
   }
 
+  final notifier = ref.watch(_authChangeNotifierProvider);
+
   Widget waliGuard(Widget child) => HomeroomRouteGuard(child: child);
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: notifier,
     routes: [
       // ── Guest ──
       GoRoute(
@@ -87,7 +107,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         redirect: (context, state) {
-          final user = ref.read(authProvider).valueOrNull;
+          final authState = ref.read(authProvider);
+          // Jika masih loading, jangan redirect (tunggu session terpulihkan)
+          if (authState.isLoading) return null;
+          final user = authState.valueOrNull;
           return user == null ? null : getDashboardRouteByRole(user.role);
         },
         builder: (context, state) => const LoginPage(),

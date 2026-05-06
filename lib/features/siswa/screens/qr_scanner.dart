@@ -10,10 +10,13 @@ import 'package:flutter/material.dart';
 import 'mobile/mobile_qr_scanner.dart';
 
 class QRScanner extends StatelessWidget {
-  const QRScanner({super.key});
+  /// Callback dipanggil saat presensi berhasil dicatat.
+  final VoidCallback? onSuccess;
+
+  const QRScanner({super.key, this.onSuccess});
 
   @override
   Widget build(BuildContext context) {
-    return const MobileQRScanner();
+    return MobileQRScanner(onSuccess: onSuccess);
   }
 }

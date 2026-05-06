@@ -9,19 +9,25 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_service.dart';
+import '../../providers/student_providers.dart';
 
-class MobileQRScanner extends StatefulWidget {
-  const MobileQRScanner({super.key});
+class MobileQRScanner extends ConsumerStatefulWidget {
+  /// Callback yang dipanggil saat presensi berhasil dicatat (status 200).
+  /// Digunakan oleh parent untuk langsung reload data tanpa menunggu refresh manual.
+  final VoidCallback? onSuccess;
+
+  const MobileQRScanner({super.key, this.onSuccess});
 
   @override
-  State<MobileQRScanner> createState() => _MobileQRScannerState();
+  ConsumerState<MobileQRScanner> createState() => _MobileQRScannerState();
 }
 
-class _MobileQRScannerState extends State<MobileQRScanner>
+class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
     with SingleTickerProviderStateMixin {
   bool _isScanning = true;
   bool _showResult = false;
@@ -125,6 +131,12 @@ class _MobileQRScannerState extends State<MobileQRScanner>
         response['code'] ?? 'SUCCESS',
         response['message'] ?? 'Presensi berhasil dicatat!',
       );
+
+      // ── Invalidasi cache agar dashboard, riwayat, & nilai langsung update ──
+      ref.invalidate(studentDashboardProvider);
+
+      // Beri tahu parent widget agar reload data lokal juga
+      widget.onSuccess?.call();
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode ?? 500;
       final data = e.response?.data;
