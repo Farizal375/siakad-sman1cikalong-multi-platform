@@ -1,8 +1,8 @@
 // File: lib/features/admin/screens/dashboard_layout.dart
 // ===========================================
-// ADMIN DASHBOARD LAYOUT
-// Uses shared CollapsibleSidebar with SidebarController
-// Toggle button lives in the TopBar next to breadcrumb
+// ADMIN DASHBOARD LAYOUT — Responsive (mobile + desktop)
+// Desktop (≥ 768px): Sidebar + TopBar + Content
+// Mobile (< 768px): AppBar + Drawer + Content
 // ===========================================
 
 import 'package:flutter/material.dart';
@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/network/api_service.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
+import '../../../shared_widgets/responsive_helper.dart';
 
 class DashboardLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -23,6 +24,7 @@ class DashboardLayout extends ConsumerStatefulWidget {
 
 class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
   final SidebarController _sidebarController = SidebarController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
 
   @override
   void initState() {
@@ -36,67 +38,76 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
     super.dispose();
   }
 
+  List<SidebarMenuItem> get _menuItems => [
+        SidebarMenuItem(icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/dashboard'),
+        SidebarMenuItem(icon: Icons.article_outlined, label: 'Public CMS', route: '/dashboard/cms'),
+        SidebarMenuItem(icon: Icons.people_outline, label: 'User Management', route: '/dashboard/users'),
+        SidebarMenuItem(icon: Icons.storage_outlined, label: 'Master Data', route: '/dashboard/master-data'),
+      ];
+
+  List<SidebarMenuItem> _bottomMenuItems(BuildContext context) => [
+        SidebarMenuItem(icon: Icons.settings_outlined, label: 'Pengaturan'),
+        SidebarMenuItem(
+          icon: Icons.logout,
+          label: 'Keluar',
+          onTap: () async {
+            await ref.read(authProvider.notifier).logout();
+            if (context.mounted) context.go('/login');
+          },
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final currentRoute = GoRouterState.of(context).uri.toString();
-    // Baca user dari authProvider — reaktif, langsung update saat nama berubah
     final authUser = ref.watch(authProvider).valueOrNull;
     final userName = authUser?.name ?? 'Admin';
     final userInitials = userName.trim().split(' ')
         .where((w) => w.isNotEmpty).take(2)
         .map((w) => w[0].toUpperCase()).join();
     final userRole = authUser?.role.displayName ?? 'Super Admin';
+    final mobile = context.isMobile;
 
+    final sidebar = CollapsibleSidebar(
+      title: 'Panel Admin',
+      subtitle: 'SMA Negeri 1 Cikalong',
+      currentRoute: currentRoute,
+      onNavigate: (route) {
+        context.go(route);
+        if (mobile) Navigator.of(context).pop();
+      },
+      controller: _sidebarController,
+      menuItems: _menuItems,
+      bottomMenuItems: _bottomMenuItems(context),
+    );
+
+    if (mobile) {
+      return Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: AppColors.background,
+        appBar: _MobileAppBar(
+          title: _pageTitleFromRoute(currentRoute),
+          userInitials: userInitials,
+          onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+          onProfileTap: () => context.go('/dashboard/profile'),
+        ),
+        drawer: Drawer(
+          width: 280,
+          child: SafeArea(child: sidebar),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: widget.child,
+        ),
+      );
+    }
+
+    // ── Desktop ──
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Row(
         children: [
-          // ── Sidebar ──
-          CollapsibleSidebar(
-            title: 'Panel Admin',
-            subtitle: 'SMA Negeri 1 Cikalong',
-            currentRoute: currentRoute,
-            onNavigate: (route) => context.go(route),
-            controller: _sidebarController,
-            menuItems: [
-              SidebarMenuItem(
-                icon: Icons.dashboard_outlined,
-                label: 'Dashboard',
-                route: '/dashboard',
-              ),
-              SidebarMenuItem(
-                icon: Icons.article_outlined,
-                label: 'Public CMS',
-                route: '/dashboard/cms',
-              ),
-              SidebarMenuItem(
-                icon: Icons.people_outline,
-                label: 'User Management',
-                route: '/dashboard/users',
-              ),
-              SidebarMenuItem(
-                icon: Icons.storage_outlined,
-                label: 'Master Data',
-                route: '/dashboard/master-data',
-              ),
-            ],
-            bottomMenuItems: [
-              SidebarMenuItem(
-                icon: Icons.settings_outlined,
-                label: 'Pengaturan',
-              ),
-              SidebarMenuItem(
-                icon: Icons.logout,
-                label: 'Keluar',
-                onTap: () async {
-                  await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) context.go('/login');
-                },
-              ),
-            ],
-          ),
-
-          // ── Main Content ──
+          sidebar,
           Expanded(
             child: Column(
               children: [
@@ -122,10 +133,73 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
       ),
     );
   }
+
+  String _pageTitleFromRoute(String route) {
+    if (route.contains('/users')) return 'Manajemen Pengguna';
+    if (route.contains('/cms')) return 'CMS Publik';
+    if (route.contains('/master-data')) return 'Master Data';
+    if (route.contains('/profile')) return 'Profil';
+    return 'Beranda';
+  }
 }
 
 // ═════════════════════════════════════
-// SHARED TOP BAR — Reusable across all roles
+// SHARED MOBILE APP BAR
+// ═════════════════════════════════════
+class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final String userInitials;
+  final VoidCallback onMenuTap;
+  final VoidCallback onProfileTap;
+
+  const _MobileAppBar({
+    required this.title,
+    required this.userInitials,
+    required this.onMenuTap,
+    required this.onProfileTap,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(56);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      leading: IconButton(
+        onPressed: onMenuTap,
+        icon: const Icon(Icons.menu, color: AppColors.foreground),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: AppColors.foreground,
+        ),
+      ),
+      actions: [
+        GestureDetector(
+          onTap: onProfileTap,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: UserAvatar(initials: userInitials),
+          ),
+        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(height: 1, color: AppColors.borderLight),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════
+// DESKTOP TOP BAR
 // ═════════════════════════════════════
 class _TopBar extends StatefulWidget {
   final String currentRoute;
@@ -193,7 +267,6 @@ class _TopBarState extends State<_TopBar> {
       ),
       child: Row(
         children: [
-          // Toggle sidebar button
           IconButton(
             onPressed: () => widget.sidebarController.toggle(),
             icon: AnimatedRotation(
@@ -201,15 +274,12 @@ class _TopBarState extends State<_TopBar> {
               duration: const Duration(milliseconds: 250),
               child: const Icon(Icons.menu_open, size: 22),
             ),
-            tooltip: widget.sidebarController.isCollapsed ? 'Perluas Sidebar' : 'Perkecil Sidebar',
             style: IconButton.styleFrom(
               backgroundColor: AppColors.gray50,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
           const SizedBox(width: 16),
-
-          // Breadcrumb
           Text(widget.roleName, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
@@ -219,10 +289,7 @@ class _TopBarState extends State<_TopBar> {
             _pageTitle,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground),
           ),
-
           const Spacer(),
-
-          // Active Semester — from DB
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -233,8 +300,6 @@ class _TopBarState extends State<_TopBar> {
             child: Text(_semesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 16),
-
-          // Profile
           InkWell(
             onTap: widget.onProfileTap,
             borderRadius: BorderRadius.circular(12),
@@ -251,14 +316,7 @@ class _TopBarState extends State<_TopBar> {
                     ],
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.accent, AppColors.accentHover]),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Center(child: Text(widget.userInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
-                  ),
+                  UserAvatar(initials: widget.userInitials, size: 40),
                 ],
               ),
             ),
