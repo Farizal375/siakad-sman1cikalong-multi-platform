@@ -236,12 +236,27 @@ class _ClassDetailState extends State<ClassDetail>
                   date: h['date'] ?? '',
                   pertemuanKe: h['session'].toString(),
                   materi: h['topic'] ?? '',
-                  students: (h['students'] as List?)?.map((s) => _Student(
-                    id: s['id'],
-                    name: s['name'],
-                    nisn: s['nisn'],
-                    status: s['status'] ?? 'ALPA',
-                  )).toList() ?? _students.map((s) => _Student(id: s.id, name: s.name, nisn: s.nisn, status: 'ALPA')).toList(),
+                  students:
+                      (h['students'] as List?)
+                          ?.map(
+                            (s) => _Student(
+                              id: s['id'],
+                              name: s['name'],
+                              nisn: s['nisn'],
+                              status: s['status'] ?? 'ALPA',
+                            ),
+                          )
+                          .toList() ??
+                      _students
+                          .map(
+                            (s) => _Student(
+                              id: s.id,
+                              name: s.name,
+                              nisn: s.nisn,
+                              status: 'ALPA',
+                            ),
+                          )
+                          .toList(),
                 ),
               )
               .toList();
@@ -266,6 +281,10 @@ class _ClassDetailState extends State<ClassDetail>
       c.dispose();
     }
     super.dispose();
+  }
+
+  bool _isCompactLayout(BuildContext context) {
+    return MediaQuery.sizeOf(context).width < 980;
   }
 
   // ── QR Generation (API-backed, 3-minute expiry) ─────────────────────
@@ -595,7 +614,7 @@ class _ClassDetailState extends State<ClassDetail>
       for (int i = 0; i < _grades.length; i++) {
         final g = _grades[i];
         final student = _students.firstWhere((s) => s.nisn == g.nisn);
-        
+
         final tugasKey = '${g.nisn}-tugas';
         final uhKey = '${g.nisn}-uh';
         final utsKey = '${g.nisn}-uts';
@@ -672,6 +691,14 @@ class _ClassDetailState extends State<ClassDetail>
         ? _subjectName
         : widget.classId.toUpperCase();
     final kelas = _className.isNotEmpty ? _className : '';
+    final isCompact = _isCompactLayout(context);
+    final tabs = isCompact
+        ? const [Tab(text: 'Riwayat'), Tab(text: 'Absensi'), Tab(text: 'Nilai')]
+        : const [
+            Tab(text: 'Riwayat Pertemuan'),
+            Tab(text: 'Rekapitulasi Absensi'),
+            Tab(text: 'Manajemen Nilai'),
+          ];
 
     return Stack(
       children: [
@@ -685,7 +712,7 @@ class _ClassDetailState extends State<ClassDetail>
 
             // ── Segmented Tabs ──
             Container(
-              height: 54,
+              height: isCompact ? 58 : 54,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -693,6 +720,10 @@ class _ClassDetailState extends State<ClassDetail>
               ),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: isCompact,
+                labelPadding: isCompact
+                    ? const EdgeInsets.symmetric(horizontal: 16)
+                    : const EdgeInsets.symmetric(horizontal: 8),
                 indicator: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(10),
@@ -701,20 +732,16 @@ class _ClassDetailState extends State<ClassDetail>
                 indicatorPadding: const EdgeInsets.all(4),
                 labelColor: Colors.white,
                 unselectedLabelColor: AppColors.gray600,
-                labelStyle: const TextStyle(
+                labelStyle: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: isCompact ? 12 : 14,
                 ),
-                unselectedLabelStyle: const TextStyle(
+                unselectedLabelStyle: TextStyle(
                   fontWeight: FontWeight.w500,
-                  fontSize: 14,
+                  fontSize: isCompact ? 12 : 14,
                 ),
                 dividerColor: Colors.transparent,
-                tabs: const [
-                  Tab(text: 'Riwayat Pertemuan'),
-                  Tab(text: 'Rekapitulasi Absensi'),
-                  Tab(text: 'Manajemen Nilai'),
-                ],
+                tabs: tabs,
               ),
             ),
             const SizedBox(height: 20),
@@ -743,6 +770,8 @@ class _ClassDetailState extends State<ClassDetail>
   }
 
   Widget _buildHeader(String subject, String kelas) {
+    final compact = _isCompactLayout(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -783,125 +812,236 @@ class _ClassDetailState extends State<ClassDetail>
           ),
         ),
         const SizedBox(height: 24),
-
-        // Title Row
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        if (compact)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$subject - Kelas $kelas',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(
-                    '$subject - Kelas $kelas',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.people_outline,
                         color: AppColors.gray500,
-                        size: 20,
+                        size: 18,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Total: ${_students.length} Siswa',
                         style: const TextStyle(
                           color: AppColors.gray500,
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                       ),
-                      if (_sessionActive) ...[
-                        const SizedBox(width: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD1FAE5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF059669),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Sesi Absensi Aktif',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF065F46),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
                   ),
+                  if (_sessionActive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.circle, color: Color(0xFF059669), size: 8),
+                          SizedBox(width: 6),
+                          Text(
+                            'Sesi Absensi Aktif',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF065F46),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            // Toggle Button
-            if (_sessionActive)
-              ElevatedButton.icon(
-                onPressed: _endSession,
-                icon: const Icon(Icons.stop_circle_outlined, size: 20),
-                label: const Text(
-                  'Akhiri Sesi Pertemuan',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDC2626),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
-                ),
-              )
-            else
-              ElevatedButton.icon(
-                onPressed: _openSessionDialog,
-                icon: const Icon(Icons.play_circle_outline, size: 20),
-                label: const Text(
-                  'Buka Presensi',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: (_sessionActive
+                    ? ElevatedButton.icon(
+                        onPressed: _endSession,
+                        icon: const Icon(Icons.stop_circle_outlined, size: 20),
+                        label: const Text(
+                          'Akhiri Sesi Pertemuan',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC2626),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: _openSessionDialog,
+                        icon: const Icon(Icons.play_circle_outline, size: 20),
+                        label: const Text(
+                          'Buka Presensi',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      )),
+              ),
+            ],
+          )
+        else
+          // Title Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$subject - Kelas $kelas',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.people_outline,
+                          color: AppColors.gray500,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Total: ${_students.length} Siswa',
+                          style: const TextStyle(
+                            color: AppColors.gray500,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (_sessionActive) ...[
+                          const SizedBox(width: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD1FAE5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF059669),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Sesi Absensi Aktif',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF065F46),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              // Toggle Button
+              if (_sessionActive)
+                ElevatedButton.icon(
+                  onPressed: _endSession,
+                  icon: const Icon(Icons.stop_circle_outlined, size: 20),
+                  label: const Text(
+                    'Akhiri Sesi Pertemuan',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: _openSessionDialog,
+                  icon: const Icon(Icons.play_circle_outline, size: 20),
+                  label: const Text(
+                    'Buka Presensi',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
@@ -983,6 +1123,10 @@ class _ClassDetailState extends State<ClassDetail>
 
   // ══════════════════ RIWAYAT PERTEMUAN TAB ════════════════════════════════
   Widget _buildJurnalTab() {
+    if (_isCompactLayout(context)) {
+      return _buildJurnalTabCompact();
+    }
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -1267,8 +1411,196 @@ class _ClassDetailState extends State<ClassDetail>
     );
   }
 
+  Widget _buildJurnalTabCompact() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_sessionActive) _buildRealTimeAttendance(),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    'Daftar Riwayat Pertemuan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                if (_histories.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    child: Center(
+                      child: Text(
+                        'Belum ada riwayat pertemuan.',
+                        style: TextStyle(color: AppColors.gray500),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Column(
+                      children: _histories.map((h) {
+                        final hadir = h.students
+                            .where((s) => s.status == 'HADIR')
+                            .length;
+                        final izin = h.students
+                            .where((s) => s.status == 'IZIN')
+                            .length;
+                        final sakit = h.students
+                            .where((s) => s.status == 'SAKIT')
+                            .length;
+                        final alpa = h.students
+                            .where((s) => s.status == 'ALPA')
+                            .length;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 16,
+                                    color: AppColors.gray500,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      h.date,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Pertemuan ${h.pertemuanKe}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                h.materi,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1F2937),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _summaryChip(
+                                    'Hadir',
+                                    hadir,
+                                    const Color(0xFF059669),
+                                  ),
+                                  _summaryChip(
+                                    'Izin',
+                                    izin,
+                                    const Color(0xFFD97706),
+                                  ),
+                                  _summaryChip(
+                                    'Sakit',
+                                    sakit,
+                                    const Color(0xFF2563EB),
+                                  ),
+                                  _summaryChip(
+                                    'Alpa',
+                                    alpa,
+                                    const Color(0xFFDC2626),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => _openHistoryModal(h),
+                                    icon: const Icon(
+                                      Icons.remove_red_eye_outlined,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Lihat'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      side: const BorderSide(
+                                        color: AppColors.primary,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _deleteHistory(h),
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Hapus'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFDC2626),
+                                      side: const BorderSide(
+                                        color: Color(0xFFDC2626),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Real-time Attendance Management Panel ──────────────────────────────────
   Widget _buildRealTimeAttendance() {
+    if (_isCompactLayout(context)) {
+      return _buildRealTimeAttendanceCompact();
+    }
+
     final hadirCount = _students.where((s) => s.status == 'HADIR').length;
     final izinCount = _students.where((s) => s.status == 'IZIN').length;
     final sakitCount = _students.where((s) => s.status == 'SAKIT').length;
@@ -1611,6 +1943,245 @@ class _ClassDetailState extends State<ClassDetail>
     );
   }
 
+  Widget _buildRealTimeAttendanceCompact() {
+    final hadirCount = _students.where((s) => s.status == 'HADIR').length;
+    final izinCount = _students.where((s) => s.status == 'IZIN').length;
+    final sakitCount = _students.where((s) => s.status == 'SAKIT').length;
+    final alpaCount = _students.where((s) => s.status == 'ALPA').length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Manajemen Absensi Real-time',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _liveCounter(
+                      'Hadir',
+                      hadirCount,
+                      const Color(0xFF059669),
+                      const Color(0xFFD1FAE5),
+                    ),
+                    _liveCounter(
+                      'Izin',
+                      izinCount,
+                      const Color(0xFFD97706),
+                      const Color(0xFFFEF3C7),
+                    ),
+                    _liveCounter(
+                      'Sakit',
+                      sakitCount,
+                      const Color(0xFF2563EB),
+                      const Color(0xFFDBEAFE),
+                    ),
+                    _liveCounter(
+                      'Alpa',
+                      alpaCount,
+                      const Color(0xFFDC2626),
+                      const Color(0xFFFEE2E2),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Pertemuan ke-$_activePertemuanKe • $_activeMateri',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _students.length,
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            itemBuilder: (_, idx) {
+              final s = _students[idx];
+              final timeText = s.status == 'HADIR'
+                  ? '${(7 + idx ~/ 6).toString().padLeft(2, '0')}:${((idx * 3) % 60).toString().padLeft(2, '0')}'
+                  : '–';
+              final initial = s.name.isNotEmpty ? s.name[0] : '-';
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          child: Text(
+                            initial,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                s.nisn,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.gray500,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _statusBadge(s.status),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 13,
+                          color: AppColors.gray500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeText,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _attendanceBtn(
+                          'Hadir',
+                          s.status == 'HADIR',
+                          const Color(0xFF059669),
+                          const Color(0xFFD1FAE5),
+                          () => setState(() => s.status = 'HADIR'),
+                        ),
+                        _attendanceBtn(
+                          'Izin',
+                          s.status == 'IZIN',
+                          const Color(0xFFD97706),
+                          const Color(0xFFFEF3C7),
+                          () => setState(() => s.status = 'IZIN'),
+                        ),
+                        _attendanceBtn(
+                          'Sakit',
+                          s.status == 'SAKIT',
+                          const Color(0xFF2563EB),
+                          const Color(0xFFDBEAFE),
+                          () => setState(() => s.status = 'SAKIT'),
+                        ),
+                        _attendanceBtn(
+                          'Alpa',
+                          s.status == 'ALPA',
+                          const Color(0xFFDC2626),
+                          const Color(0xFFFEE2E2),
+                          () => setState(() => s.status = 'ALPA'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_students.length} siswa',
+                  style: const TextStyle(
+                    color: AppColors.gray500,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _saveAttendanceChanges,
+                    icon: const Icon(Icons.save_outlined, size: 18),
+                    label: const Text(
+                      'Simpan Perubahan Absensi',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _liveCounter(String label, int count, Color color, Color bg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1730,6 +2301,24 @@ class _ClassDetailState extends State<ClassDetail>
       child: Text(
         '|',
         style: TextStyle(color: Color(0xFFD1D5DB), fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _summaryChip(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $count',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -2218,6 +2807,10 @@ class _ClassDetailState extends State<ClassDetail>
         : (_recapStudents.isNotEmpty
               ? _recapStudents.first.attendance.length
               : 0);
+    if (_isCompactLayout(context)) {
+      return _buildRekapTabCompact(totalPertemuan);
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2515,6 +3108,254 @@ class _ClassDetailState extends State<ClassDetail>
     );
   }
 
+  Widget _buildRekapTabCompact(int totalPertemuan) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.table_rows_rounded, color: AppColors.primary),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Rekapitulasi Kehadiran',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      icon: const Icon(Icons.print_outlined, size: 16),
+                      label: const Text(
+                        'Cetak PDF',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      onPressed: () => _showSaveSnackbar(
+                        'Rekapitulasi sedang dicetak ke PDF...',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      icon: const Icon(Icons.download_outlined, size: 16),
+                      label: const Text(
+                        'Export Excel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      onPressed: () =>
+                          _showSaveSnackbar('Rekapitulasi diekspor ke Excel!'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ..._recapStudents.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final s = entry.value;
+            final Color pctColor = s.persentase >= 90
+                ? const Color(0xFF15803D)
+                : s.persentase >= 75
+                ? const Color(0xFFB45309)
+                : const Color(0xFFB91C1C);
+            final Color pctBg = s.persentase >= 90
+                ? const Color(0xFFF0FDF4)
+                : s.persentase >= 75
+                ? const Color(0xFFFFFBEB)
+                : const Color(0xFFFEE2E2);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${idx + 1}.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              s.nisn,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.gray500,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _rekapTotalCell('${s.persentase}%', pctColor, pctBg),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < totalPertemuan; i++) ...[
+                          _attendanceCell(
+                            i < s.attendance.length ? s.attendance[i] : '-',
+                          ),
+                          if (i != totalPertemuan - 1) const SizedBox(width: 6),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _summaryChip(
+                        'Hadir',
+                        s.totalHadir,
+                        const Color(0xFF059669),
+                      ),
+                      _summaryChip(
+                        'Izin',
+                        s.totalIzin,
+                        const Color(0xFFB45309),
+                      ),
+                      _summaryChip(
+                        'Sakit',
+                        s.totalSakit,
+                        const Color(0xFF1D4ED8),
+                      ),
+                      _summaryChip(
+                        'Alpa',
+                        s.totalAlpa,
+                        const Color(0xFFB91C1C),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _legendItem(
+                'H',
+                'Hadir',
+                const Color(0xFF059669),
+                const Color(0xFFDCFCE7),
+              ),
+              _legendItem(
+                'I',
+                'Izin',
+                const Color(0xFFB45309),
+                const Color(0xFFFEF3C7),
+              ),
+              _legendItem(
+                'S',
+                'Sakit',
+                const Color(0xFF1D4ED8),
+                const Color(0xFFDBEAFE),
+              ),
+              _legendItem(
+                'A',
+                'Alpa',
+                const Color(0xFFB91C1C),
+                const Color(0xFFFEE2E2),
+              ),
+              _legendItem(
+                '-',
+                'Kosong',
+                AppColors.gray500,
+                const Color(0xFFF3F4F6),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _attendanceCell(String code) {
     final Map<String, List<Color>> colors = {
       'H': [const Color(0xFFDCFCE7), const Color(0xFF15803D)],
@@ -2603,6 +3444,10 @@ class _ClassDetailState extends State<ClassDetail>
     final avg = _grades.isEmpty
         ? 0.0
         : _grades.map(calculateNa).reduce((a, b) => a + b) / _grades.length;
+
+    if (_isCompactLayout(context)) {
+      return _buildNilaiTabCompact(avg);
+    }
 
     return SingleChildScrollView(
       child: Column(
@@ -2835,7 +3680,220 @@ class _ClassDetailState extends State<ClassDetail>
     );
   }
 
+  Widget _buildNilaiTabCompact(double avg) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBobotCard(),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 520;
+              final itemWidth = twoColumns
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactNilaiStatCard(
+                      'Rata-rata Kelas',
+                      avg.toStringAsFixed(1),
+                      Icons.bar_chart,
+                      AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactNilaiStatCard(
+                      'Nilai Tertinggi',
+                      _grades.isEmpty
+                          ? '0.0'
+                          : _grades
+                                .map(
+                                  (g) => g.getNaValue(
+                                    _bobotTugas,
+                                    _bobotUH,
+                                    _bobotUTS,
+                                    _bobotUAS,
+                                    _bobotKeaktifan,
+                                    _bobotKehadiran,
+                                  ),
+                                )
+                                .reduce(max)
+                                .toStringAsFixed(1),
+                      Icons.trending_up,
+                      const Color(0xFF059669),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactNilaiStatCard(
+                      'Nilai Terendah',
+                      _grades.isEmpty
+                          ? '0.0'
+                          : _grades
+                                .map(
+                                  (g) => g.getNaValue(
+                                    _bobotTugas,
+                                    _bobotUH,
+                                    _bobotUTS,
+                                    _bobotUAS,
+                                    _bobotKeaktifan,
+                                    _bobotKehadiran,
+                                  ),
+                                )
+                                .reduce(min)
+                                .toStringAsFixed(1),
+                      Icons.trending_down,
+                      const Color(0xFFDC2626),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactNilaiStatCard(
+                      'Lulus (≥70)',
+                      '${_grades.where((g) => g.getNaValue(_bobotTugas, _bobotUH, _bobotUTS, _bobotUAS, _bobotKeaktifan, _bobotKehadiran) >= 70).length}/${_grades.length}',
+                      Icons.check_circle_outline,
+                      const Color(0xFF7C3AED),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          if (_gradesSaved)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Color(0xFF059669),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Nilai berhasil disimpan!',
+                      style: TextStyle(
+                        color: Color(0xFF059669),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.table_chart_outlined,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Tabel Nilai Siswa',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.save_outlined, size: 16),
+                          label: const Text(
+                            'Simpan Semua Nilai',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          onPressed: _saveGrades,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: _grades
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildGradeCard(entry.value, entry.key),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBobotCard() {
+    final totalBobot = _getTotalBobot();
+    final totalBobotLabel = totalBobot == 100
+        ? 'Total: 100% ✓'
+        : 'Total: ${totalBobot.toInt()}% (Harus 100%)';
+    final totalBobotColor = totalBobot == 100
+        ? const Color(0xFF059669)
+        : const Color(0xFFDC2626);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2846,36 +3904,34 @@ class _ClassDetailState extends State<ClassDetail>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(Icons.tune, color: AppColors.primary, size: 20),
-              const SizedBox(width: 10),
-              const Text(
-                'Persentase Bobot Penilaian',
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.tune, color: AppColors.primary, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Persentase Bobot Penilaian',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                totalBobotLabel,
                 style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  color: totalBobotColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
-              _getTotalBobot() == 100
-                  ? const Text(
-                      'Total: 100% ✓',
-                      style: TextStyle(
-                        color: Color(0xFF059669),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                  : Text(
-                      'Total: ${_getTotalBobot().toInt()}% (Harus 100%)',
-                      style: const TextStyle(
-                        color: Color(0xFFDC2626),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
             ],
           ),
           const SizedBox(height: 4),
@@ -2885,7 +3941,37 @@ class _ClassDetailState extends State<ClassDetail>
           ),
           const SizedBox(height: 16),
 
-          // Row 1: Tugas, UH, UTS, UAS
+          _buildBobotInputSection(),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.gray400, size: 14),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Klik baris pada tabel untuk mulai mengedit. Nilai kehadiran dihitung otomatis dari data absensi.',
+                  style: TextStyle(color: AppColors.gray500, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _getTotalBobot() =>
+      _bobotTugas +
+      _bobotUH +
+      _bobotUTS +
+      _bobotUAS +
+      _bobotKeaktifan +
+      _bobotKehadiran;
+
+  Widget _buildBobotInputSection() {
+    if (!_isCompactLayout(context)) {
+      return Column(
+        children: [
           Row(
             children: [
               _bobotInput(
@@ -2910,8 +3996,6 @@ class _ClassDetailState extends State<ClassDetail>
             ],
           ),
           const SizedBox(height: 12),
-
-          // Row 2: Keaktifan & Kehadiran (Both editable now)
           Row(
             children: [
               _bobotInput(
@@ -2929,74 +4013,121 @@ class _ClassDetailState extends State<ClassDetail>
               const Spacer(),
             ],
           ),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.gray400, size: 14),
-              SizedBox(width: 6),
-              Text(
-                'Klik baris pada tabel untuk mulai mengedit. Nilai kehadiran dihitung otomatis dari data absensi.',
-                style: TextStyle(color: AppColors.gray500, fontSize: 12),
-              ),
-            ],
-          ),
         ],
-      ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 520;
+        final itemWidth = twoColumns
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'Tugas',
+                _bobotTugas,
+                (v) => setState(() => _bobotTugas = v),
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'UH',
+                _bobotUH,
+                (v) => setState(() => _bobotUH = v),
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'UTS',
+                _bobotUTS,
+                (v) => setState(() => _bobotUTS = v),
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'UAS',
+                _bobotUAS,
+                (v) => setState(() => _bobotUAS = v),
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'Keaktifan',
+                _bobotKeaktifan,
+                (v) => setState(() => _bobotKeaktifan = v),
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _bobotInputBox(
+                'Kehadiran',
+                _bobotKehadiran,
+                (v) => setState(() => _bobotKehadiran = v),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  double _getTotalBobot() =>
-      _bobotTugas +
-      _bobotUH +
-      _bobotUTS +
-      _bobotUAS +
-      _bobotKeaktifan +
-      _bobotKehadiran;
-
   Widget _bobotInput(String label, double value, Function(double) onChanged) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label (%)',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.gray600,
+    return Expanded(child: _bobotInputBox(label, value, onChanged));
+  }
+
+  Widget _bobotInputBox(
+    String label,
+    double value,
+    Function(double) onChanged,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label (%)',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.gray600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          initialValue: value.toStringAsFixed(0),
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
-          const SizedBox(height: 6),
-          TextFormField(
-            initialValue: value.toStringAsFixed(0),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 2,
-                ),
-              ),
-            ),
-            onChanged: (val) {
-              final parsed = double.tryParse(val);
-              if (parsed != null) onChanged(parsed);
-              if (val.isEmpty) onChanged(0);
-            },
-          ),
-        ],
-      ),
+          onChanged: (val) {
+            final parsed = double.tryParse(val);
+            if (parsed != null) onChanged(parsed);
+            if (val.isEmpty) onChanged(0);
+          },
+        ),
+      ],
     );
   }
 
@@ -3052,6 +4183,269 @@ class _ClassDetailState extends State<ClassDetail>
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactNilaiStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradeCard(_GradeRow g, int idx) {
+    final na = g.getNaValue(
+      _bobotTugas,
+      _bobotUH,
+      _bobotUTS,
+      _bobotUAS,
+      _bobotKeaktifan,
+      _bobotKehadiran,
+    );
+    final passed = na >= 70;
+    final grade = g.getGrade(na);
+    final Color gradeColor = switch (grade) {
+      'A' => const Color(0xFF059669),
+      'B' => const Color(0xFF2563EB),
+      'C' => const Color(0xFFD97706),
+      _ => const Color(0xFFDC2626),
+    };
+    final Color kehadiranColor = g.kehadiran >= 90
+        ? const Color(0xFF059669)
+        : g.kehadiran >= 75
+        ? const Color(0xFFD97706)
+        : const Color(0xFFDC2626);
+    final initial = g.name.isNotEmpty ? g.name[0] : '-';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final twoColumns = constraints.maxWidth >= 520;
+          final itemWidth = twoColumns
+              ? (constraints.maxWidth - 12) / 2
+              : constraints.maxWidth;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      initial,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${idx + 1}. ${g.name}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'NISN: ${g.nisn}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _gradeInputField(
+                      'Tugas (${_bobotTugas.toInt()}%)',
+                      _ctrl('${g.nisn}-tugas', g.tugas),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _gradeInputField(
+                      'UH (${_bobotUH.toInt()}%)',
+                      _ctrl('${g.nisn}-uh', g.uh),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _gradeInputField(
+                      'UTS (${_bobotUTS.toInt()}%)',
+                      _ctrl('${g.nisn}-uts', g.uts),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _gradeInputField(
+                      'UAS (${_bobotUAS.toInt()}%)',
+                      _ctrl('${g.nisn}-uas', g.uas),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _gradeInputField(
+                      'Keaktifan (${_bobotKeaktifan.toInt()}%)',
+                      _ctrl('${g.nisn}-keaktifan', g.keaktifan),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _gradeMetric(
+                    'Kehadiran',
+                    '${g.kehadiran.toStringAsFixed(0)}%',
+                    kehadiranColor,
+                  ),
+                  _gradeMetric(
+                    'NA',
+                    na.toStringAsFixed(1),
+                    passed ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                  ),
+                  _gradeMetric('Grade', grade, gradeColor),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _gradeInputField(String label, TextEditingController ctrl) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.gray600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(3),
+          ],
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.accent, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _gradeMetric(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
       ),
     );

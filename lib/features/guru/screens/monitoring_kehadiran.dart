@@ -251,6 +251,10 @@ class _MonitoringKehadiranState extends ConsumerState<MonitoringKehadiran> {
         ? _students[_selectedStudentIdx]
         : null;
 
+    if (isNarrow) {
+      return _buildCompactContent(className, filtered, selected);
+    }
+
     final content = SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,10 +769,410 @@ class _MonitoringKehadiranState extends ConsumerState<MonitoringKehadiran> {
       ),
     );
 
-    if (!isNarrow) return content;
+    return content;
+  }
+
+  Widget _buildCompactContent(
+    String className,
+    List<Map<String, dynamic>> filtered,
+    Map<String, dynamic>? selected,
+  ) {
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(width: 1260, child: content),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Monitoring Kehadiran $className',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+          Text(
+            'Pantau kehadiran siswa semester ${_homeroom?.semesterAktif?.label ?? '-'}',
+            style: const TextStyle(color: AppColors.gray600),
+          ),
+          const SizedBox(height: 12),
+          if (_subjectList.isNotEmpty) ...[
+            const Text(
+              'Pilih Mata Pelajaran',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              menuMaxHeight: 360,
+              initialValue: _selectedSubjectId,
+              items: _subjectList.map((subject) {
+                final label = _subjectLabel(subject, className);
+                return DropdownMenuItem(
+                  value: subject['subjectId']?.toString(),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (v) {
+                final currentStudentId = _students.isNotEmpty
+                    ? _students[_selectedStudentIdx]['siswaId']?.toString()
+                    : null;
+                setState(() {
+                  _selectedSubjectId = v;
+                  _students = _studentsForSubject(_selectedSubject());
+                  final retainedIndex = currentStudentId == null
+                      ? -1
+                      : _students.indexWhere(
+                          (s) => s['siswaId']?.toString() == currentStudentId,
+                        );
+                  _selectedStudentIdx = retainedIndex >= 0 ? retainedIndex : 0;
+                });
+                _buildSubjectAttendance();
+              },
+              decoration: InputDecoration(
+                hintText: 'Pilih mata pelajaran',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _searchTerm = v),
+            decoration: InputDecoration(
+              hintText: 'Cari nama atau NIS...',
+              prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.gray200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.gray200),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_students.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(48),
+                child: Text(
+                  'Belum ada data kehadiran',
+                  style: TextStyle(color: AppColors.gray600),
+                ),
+              ),
+            )
+          else ...[
+            ...filtered.map(_buildCompactStudentTile),
+            if (selected != null) ...[
+              const SizedBox(height: 16),
+              _buildCompactStudentDetail(selected),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStudentTile(Map<String, dynamic> s) {
+    final idx = _students.indexOf(s);
+    final isSelected = idx == _selectedStudentIdx;
+    final rate = (s['rate'] as num?)?.toInt() ?? 0;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedStudentIdx = idx);
+        _buildSubjectAttendance();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s['name'] as String? ?? '-',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.foreground,
+                    ),
+                  ),
+                  Text(
+                    'NISN: ${s['nisn'] ?? '-'}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getAttendanceBg(rate),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$rate%',
+                style: TextStyle(
+                  color: _getAttendanceColor(rate),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStudentDetail(Map<String, dynamic> selected) {
+    final rate = (selected['rate'] as num?)?.toInt() ?? 0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      selected['name'] as String? ?? '-',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Text(
+                      'NISN: ${selected['nisn'] ?? '-'}',
+                      style: const TextStyle(color: AppColors.gray600),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _getAttendanceBg(rate),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$rate%',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: _getAttendanceColor(rate),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 28, color: Color(0xFFE5E7EB)),
+          if (_subjectAttendance.isNotEmpty) ...[
+            const Text(
+              'Perbandingan Semua Mapel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 220,
+              child: BarChart(
+                BarChartData(
+                  barGroups: _subjectAttendance.asMap().entries.map((e) {
+                    final pct = (e.value['pct'] as num).toInt();
+                    return BarChartGroupData(
+                      x: e.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: pct.toDouble(),
+                          color: _getBarColor(pct),
+                          width: _subjectAttendance.length > 10 ? 14 : 22,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 44,
+                        getTitlesWidget: (value, _) {
+                          if (value.toInt() >= _subjectAttendance.length) {
+                            return const SizedBox();
+                          }
+                          final subjectName =
+                              _subjectAttendance[value.toInt()]['subject']
+                                  as String;
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              width: 56,
+                              child: Text(
+                                subjectName.isEmpty
+                                    ? '-'
+                                    : _chartSubjectLabel(subjectName),
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: AppColors.gray600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 34,
+                        getTitlesWidget: (v, _) => Text(
+                          '${v.toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (v) =>
+                        const FlLine(color: Color(0xFFE5E7EB), strokeWidth: 1),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  maxY: 100,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Text(
+            'Rincian Kehadiran ${_selectedSubjectName()}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildCompactDetailStats(selected),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactDetailStats(Map<String, dynamic> student) {
+    final totalHadir = (student['totalHadir'] as num?)?.toInt() ?? 0;
+    final totalSakit = (student['totalSakit'] as num?)?.toInt() ?? 0;
+    final totalIzin = (student['totalIzin'] as num?)?.toInt() ?? 0;
+    final totalAlpa = (student['totalAlpa'] as num?)?.toInt() ?? 0;
+    final total =
+        (student['totalPertemuan'] as num?)?.toInt() ??
+        (totalHadir + totalSakit + totalIzin + totalAlpa);
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _compactStatChip('Total', '$total Jam', AppColors.primary),
+        _compactStatChip('Hadir', '$totalHadir', const Color(0xFF059669)),
+        _compactStatChip('Sakit', '$totalSakit', const Color(0xFFD97706)),
+        _compactStatChip('Izin', '$totalIzin', const Color(0xFF2563EB)),
+        _compactStatChip('Alpa', '$totalAlpa', const Color(0xFFB91C1C)),
+      ],
+    );
+  }
+
+  Widget _compactStatChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 

@@ -2,9 +2,11 @@
 // ===========================================
 // STUDENT LAYOUT — Responsive (mobile + desktop)
 // Desktop (≥ 768px): Sidebar + TopBar + Content
-// Mobile (< 768px): AppBar + Drawer + BottomNavigationBar
+// Native mobile (< 768px): AppBar + Drawer + BottomNavigationBar
+// Web: Sidebar tetap dipakai, tanpa bottom navigation
 // ===========================================
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,11 +27,25 @@ class StudentLayout extends ConsumerStatefulWidget {
 class _StudentLayoutState extends ConsumerState<StudentLayout> {
   final SidebarController _sidebarController = SidebarController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
+  bool _appliedWebMobileSidebarDefault = false;
 
   @override
   void initState() {
     super.initState();
     _sidebarController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_appliedWebMobileSidebarDefault && kIsWeb && context.isMobile) {
+      _appliedWebMobileSidebarDefault = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_sidebarController.isCollapsed) {
+          _sidebarController.toggle();
+        }
+      });
+    }
   }
 
   @override
@@ -95,6 +111,7 @@ class _StudentLayoutState extends ConsumerState<StudentLayout> {
         .map((w) => w[0].toUpperCase())
         .join();
     final mobile = context.isMobile;
+    final useNativeMobileShell = mobile && !kIsWeb;
     final semesterLabel =
         ref.watch(activeSemesterLabelProvider).valueOrNull ?? 'Memuat...';
 
@@ -141,7 +158,7 @@ class _StudentLayoutState extends ConsumerState<StudentLayout> {
       ],
     );
 
-    if (mobile) {
+    if (useNativeMobileShell) {
       return Scaffold(
         key: _scaffoldKey,
         backgroundColor: const Color(0xFFF8FAFC),

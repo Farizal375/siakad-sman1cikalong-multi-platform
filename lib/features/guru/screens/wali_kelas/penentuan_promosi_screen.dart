@@ -302,6 +302,15 @@ class _PenentuanPromosiScreenState
 
     final notifier = ref.read(promosiStatusProvider.notifier);
 
+    if (MediaQuery.sizeOf(context).width < 900) {
+      return _buildCompactLayout(
+        state,
+        filteredList,
+        notifier,
+        siswaList.length,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -764,6 +773,445 @@ class _PenentuanPromosiScreenState
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactLayout(
+    PromosiStatusState state,
+    List<SiswaPromosi> filteredList,
+    PromosiStatusNotifier notifier,
+    int totalSiswa,
+  ) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Penentuan Status Kenaikan Kelas',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Rombel $_assignedRombelName • Tahun Ajaran $_tahunAjaran • $_semesterLabel',
+            style: const TextStyle(fontSize: 13, color: AppColors.gray600),
+          ),
+          if (state.isLocked) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.green50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.green600),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified, color: AppColors.green600, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Data Terkunci',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.green600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 520;
+              final itemWidth = twoColumns
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactKpiCard(
+                      'Total Siswa',
+                      '$totalSiswa',
+                      Icons.people,
+                      AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactKpiCard(
+                      'Naik Kelas',
+                      '${notifier.jumlahNaik}',
+                      Icons.trending_up,
+                      AppColors.green600,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactKpiCard(
+                      'Tinggal Kelas',
+                      '${notifier.jumlahTinggal}',
+                      Icons.block,
+                      AppColors.destructive,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _compactKpiCard(
+                      'Perlu Cek',
+                      '${notifier.jumlahPerluCek}',
+                      Icons.rule,
+                      AppColors.accent,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x15000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.table_chart_outlined,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Daftar Siswa',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        '${filteredList.length}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama / NISN...',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 18,
+                      color: AppColors.gray400,
+                    ),
+                    isDense: true,
+                    filled: true,
+                    fillColor: AppColors.gray50,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...filteredList.asMap().entries.map(
+                  (entry) => _buildCompactStudentCard(
+                    entry.value,
+                    entry.key,
+                    state.isLocked,
+                  ),
+                ),
+                if (filteredList.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'Tidak ada siswa yang cocok.',
+                        style: TextStyle(color: AppColors.gray500),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (!state.isLocked)
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _saving || notifier.jumlahPerluCek > 0
+                    ? null
+                    : _validasiDanKunci,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.lock, size: 20),
+                label: Text(_saving ? 'Memproses...' : 'Validasi & Kunci Data'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactKpiCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.gray600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStudentCard(SiswaPromosi siswa, int idx, bool isLocked) {
+    final isNaik = siswa.status == StatusKenaikan.naik;
+    final isPerluCek = siswa.status == StatusKenaikan.perluCek;
+    final initial = siswa.nama.isNotEmpty ? siswa.nama[0] : '-';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${idx + 1}. ${siswa.nama}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    Text(
+                      'NISN: ${siswa.nisn}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.gray600,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _compactInfoChip(
+                'Rata-rata',
+                siswa.nilaiRataRata.toStringAsFixed(1),
+                siswa.nilaiRataRata >= 75
+                    ? AppColors.green600
+                    : AppColors.destructive,
+              ),
+              _compactInfoChip(
+                'Kehadiran',
+                '${siswa.persentaseKehadiran}%',
+                siswa.persentaseKehadiran >= 80
+                    ? AppColors.green600
+                    : AppColors.destructive,
+              ),
+              _buildStatusBadge(siswa),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: isLocked ? null : () => _toggleStatus(siswa.id),
+              icon: Icon(
+                isLocked
+                    ? Icons.lock
+                    : isNaik
+                    ? Icons.thumb_down_outlined
+                    : Icons.thumb_up_outlined,
+                size: 18,
+              ),
+              label: Text(
+                isLocked
+                    ? 'Data terkunci'
+                    : isPerluCek
+                    ? 'Tetapkan Naik Kelas'
+                    : isNaik
+                    ? 'Ubah ke Tinggal Kelas'
+                    : 'Ubah ke Naik Kelas',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isLocked
+                    ? AppColors.gray500
+                    : isPerluCek
+                    ? AppColors.accent
+                    : isNaik
+                    ? AppColors.destructive
+                    : AppColors.green600,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactInfoChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 

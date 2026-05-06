@@ -229,6 +229,10 @@ class _CetakRaporState extends ConsumerState<CetakRapor> {
         _readyStudents.isNotEmpty &&
         _readyStudents.every((s) => _selected.contains(s['id']?.toString()));
 
+    if (MediaQuery.sizeOf(context).width < 900) {
+      return _buildCompactLayout(homeroom);
+    }
+
     return Stack(
       children: [
         SingleChildScrollView(
@@ -267,6 +271,331 @@ class _CetakRaporState extends ConsumerState<CetakRapor> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildCompactLayout(HomeroomContext homeroom) {
+    final allReadySelected =
+        _readyStudents.isNotEmpty &&
+        _readyStudents.every((s) => _selected.contains(s['id']?.toString()));
+
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cetak e-Rapor ${homeroom.kelas}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Verifikasi kelengkapan data ${homeroom.semesterAktif?.label ?? '-'}',
+                style: const TextStyle(color: AppColors.gray600),
+              ),
+              const SizedBox(height: 20),
+              _buildCompactStatusBar(allReadySelected),
+              const SizedBox(height: 16),
+              ..._students.map(_buildCompactStudentCard),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+        if (_showToast)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: SuccessToast(
+              isVisible: true,
+              message: _toastMsg,
+              onClose: () => setState(() => _showToast = false),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCompactStatusBar(bool allReadySelected) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEFF6FF), Color(0xFFEEF2FF)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBFDBFE), width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.description, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Status Data',
+                      style: TextStyle(fontSize: 13, color: AppColors.gray600),
+                    ),
+                    Text(
+                      '$_readyCount/${_students.length} Siswa Siap Cetak',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _processing ? null : _loadData,
+                icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            value: allReadySelected,
+            tristate: _selected.isNotEmpty && !allReadySelected,
+            onChanged: _readyStudents.isEmpty
+                ? null
+                : (_) => setState(() {
+                    if (allReadySelected) {
+                      _selected = {};
+                    } else {
+                      _selected = _readyStudents
+                          .map((s) => s['id'].toString())
+                          .toSet();
+                    }
+                  }),
+            activeColor: AppColors.accent,
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'Pilih semua siswa siap cetak',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _selected.isEmpty || _processing
+                    ? null
+                    : _downloadBulk,
+                icon: const Icon(Icons.download, size: 18),
+                label: Text('Unduh Massal (${_selected.length})'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary, width: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _selected.isEmpty || _processing ? null : _printBulk,
+                icon: _processing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.archive, size: 18),
+                label: Text('Cetak Massal (${_selected.length})'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.gray300,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStudentCard(Map<String, dynamic> s) {
+    final id = s['id']?.toString() ?? '';
+    final isReady = _isReady(s);
+    final isSelected = _selected.contains(id);
+    final comp = (s['comp'] as num?)?.toInt() ?? 0;
+    final total = (s['total'] as num?)?.toInt() ?? 0;
+    final attendanceCount = (s['kehadiranCount'] as num?)?.toInt() ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: isReady
+                    ? (_) => setState(() {
+                        if (isSelected) {
+                          _selected.remove(id);
+                        } else {
+                          _selected.add(id);
+                        }
+                      })
+                    : null,
+                activeColor: AppColors.accent,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s['name']?.toString() ?? '-',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.foreground,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'NISN: ${s['nisn'] ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _inlineStatusBadge(
+                total == 0 ? '$comp data' : '$comp/$total',
+                comp > 0 && (total == 0 || comp >= total)
+                    ? const Color(0xFF15803D)
+                    : const Color(0xFFB91C1C),
+                comp > 0 && (total == 0 || comp >= total)
+                    ? const Color(0xFFDCFCE7)
+                    : const Color(0xFFFEF2F2),
+              ),
+              _inlineStatusBadge(
+                attendanceCount > 0 ? '$attendanceCount rekam' : 'Belum Ada',
+                attendanceCount > 0
+                    ? const Color(0xFF15803D)
+                    : const Color(0xFFB91C1C),
+                attendanceCount > 0
+                    ? const Color(0xFFDCFCE7)
+                    : const Color(0xFFFEF2F2),
+              ),
+              s['hasNotes'] == true
+                  ? _inlineStatusBadge(
+                      'Catatan Ready',
+                      const Color(0xFF15803D),
+                      const Color(0xFFDCFCE7),
+                    )
+                  : _inlineStatusBadge(
+                      'Catatan Belum Ada',
+                      AppColors.gray600,
+                      const Color(0xFFF3F4F6),
+                    ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => context.go('/guru/rapor-detail/$id'),
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('Lihat'),
+              ),
+              OutlinedButton.icon(
+                onPressed: isReady && !_processing
+                    ? () => _downloadSingle(s)
+                    : null,
+                icon: const Icon(Icons.download_outlined, size: 16),
+                label: const Text('Unduh'),
+              ),
+              ElevatedButton.icon(
+                onPressed: isReady && !_processing
+                    ? () => _printSingle(s)
+                    : null,
+                icon: const Icon(Icons.description_outlined, size: 16),
+                label: const Text('Cetak'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _inlineStatusBadge(String text, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
     );
   }
 
