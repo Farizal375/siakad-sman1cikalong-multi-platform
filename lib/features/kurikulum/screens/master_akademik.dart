@@ -21,7 +21,8 @@ class MasterAkademik extends StatefulWidget {
   State<MasterAkademik> createState() => _MasterAkademikState();
 }
 
-class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProviderStateMixin {
+class _MasterAkademikState extends State<MasterAkademik>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _showSuccessToast = false;
   int _refreshKey = 0;
@@ -43,7 +44,8 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
     DeleteConfirmationModal.show(
       context,
       title: 'Konfirmasi Penghapusan Data Master',
-      message: 'Apakah Anda yakin ingin menghapus data master ini? Data yang dihapus tidak dapat dipulihkan.',
+      message:
+          'Apakah Anda yakin ingin menghapus data master ini? Data yang dihapus tidak dapat dipulihkan.',
       itemName: name,
       onConfirm: () async {
         await action();
@@ -59,24 +61,39 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
     );
   }
 
-  void _showFormModal({String? mode, int? tabIndex, Map<String, dynamic>? initialData}) {
+  void _showFormModal({
+    String? mode,
+    int? tabIndex,
+    Map<String, dynamic>? initialData,
+  }) {
     final tab = tabIndex ?? _tabController.index;
     final isEdit = mode == 'edit';
-    final isView = mode == 'view';
     Widget modalContent;
 
     switch (tab) {
       case 0:
-        modalContent = _AcademicYearFormModal(isEdit: isEdit, initialData: initialData);
+        modalContent = _AcademicYearFormModal(
+          isEdit: isEdit,
+          initialData: initialData,
+        );
         break;
       case 1:
-        modalContent = _SemesterFormModal(isEdit: isEdit, initialData: initialData);
+        modalContent = _SemesterFormModal(
+          isEdit: isEdit,
+          initialData: initialData,
+        );
         break;
       case 2:
-        modalContent = _ClassroomFormModal(isEdit: isEdit, initialData: initialData);
+        modalContent = _ClassroomFormModal(
+          isEdit: isEdit,
+          initialData: initialData,
+        );
         break;
       case 3:
-        modalContent = _MasterClassFormModal(isEdit: isEdit, initialData: initialData);
+        modalContent = _MasterClassFormModal(
+          isEdit: isEdit,
+          initialData: initialData,
+        );
         break;
       default:
         return;
@@ -89,7 +106,9 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640), // Made slightly wider for 2 columns
+          constraints: const BoxConstraints(
+            maxWidth: 640,
+          ), // Made slightly wider for 2 columns
           child: modalContent,
         ),
       ),
@@ -97,7 +116,9 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
       if (result == true) {
         setState(() {
           _refreshKey++;
-          _successMessage = isEdit ? 'Data berhasil diperbarui' : 'Data berhasil ditambahkan';
+          _successMessage = isEdit
+              ? 'Data berhasil diperbarui'
+              : 'Data berhasil ditambahkan';
           _showSuccessToast = true;
         });
         Future.delayed(const Duration(seconds: 3), () {
@@ -109,11 +130,16 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
 
   String get _addButtonLabel {
     switch (_tabController.index) {
-      case 0: return 'Tambah Tahun Ajaran';
-      case 1: return 'Tambah Semester';
-      case 2: return 'Tambah Ruang Kelas';
-      case 3: return 'Tambah Master Kelas';
-      default: return 'Tambah Data';
+      case 0:
+        return 'Tambah Tahun Ajaran';
+      case 1:
+        return 'Tambah Semester';
+      case 2:
+        return 'Tambah Ruang Kelas';
+      case 3:
+        return 'Tambah Master Kelas';
+      default:
+        return 'Tambah Data';
     }
   }
 
@@ -121,7 +147,8 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
+    final content = Stack(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +156,11 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
             // ── Page Title ──
             const Text(
               'Master Data Akademik',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: AppColors.primary),
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -143,16 +174,28 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))],
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x15000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.all(8),
               child: TabBar(
                 controller: _tabController,
-                isScrollable: false,
-                indicator: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
+                isScrollable: isNarrow,
+                indicator: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 labelColor: Colors.white,
                 unselectedLabelColor: AppColors.gray600,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 onTap: (_) => setState(() {}), // rebuild for button label
@@ -167,98 +210,219 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
             const SizedBox(height: 24),
 
             // ── Action Bar ──
-            Row(
-              children: [
-                Expanded(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 448),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Cari...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
-                        filled: true, fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            isNarrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Cari...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.gray400,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.gray300,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.gray300,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _showFormModal(mode: 'create'),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: Text(_addButtonLabel),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 448),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Cari...',
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: AppColors.gray400,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.gray300,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.gray300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primary,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      if (_showImportExport) ...[
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _successMessage = 'Template berhasil diunduh';
+                              _showSuccessToast = true;
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.file_download_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Template'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _successMessage = 'Data siap diimport';
+                              _showSuccessToast = true;
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.file_upload_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Import'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF16A34A),
+                            side: const BorderSide(
+                              color: Color(0xFF16A34A),
+                              width: 2,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _successMessage = 'Data berhasil diekspor';
+                              _showSuccessToast = true;
+                            });
+                          },
+                          icon: const Icon(Icons.download_outlined, size: 18),
+                          label: const Text('Export'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF2563EB),
+                            side: const BorderSide(
+                              color: Color(0xFF2563EB),
+                              width: 2,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      ElevatedButton.icon(
+                        onPressed: () => _showFormModal(mode: 'create'),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: Text(_addButtonLabel),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 16),
-
-                // Import/Export buttons for students/teachers
-                if (_showImportExport) ...[
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Template berhasil diunduh';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
-                    label: const Text('Template'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Data siap diimport';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.file_upload_outlined, size: 18),
-                    label: const Text('Import'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF16A34A),
-                      side: const BorderSide(color: Color(0xFF16A34A), width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _successMessage = 'Data berhasil diekspor';
-                        _showSuccessToast = true;
-                      });
-                    },
-                    icon: const Icon(Icons.download_outlined, size: 18),
-                    label: const Text('Export'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
-                      side: const BorderSide(color: Color(0xFF2563EB), width: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-
-                ElevatedButton.icon(
-                  onPressed: () => _showFormModal(mode: 'create'),
-                  icon: const Icon(Icons.add, size: 20),
-                  label: Text(_addButtonLabel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 24),
 
             // ── Tab Content ──
@@ -267,16 +431,58 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x15000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _AcademicYearTable(key: ValueKey('academic_$_refreshKey'), onDelete: (name, action) => _handleDelete('Tahun Ajaran', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 0, initialData: row)),
-                    _SemesterTable(key: ValueKey('semester_$_refreshKey'), onDelete: (name, action) => _handleDelete('Semester', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 1, initialData: row)),
-                    _RuangKelasTable(key: ValueKey('ruang_$_refreshKey'), onDelete: (name, action) => _handleDelete('Ruang Kelas', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 2, initialData: row)),
-                    _MasterKelasTable(key: ValueKey('master_$_refreshKey'), onDelete: (name, action) => _handleDelete('Master Kelas', name, action), onEdit: (row) => _showFormModal(mode: 'edit', tabIndex: 3, initialData: row)),
+                    _AcademicYearTable(
+                      key: ValueKey('academic_$_refreshKey'),
+                      onDelete: (name, action) =>
+                          _handleDelete('Tahun Ajaran', name, action),
+                      onEdit: (row) => _showFormModal(
+                        mode: 'edit',
+                        tabIndex: 0,
+                        initialData: row,
+                      ),
+                    ),
+                    _SemesterTable(
+                      key: ValueKey('semester_$_refreshKey'),
+                      onDelete: (name, action) =>
+                          _handleDelete('Semester', name, action),
+                      onEdit: (row) => _showFormModal(
+                        mode: 'edit',
+                        tabIndex: 1,
+                        initialData: row,
+                      ),
+                    ),
+                    _RuangKelasTable(
+                      key: ValueKey('ruang_$_refreshKey'),
+                      onDelete: (name, action) =>
+                          _handleDelete('Ruang Kelas', name, action),
+                      onEdit: (row) => _showFormModal(
+                        mode: 'edit',
+                        tabIndex: 2,
+                        initialData: row,
+                      ),
+                    ),
+                    _MasterKelasTable(
+                      key: ValueKey('master_$_refreshKey'),
+                      onDelete: (name, action) =>
+                          _handleDelete('Master Kelas', name, action),
+                      onEdit: (row) => _showFormModal(
+                        mode: 'edit',
+                        tabIndex: 3,
+                        initialData: row,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -286,11 +492,18 @@ class _MasterAkademikState extends State<MasterAkademik> with SingleTickerProvid
 
         if (_showSuccessToast)
           Positioned(
-            top: 16, right: 16,
-            child: SuccessToast(isVisible: true, message: _successMessage, onClose: () => setState(() => _showSuccessToast = false)),
+            top: 16,
+            right: 16,
+            child: SuccessToast(
+              isVisible: true,
+              message: _successMessage,
+              onClose: () => setState(() => _showSuccessToast = false),
+            ),
           ),
       ],
     );
+
+    return content;
   }
 }
 
@@ -321,7 +534,10 @@ class _ToggleSwitch extends StatelessWidget {
             width: 16,
             height: 16,
             margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
           ),
         ),
       ),
@@ -335,13 +551,18 @@ class _ToggleSwitch extends StatelessWidget {
 class _AcademicYearTable extends StatefulWidget {
   final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
-  const _AcademicYearTable({super.key, required this.onDelete, required this.onEdit});
+  const _AcademicYearTable({
+    super.key,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   @override
   State<_AcademicYearTable> createState() => _AcademicYearTableState();
 }
 
-class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKeepAliveClientMixin {
+class _AcademicYearTableState extends State<_AcademicYearTable>
+    with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
@@ -359,12 +580,16 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _data = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'code': item['code'] ?? '',
-            'description': item['description'] ?? '',
-            'isActive': item['isActive'] ?? false,
-          })).toList();
+          _data = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'code': item['code'] ?? '',
+                  'description': item['description'] ?? '',
+                  'isActive': item['isActive'] ?? false,
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
@@ -391,10 +616,154 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
     final total = _data.length;
     final start = (_currentPage - 1) * _itemsPerPage;
     final end = (start + _itemsPerPage).clamp(0, total);
     final pageData = _data.sublist(start, end);
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          Expanded(
+            child: pageData.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada data tahun ajaran',
+                      style: TextStyle(color: AppColors.gray500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: pageData.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final row = pageData[i];
+                      final isActive = row['isActive'] as bool;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.gray200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      row['code'],
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.foreground,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildCompactStatusBadge(isActive),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                row['description'],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Aktifkan',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  _ToggleSwitch(
+                                    value: isActive,
+                                    onChanged: (val) => _toggleActive(row),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Aksi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onEdit(row),
+                                        splashRadius: 18,
+                                        tooltip: 'Edit',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onDelete(
+                                          row['code'],
+                                          () => _deleteItem(row),
+                                        ),
+                                        splashRadius: 18,
+                                        tooltip: 'Hapus',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          TablePagination(
+            currentPage: _currentPage,
+            totalItems: total,
+            itemsPerPage: _itemsPerPage,
+            onPageChange: (p) => setState(() => _currentPage = p),
+            onItemsPerPageChange: (n) => setState(() {
+              _itemsPerPage = n;
+              _currentPage = 1;
+            }),
+            itemName: 'tahun ajaran',
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: [
@@ -404,10 +773,47 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: const Row(
             children: [
-              Expanded(child: Text('Kode Tahun', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Deskripsi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              Expanded(
+                child: Text(
+                  'Kode Tahun',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Deskripsi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Status',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Aksi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -415,31 +821,75 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
         Expanded(
           child: ListView.separated(
             itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: AppColors.gray200),
             itemBuilder: (_, i) {
               final row = pageData[i];
               final isActive = row['isActive'] as bool;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
-                    Expanded(child: Text(row['code'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                    Expanded(child: Text(row['description'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                    Expanded(
+                      child: Text(
+                        row['code'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        row['description'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
                     Expanded(
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: isActive ? AppColors.green100 : AppColors.gray100,
+                              color: isActive
+                                  ? AppColors.green100
+                                  : AppColors.gray100,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? AppColors.green500
+                                        : AppColors.gray500,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                Text(isActive ? 'Aktif' : 'Tidak Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
+                                Text(
+                                  isActive ? 'Aktif' : 'Tidak Aktif',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: isActive
+                                        ? AppColors.green700
+                                        : AppColors.gray700,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -455,8 +905,29 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
                       width: 80,
                       child: Row(
                         children: [
-                          IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 18,
+                              color: AppColors.gray600,
+                            ),
+                            onPressed: () => widget.onEdit(row),
+                            splashRadius: 18,
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: AppColors.gray600,
+                            ),
+                            onPressed: () => widget.onDelete(
+                              row['code'],
+                              () => _deleteItem(row),
+                            ),
+                            splashRadius: 18,
+                            tooltip: 'Hapus',
+                          ),
                         ],
                       ),
                     ),
@@ -466,7 +937,17 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
             },
           ),
         ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'tahun ajaran'),
+        TablePagination(
+          currentPage: _currentPage,
+          totalItems: total,
+          itemsPerPage: _itemsPerPage,
+          onPageChange: (p) => setState(() => _currentPage = p),
+          onItemsPerPageChange: (n) => setState(() {
+            _itemsPerPage = n;
+            _currentPage = 1;
+          }),
+          itemName: 'tahun ajaran',
+        ),
       ],
     );
   }
@@ -478,13 +959,18 @@ class _AcademicYearTableState extends State<_AcademicYearTable> with AutomaticKe
 class _SemesterTable extends StatefulWidget {
   final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
-  const _SemesterTable({super.key, required this.onDelete, required this.onEdit});
+  const _SemesterTable({
+    super.key,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   @override
   State<_SemesterTable> createState() => _SemesterTableState();
 }
 
-class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveClientMixin {
+class _SemesterTableState extends State<_SemesterTable>
+    with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
@@ -502,12 +988,16 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _data = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'name': item['name'] ?? '',
-            'academicYear': item['academicYear'] ?? '',
-            'isActive': item['isActive'] ?? false,
-          })).toList();
+          _data = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'name': item['name'] ?? '',
+                  'academicYear': item['academicYear'] ?? '',
+                  'isActive': item['isActive'] ?? false,
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
@@ -534,10 +1024,139 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
     final total = _data.length;
     final start = (_currentPage - 1) * _itemsPerPage;
     final end = (start + _itemsPerPage).clamp(0, total);
     final pageData = _data.sublist(start, end);
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          Expanded(
+            child: pageData.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada data semester',
+                      style: TextStyle(color: AppColors.gray500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: pageData.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final row = pageData[i];
+                      final isActive = row['isActive'] as bool;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.gray200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row['name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                row['academicYear'],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  _buildCompactStatusBadge(isActive),
+                                  const Spacer(),
+                                  _ToggleSwitch(
+                                    value: isActive,
+                                    onChanged: (val) => _toggleActive(row),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Aksi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onEdit(row),
+                                        splashRadius: 18,
+                                        tooltip: 'Edit',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onDelete(
+                                          '${row['name']} ${row['academicYear']}',
+                                          () => _deleteItem(row),
+                                        ),
+                                        splashRadius: 18,
+                                        tooltip: 'Hapus',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          TablePagination(
+            currentPage: _currentPage,
+            totalItems: total,
+            itemsPerPage: _itemsPerPage,
+            onPageChange: (p) => setState(() => _currentPage = p),
+            onItemsPerPageChange: (n) => setState(() {
+              _itemsPerPage = n;
+              _currentPage = 1;
+            }),
+            itemName: 'semester',
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: [
@@ -546,10 +1165,47 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: const Row(
             children: [
-              Expanded(child: Text('Nama Semester', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Tahun Ajaran Terkait', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              Expanded(
+                child: Text(
+                  'Nama Semester',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Tahun Ajaran Terkait',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Status',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Aksi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -557,31 +1213,75 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
         Expanded(
           child: ListView.separated(
             itemCount: pageData.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: AppColors.gray200),
             itemBuilder: (_, i) {
               final row = pageData[i];
               final isActive = row['isActive'] as bool;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
-                    Expanded(child: Text(row['name'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                    Expanded(child: Text(row['academicYear'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                    Expanded(
+                      child: Text(
+                        row['name'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        row['academicYear'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
                     Expanded(
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: isActive ? AppColors.green100 : AppColors.gray100,
+                              color: isActive
+                                  ? AppColors.green100
+                                  : AppColors.gray100,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? AppColors.green500
+                                        : AppColors.gray500,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                Text(isActive ? 'Aktif' : 'Tidak Aktif', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
+                                Text(
+                                  isActive ? 'Aktif' : 'Tidak Aktif',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: isActive
+                                        ? AppColors.green700
+                                        : AppColors.gray700,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -597,8 +1297,29 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
                       width: 80,
                       child: Row(
                         children: [
-                          IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete('${row['name']} ${row['academicYear']}', () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 18,
+                              color: AppColors.gray600,
+                            ),
+                            onPressed: () => widget.onEdit(row),
+                            splashRadius: 18,
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: AppColors.gray600,
+                            ),
+                            onPressed: () => widget.onDelete(
+                              '${row['name']} ${row['academicYear']}',
+                              () => _deleteItem(row),
+                            ),
+                            splashRadius: 18,
+                            tooltip: 'Hapus',
+                          ),
                         ],
                       ),
                     ),
@@ -608,7 +1329,17 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
             },
           ),
         ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'semester'),
+        TablePagination(
+          currentPage: _currentPage,
+          totalItems: total,
+          itemsPerPage: _itemsPerPage,
+          onPageChange: (p) => setState(() => _currentPage = p),
+          onItemsPerPageChange: (n) => setState(() {
+            _itemsPerPage = n;
+            _currentPage = 1;
+          }),
+          itemName: 'semester',
+        ),
       ],
     );
   }
@@ -620,13 +1351,18 @@ class _SemesterTableState extends State<_SemesterTable> with AutomaticKeepAliveC
 class _RuangKelasTable extends StatefulWidget {
   final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
-  const _RuangKelasTable({super.key, required this.onDelete, required this.onEdit});
+  const _RuangKelasTable({
+    super.key,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   @override
   State<_RuangKelasTable> createState() => _RuangKelasTableState();
 }
 
-class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAliveClientMixin {
+class _RuangKelasTableState extends State<_RuangKelasTable>
+    with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
@@ -644,12 +1380,16 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _data = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'code': item['code'] ?? '',
-            'building': item['building'] ?? '',
-            'capacity': (item['capacity'] ?? 0).toString(),
-          })).toList();
+          _data = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'code': item['code'] ?? '',
+                  'building': item['building'] ?? '',
+                  'capacity': (item['capacity'] ?? 0).toString(),
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
@@ -669,10 +1409,135 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
     final total = _data.length;
     final start = (_currentPage - 1) * _itemsPerPage;
     final end = (start + _itemsPerPage).clamp(0, total);
     final pageData = _data.sublist(start, end);
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          Expanded(
+            child: pageData.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada data ruang kelas',
+                      style: TextStyle(color: AppColors.gray500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: pageData.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final row = pageData[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.gray200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row['code'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Gedung: ${row['building']}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Kapasitas: ${row['capacity']}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Aksi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onEdit(row),
+                                        splashRadius: 18,
+                                        tooltip: 'Edit',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onDelete(
+                                          row['code'],
+                                          () => _deleteItem(row),
+                                        ),
+                                        splashRadius: 18,
+                                        tooltip: 'Hapus',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          TablePagination(
+            currentPage: _currentPage,
+            totalItems: total,
+            itemsPerPage: _itemsPerPage,
+            onPageChange: (p) => setState(() => _currentPage = p),
+            onItemsPerPageChange: (n) => setState(() {
+              _itemsPerPage = n;
+              _currentPage = 1;
+            }),
+            itemName: 'ruang kelas',
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: [
@@ -681,35 +1546,127 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: const Row(
             children: [
-              Expanded(child: Text('Kode Ruang', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Gedung', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Kapasitas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              Expanded(
+                child: Text(
+                  'Kode Ruang',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Gedung',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Kapasitas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Aksi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.gray200),
         Expanded(
           child: pageData.isEmpty
-              ? const Center(child: Text('Belum ada data ruang kelas', style: TextStyle(color: AppColors.gray500)))
+              ? const Center(
+                  child: Text(
+                    'Belum ada data ruang kelas',
+                    style: TextStyle(color: AppColors.gray500),
+                  ),
+                )
               : ListView.separated(
                   itemCount: pageData.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.gray200),
                   itemBuilder: (_, i) {
                     final row = pageData[i];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
-                          Expanded(child: Text(row['code'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(child: Text(row['building'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                          Expanded(child: Text(row['capacity'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                          Expanded(
+                            child: Text(
+                              row['code'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row['building'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row['capacity'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
                           SizedBox(
                             width: 80,
                             child: Row(
                               children: [
-                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['code'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () => widget.onEdit(row),
+                                  splashRadius: 18,
+                                  tooltip: 'Edit',
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () => widget.onDelete(
+                                    row['code'],
+                                    () => _deleteItem(row),
+                                  ),
+                                  splashRadius: 18,
+                                  tooltip: 'Hapus',
+                                ),
                               ],
                             ),
                           ),
@@ -719,7 +1676,17 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
                   },
                 ),
         ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'ruang kelas'),
+        TablePagination(
+          currentPage: _currentPage,
+          totalItems: total,
+          itemsPerPage: _itemsPerPage,
+          onPageChange: (p) => setState(() => _currentPage = p),
+          onItemsPerPageChange: (n) => setState(() {
+            _itemsPerPage = n;
+            _currentPage = 1;
+          }),
+          itemName: 'ruang kelas',
+        ),
       ],
     );
   }
@@ -731,13 +1698,18 @@ class _RuangKelasTableState extends State<_RuangKelasTable> with AutomaticKeepAl
 class _MasterKelasTable extends StatefulWidget {
   final void Function(String name, Future<void> Function() action) onDelete;
   final void Function(Map<String, dynamic> row) onEdit;
-  const _MasterKelasTable({super.key, required this.onDelete, required this.onEdit});
+  const _MasterKelasTable({
+    super.key,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   @override
   State<_MasterKelasTable> createState() => _MasterKelasTableState();
 }
 
-class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeepAliveClientMixin {
+class _MasterKelasTableState extends State<_MasterKelasTable>
+    with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
@@ -755,13 +1727,17 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _data = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'name': item['name'] ?? '',
-            'grade': item['grade'] ?? '',
-            'homeroomTeacher': item['homeroomTeacher'] ?? '-',
-            'classroom': item['classroom'] ?? '-',
-          })).toList();
+          _data = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'name': item['name'] ?? '',
+                  'grade': item['grade'] ?? '',
+                  'homeroomTeacher': item['homeroomTeacher'] ?? '-',
+                  'classroom': item['classroom'] ?? '-',
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
@@ -781,10 +1757,125 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
     final total = _data.length;
     final start = (_currentPage - 1) * _itemsPerPage;
     final end = (start + _itemsPerPage).clamp(0, total);
     final pageData = _data.sublist(start, end);
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          Expanded(
+            child: pageData.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada data master kelas',
+                      style: TextStyle(color: AppColors.gray500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: pageData.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final row = pageData[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.gray200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row['name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text('Tingkat: ${row['grade']}'),
+                              const SizedBox(height: 4),
+                              Text('Wali Kelas: ${row['homeroomTeacher']}'),
+                              const SizedBox(height: 4),
+                              Text('Ruangan: ${row['classroom']}'),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Aksi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onEdit(row),
+                                        splashRadius: 18,
+                                        tooltip: 'Edit',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => widget.onDelete(
+                                          row['name'],
+                                          () => _deleteItem(row),
+                                        ),
+                                        splashRadius: 18,
+                                        tooltip: 'Hapus',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          TablePagination(
+            currentPage: _currentPage,
+            totalItems: total,
+            itemsPerPage: _itemsPerPage,
+            onPageChange: (p) => setState(() => _currentPage = p),
+            onItemsPerPageChange: (n) => setState(() {
+              _itemsPerPage = n;
+              _currentPage = 1;
+            }),
+            itemName: 'master kelas',
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: [
@@ -793,37 +1884,146 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: const Row(
             children: [
-              Expanded(child: Text('Nama Kelas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Tingkat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Wali Kelas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              Expanded(child: Text('Ruangan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-              SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              Expanded(
+                child: Text(
+                  'Nama Kelas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Tingkat',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Wali Kelas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Ruangan',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Aksi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.gray200),
         Expanded(
           child: pageData.isEmpty
-              ? const Center(child: Text('Belum ada data master kelas', style: TextStyle(color: AppColors.gray500)))
+              ? const Center(
+                  child: Text(
+                    'Belum ada data master kelas',
+                    style: TextStyle(color: AppColors.gray500),
+                  ),
+                )
               : ListView.separated(
                   itemCount: pageData.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.gray200),
                   itemBuilder: (_, i) {
                     final row = pageData[i];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
-                          Expanded(child: Text(row['name'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(child: Text(row['grade'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                          Expanded(child: Text(row['homeroomTeacher'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                          Expanded(child: Text(row['classroom'], style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                          Expanded(
+                            child: Text(
+                              row['name'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row['grade'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row['homeroomTeacher'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row['classroom'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
                           SizedBox(
                             width: 80,
                             child: Row(
                               children: [
-                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () => widget.onDelete(row['name'], () => _deleteItem(row)), splashRadius: 18, tooltip: 'Hapus'),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () => widget.onEdit(row),
+                                  splashRadius: 18,
+                                  tooltip: 'Edit',
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () => widget.onDelete(
+                                    row['name'],
+                                    () => _deleteItem(row),
+                                  ),
+                                  splashRadius: 18,
+                                  tooltip: 'Hapus',
+                                ),
                               ],
                             ),
                           ),
@@ -833,7 +2033,17 @@ class _MasterKelasTableState extends State<_MasterKelasTable> with AutomaticKeep
                   },
                 ),
         ),
-        TablePagination(currentPage: _currentPage, totalItems: total, itemsPerPage: _itemsPerPage, onPageChange: (p) => setState(() => _currentPage = p), onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }), itemName: 'master kelas'),
+        TablePagination(
+          currentPage: _currentPage,
+          totalItems: total,
+          itemsPerPage: _itemsPerPage,
+          onPageChange: (p) => setState(() => _currentPage = p),
+          onItemsPerPageChange: (n) => setState(() {
+            _itemsPerPage = n;
+            _currentPage = 1;
+          }),
+          itemName: 'master kelas',
+        ),
       ],
     );
   }
@@ -863,7 +2073,8 @@ class _UsersTable extends StatefulWidget {
   State<_UsersTable> createState() => _UsersTableState();
 }
 
-class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientMixin {
+class _UsersTableState extends State<_UsersTable>
+    with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
   int _itemsPerPage = 10;
   List<Map<String, dynamic>> _data = [];
@@ -888,13 +2099,17 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
       if (mounted) {
         setState(() {
           // Backend now filters by role
-          _data = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'idNumber': item['idNumber'] ?? '-',
-            'name': item['name'] ?? '',
-            'email': item['email'] ?? '',
-            'status': item['status'] ?? 'Aktif',
-          })).toList();
+          _data = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'idNumber': item['idNumber'] ?? '-',
+                  'name': item['name'] ?? '',
+                  'email': item['email'] ?? '',
+                  'status': item['status'] ?? 'Aktif',
+                }),
+              )
+              .toList();
           _total = pagination['total'] ?? _data.length;
           _loading = false;
         });
@@ -918,7 +2133,188 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
-    final dataCols = widget.columns.sublist(0, widget.columns.length - 1); // exclude 'Aksi'
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
+    final dataCols = widget.columns.sublist(
+      0,
+      widget.columns.length - 1,
+    ); // exclude 'Aksi'
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          Expanded(
+            child: _data.isEmpty
+                ? Center(
+                    child: Text(
+                      'Belum ada data ${widget.itemName}',
+                      style: const TextStyle(color: AppColors.gray500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _data.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final row = _data[i];
+                      final cells = [
+                        row['idNumber'],
+                        row['name'],
+                        row['email'],
+                        row['status'],
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.gray200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row['name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                row['email'],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.gray700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Status',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.gray600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if ((cells.length > 3 ? cells[3] : '') ==
+                                      'Aktif')
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.green100,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Aktif',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.green700,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.gray100,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Tidak Aktif',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.gray700,
+                                        ),
+                                      ),
+                                    ),
+                                  const Spacer(),
+                                  if (widget.onView != null)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 18,
+                                        color: AppColors.gray600,
+                                      ),
+                                      onPressed: () =>
+                                          widget.onView!(row['id']),
+                                      splashRadius: 18,
+                                      tooltip: 'Lihat Detail',
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 18,
+                                      color: AppColors.gray600,
+                                    ),
+                                    onPressed: () => widget.onEdit(row['id']),
+                                    splashRadius: 18,
+                                    tooltip: 'Edit',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
+                                      color: AppColors.gray600,
+                                    ),
+                                    onPressed: () {
+                                      widget.onDelete(row['name']);
+                                      _deleteItem(row);
+                                    },
+                                    splashRadius: 18,
+                                    tooltip: 'Hapus',
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          TablePagination(
+            currentPage: _currentPage,
+            totalItems: _total,
+            itemsPerPage: _itemsPerPage,
+            onPageChange: (p) {
+              setState(() => _currentPage = p);
+              _loadData();
+            },
+            onItemsPerPageChange: (n) {
+              setState(() {
+                _itemsPerPage = n;
+                _currentPage = 1;
+              });
+              _loadData();
+            },
+            itemName: widget.itemName,
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: [
@@ -927,35 +2323,90 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
             children: [
-              ...dataCols.map((c) => Expanded(child: Text(c, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground)))),
-              SizedBox(width: widget.onView != null ? 120 : 80, child: const Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+              ...dataCols.map(
+                (c) => Expanded(
+                  child: Text(
+                    c,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.foreground,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: widget.onView != null ? 120 : 80,
+                child: const Text(
+                  'Aksi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.gray200),
         Expanded(
           child: _data.isEmpty
-              ? Center(child: Text('Belum ada data ${widget.itemName}', style: const TextStyle(color: AppColors.gray500)))
+              ? Center(
+                  child: Text(
+                    'Belum ada data ${widget.itemName}',
+                    style: const TextStyle(color: AppColors.gray500),
+                  ),
+                )
               : ListView.separated(
                   itemCount: _data.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.gray200),
                   itemBuilder: (_, i) {
                     final row = _data[i];
-                    final cells = [row['idNumber'], row['name'], row['email'], row['status']];
+                    final cells = [
+                      row['idNumber'],
+                      row['name'],
+                      row['email'],
+                      row['status'],
+                    ];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
                           ...List.generate(dataCols.length, (ci) {
-                            final val = ci < cells.length ? cells[ci] ?? '' : '';
+                            final val = ci < cells.length
+                                ? cells[ci] ?? ''
+                                : '';
                             if (dataCols[ci] == 'Status') {
                               final isActive = val == 'Aktif';
                               return Expanded(
                                 child: Row(
                                   children: [
-                                    Container(width: 8, height: 8, decoration: BoxDecoration(color: isActive ? AppColors.green500 : AppColors.gray500, shape: BoxShape.circle)),
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: isActive
+                                            ? AppColors.green500
+                                            : AppColors.gray500,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isActive ? AppColors.green700 : AppColors.gray700)),
+                                    Text(
+                                      val,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: isActive
+                                            ? AppColors.green700
+                                            : AppColors.gray700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               );
@@ -966,7 +2417,9 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: AppColors.foreground,
-                                  fontWeight: ci == 0 ? FontWeight.w600 : FontWeight.w400,
+                                  fontWeight: ci == 0
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
                                   fontFamily: ci == 0 ? 'monospace' : null,
                                 ),
                               ),
@@ -977,12 +2430,40 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (widget.onView != null) IconButton(icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onView!(row['id']), splashRadius: 18, tooltip: 'Lihat Detail'),
-                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600), onPressed: () => widget.onEdit(row['id']), splashRadius: 18, tooltip: 'Edit'),
-                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600), onPressed: () {
-                                  widget.onDelete(row['name']);
-                                  _deleteItem(row);
-                                }, splashRadius: 18, tooltip: 'Hapus'),
+                                if (widget.onView != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.visibility_outlined,
+                                      size: 18,
+                                      color: AppColors.gray600,
+                                    ),
+                                    onPressed: () => widget.onView!(row['id']),
+                                    splashRadius: 18,
+                                    tooltip: 'Lihat Detail',
+                                  ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () => widget.onEdit(row['id']),
+                                  splashRadius: 18,
+                                  tooltip: 'Edit',
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  onPressed: () {
+                                    widget.onDelete(row['name']);
+                                    _deleteItem(row);
+                                  },
+                                  splashRadius: 18,
+                                  tooltip: 'Hapus',
+                                ),
                               ],
                             ),
                           ),
@@ -992,7 +2473,23 @@ class _UsersTableState extends State<_UsersTable> with AutomaticKeepAliveClientM
                   },
                 ),
         ),
-        TablePagination(currentPage: _currentPage, totalItems: _total, itemsPerPage: _itemsPerPage, onPageChange: (p) { setState(() => _currentPage = p); _loadData(); }, onItemsPerPageChange: (n) { setState(() { _itemsPerPage = n; _currentPage = 1; }); _loadData(); }, itemName: widget.itemName),
+        TablePagination(
+          currentPage: _currentPage,
+          totalItems: _total,
+          itemsPerPage: _itemsPerPage,
+          onPageChange: (p) {
+            setState(() => _currentPage = p);
+            _loadData();
+          },
+          onItemsPerPageChange: (n) {
+            setState(() {
+              _itemsPerPage = n;
+              _currentPage = 1;
+            });
+            _loadData();
+          },
+          itemName: widget.itemName,
+        ),
       ],
     );
   }
@@ -1047,7 +2544,9 @@ class _AcademicYearFormModalState extends State<_AcademicYearFormModal> {
         if (e is DioException && e.response?.data != null) {
           msg = e.response!.data['message'] ?? msg;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -1063,20 +2562,46 @@ class _AcademicYearFormModalState extends State<_AcademicYearFormModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.isEdit ? 'Edit Tahun Ajaran' : 'Tambah Tahun Ajaran', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              Text(
+                widget.isEdit ? 'Edit Tahun Ajaran' : 'Tambah Tahun Ajaran',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 24),
-          _buildField('Kode Tahun Ajaran', 'Contoh: 2026/2027', controller: _codeController, isReadOnly: widget.isEdit),
+          _buildField(
+            'Kode Tahun Ajaran',
+            'Contoh: 2026/2027',
+            controller: _codeController,
+            isReadOnly: widget.isEdit,
+          ),
           const SizedBox(height: 16),
-          _buildField('Deskripsi', 'Deskripsi tahun ajaran', controller: _descController),
+          _buildField(
+            'Deskripsi',
+            'Deskripsi tahun ajaran',
+            controller: _descController,
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Text('Status Aktif', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text(
+                'Status Aktif',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               const Spacer(),
-              Switch(value: _isActive, onChanged: (v) => setState(() => _isActive = v), activeThumbColor: AppColors.green500),
+              Switch(
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                activeThumbColor: AppColors.green500,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -1125,8 +2650,12 @@ class _SemesterFormModalState extends State<_SemesterFormModal> {
       final items = res['data'] as List? ?? [];
       setState(() {
         _tahunOptions = List<Map<String, dynamic>>.from(items);
-        if (widget.initialData != null && widget.initialData!['academicYear'] != null) {
-          final found = _tahunOptions.firstWhere((e) => e['code'] == widget.initialData!['academicYear'], orElse: () => {});
+        if (widget.initialData != null &&
+            widget.initialData!['academicYear'] != null) {
+          final found = _tahunOptions.firstWhere(
+            (e) => e['code'] == widget.initialData!['academicYear'],
+            orElse: () => {},
+          );
           if (found.isNotEmpty) {
             _academicYearId = found['id'];
           }
@@ -1162,7 +2691,9 @@ class _SemesterFormModalState extends State<_SemesterFormModal> {
         if (e is DioException && e.response?.data != null) {
           msg = e.response!.data['message'] ?? msg;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -1171,8 +2702,11 @@ class _SemesterFormModalState extends State<_SemesterFormModal> {
   Widget build(BuildContext context) {
     // Generate dropdown items
     final yearList = _tahunOptions.map((e) => e['id'] as String).toList();
-    final yearMap = { for (var e in _tahunOptions) e['id'] as String : e['code'] as String };
-    if (_academicYearFallback != null && !_tahunOptions.any((e) => e['code'] == _academicYearFallback)) {
+    final yearMap = {
+      for (var e in _tahunOptions) e['id'] as String: e['code'] as String,
+    };
+    if (_academicYearFallback != null &&
+        !_tahunOptions.any((e) => e['code'] == _academicYearFallback)) {
       yearList.add('fallback');
       yearMap['fallback'] = _academicYearFallback!;
       if (_academicYearId == null) _academicYearId = 'fallback';
@@ -1187,37 +2721,88 @@ class _SemesterFormModalState extends State<_SemesterFormModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.isEdit ? 'Edit Semester' : 'Tambah Semester', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              Text(
+                widget.isEdit ? 'Edit Semester' : 'Tambah Semester',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 24),
-          _buildField('Nama Semester', 'Contoh: Semester Ganjil', controller: _nameController),
+          _buildField(
+            'Nama Semester',
+            'Contoh: Semester Ganjil',
+            controller: _nameController,
+          ),
           const SizedBox(height: 16),
           if (_fetchingOptions)
-            const Text('Memuat Tahun Ajaran...', style: TextStyle(color: AppColors.gray500))
+            const Text(
+              'Memuat Tahun Ajaran...',
+              style: TextStyle(color: AppColors.gray500),
+            )
           else ...[
-            const Text('Tahun Ajaran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+            const Text(
+              'Tahun Ajaran',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.foreground,
+              ),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _academicYearId,
-              items: yearList.map((e) => DropdownMenuItem(value: e, child: Text(yearMap[e]!))).toList(),
+              items: yearList
+                  .map(
+                    (e) => DropdownMenuItem(value: e, child: Text(yearMap[e]!)),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _academicYearId = v),
               decoration: InputDecoration(
-                filled: true, fillColor: AppColors.gray50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: AppColors.gray50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
           const SizedBox(height: 16),
           Row(
             children: [
-              const Text('Status Aktif', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text(
+                'Status Aktif',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
               const Spacer(),
-              Switch(value: _isActive, onChanged: (v) => setState(() => _isActive = v), activeThumbColor: AppColors.green500),
+              Switch(
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                activeThumbColor: AppColors.green500,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -1277,7 +2862,9 @@ class _ClassroomFormModalState extends State<_ClassroomFormModal> {
         if (e is DioException && e.response?.data != null) {
           msg = e.response!.data['message'] ?? msg;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -1293,16 +2880,40 @@ class _ClassroomFormModalState extends State<_ClassroomFormModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.isEdit ? 'Edit Ruang Kelas' : 'Tambah Ruang Kelas', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              Text(
+                widget.isEdit ? 'Edit Ruang Kelas' : 'Tambah Ruang Kelas',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 24),
-          _buildField('Kode Ruang', 'Contoh: R-101', controller: _codeController, isReadOnly: widget.isEdit),
+          _buildField(
+            'Kode Ruang',
+            'Contoh: R-101',
+            controller: _codeController,
+            isReadOnly: widget.isEdit,
+          ),
           const SizedBox(height: 16),
-          _buildField('Gedung', 'Contoh: Gedung A', controller: _buildingController),
+          _buildField(
+            'Gedung',
+            'Contoh: Gedung A',
+            controller: _buildingController,
+          ),
           const SizedBox(height: 16),
-          _buildField('Kapasitas', 'Contoh: 40', isNumber: true, controller: _capacityController),
+          _buildField(
+            'Kapasitas',
+            'Contoh: 40',
+            isNumber: true,
+            controller: _capacityController,
+          ),
           const SizedBox(height: 24),
           _buildFormButtons(context, _loading, _save),
         ],
@@ -1346,9 +2957,13 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
 
   Future<void> _loadOptions() async {
     try {
-      final resTeacher = await ApiService.getUsers(page: 1, limit: 100, role: 'Guru Mapel');
+      final resTeacher = await ApiService.getUsers(
+        page: 1,
+        limit: 100,
+        role: 'Guru Mapel',
+      );
       final resRuang = await ApiService.getRuangKelas();
-      
+
       final teachers = resTeacher['data'] as List? ?? [];
       final ruangs = resRuang['data'] as List? ?? [];
 
@@ -1358,11 +2973,17 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
 
         if (widget.initialData != null) {
           final tName = widget.initialData!['homeroomTeacher'];
-          final tFound = _guruOptions.firstWhere((e) => e['name'] == tName, orElse: () => {});
+          final tFound = _guruOptions.firstWhere(
+            (e) => e['name'] == tName,
+            orElse: () => {},
+          );
           if (tFound.isNotEmpty) _homeroomTeacherId = tFound['id'];
 
           final rCode = widget.initialData!['classroom'];
-          final rFound = _ruangOptions.firstWhere((e) => e['code'] == rCode, orElse: () => {});
+          final rFound = _ruangOptions.firstWhere(
+            (e) => e['code'] == rCode,
+            orElse: () => {},
+          );
           if (rFound.isNotEmpty) _classroomId = rFound['id'];
         }
         _fetchingOptions = false;
@@ -1394,7 +3015,9 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
         if (e is DioException && e.response?.data != null) {
           msg = e.response!.data['message'] ?? msg;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -1410,8 +3033,18 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.isEdit ? 'Edit Master Kelas' : 'Tambah Master Kelas', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              Text(
+                widget.isEdit ? 'Edit Master Kelas' : 'Tambah Master Kelas',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -1421,48 +3054,113 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
           const SizedBox(height: 16),
 
           if (_fetchingOptions)
-            const Text('Memuat Opsi...', style: TextStyle(color: AppColors.gray500))
+            const Text(
+              'Memuat Opsi...',
+              style: TextStyle(color: AppColors.gray500),
+            )
           else ...[
             // Guru dropdown
-            const Text('Wali Kelas (Opsional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+            const Text(
+              'Wali Kelas (Opsional)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.foreground,
+              ),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(
               initialValue: _homeroomTeacherId,
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Belum ada wali kelas')),
-                ..._guruOptions.map((e) => DropdownMenuItem<String?>(value: e['id'] as String, child: Text(e['name'] as String))),
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Belum ada wali kelas'),
+                ),
+                ..._guruOptions.map(
+                  (e) => DropdownMenuItem<String?>(
+                    value: e['id'] as String,
+                    child: Text(e['name'] as String),
+                  ),
+                ),
               ],
               onChanged: (v) => setState(() => _homeroomTeacherId = v),
               decoration: InputDecoration(
-                filled: true, fillColor: AppColors.gray50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: AppColors.gray50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
             // Ruangan dropdown
-            const Text('Ruangan (Opsional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+            const Text(
+              'Ruangan (Opsional)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.foreground,
+              ),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(
               initialValue: _classroomId,
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Belum ditentukan')),
-                ..._ruangOptions.map((e) => DropdownMenuItem<String?>(value: e['id'] as String, child: Text(e['code'] as String))),
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Belum ditentukan'),
+                ),
+                ..._ruangOptions.map(
+                  (e) => DropdownMenuItem<String?>(
+                    value: e['id'] as String,
+                    child: Text(e['code'] as String),
+                  ),
+                ),
               ],
               onChanged: (v) => setState(() => _classroomId = v),
               decoration: InputDecoration(
-                filled: true, fillColor: AppColors.gray50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: AppColors.gray50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.gray300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
-          
+
           const SizedBox(height: 24),
           _buildFormButtons(context, _loading, _save),
         ],
@@ -1476,11 +3174,28 @@ class _MasterClassFormModalState extends State<_MasterClassFormModal> {
 // ═══════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════
-Widget _buildField(String label, String hint, {bool isNumber = false, int maxLines = 1, bool isReadOnly = false, bool styleAsMono = false, int? maxLength, TextEditingController? controller, String? initialValue}) {
+Widget _buildField(
+  String label,
+  String hint, {
+  bool isNumber = false,
+  int maxLines = 1,
+  bool isReadOnly = false,
+  bool styleAsMono = false,
+  int? maxLength,
+  TextEditingController? controller,
+  String? initialValue,
+}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.foreground,
+        ),
+      ),
       const SizedBox(height: 8),
       TextFormField(
         controller: controller,
@@ -1489,23 +3204,63 @@ Widget _buildField(String label, String hint, {bool isNumber = false, int maxLin
         maxLength: maxLength,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         readOnly: isReadOnly,
-        style: TextStyle(fontFamily: styleAsMono ? 'monospace' : null, color: isReadOnly ? AppColors.gray600 : AppColors.foreground),
+        style: TextStyle(
+          fontFamily: styleAsMono ? 'monospace' : null,
+          color: isReadOnly ? AppColors.gray600 : AppColors.foreground,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           counterText: '', // Hide counter
           hintStyle: const TextStyle(color: AppColors.gray400),
-          filled: true, fillColor: isReadOnly ? AppColors.gray100 : AppColors.gray50,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          filled: true,
+          fillColor: isReadOnly ? AppColors.gray100 : AppColors.gray50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     ],
   );
 }
 
-Widget _buildDropdownField(String label, List<String> items, {bool isReadOnly = false, String? value, ValueChanged<String?>? onChanged}) {
+Widget _buildCompactStatusBadge(bool isActive) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: isActive ? AppColors.green100 : AppColors.gray100,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      isActive ? 'Aktif' : 'Tidak Aktif',
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: isActive ? AppColors.green700 : AppColors.gray700,
+      ),
+    ),
+  );
+}
+
+Widget _buildDropdownField(
+  String label,
+  List<String> items, {
+  bool isReadOnly = false,
+  String? value,
+  ValueChanged<String?>? onChanged,
+}) {
   final safeItems = <String>{...items};
   if (value != null && value.isNotEmpty) safeItems.add(value);
   final itemList = safeItems.toList();
@@ -1513,27 +3268,59 @@ Widget _buildDropdownField(String label, List<String> items, {bool isReadOnly = 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.foreground,
+        ),
+      ),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: (value != null && value.isNotEmpty) ? value : (itemList.isNotEmpty ? itemList.first : null),
-        items: itemList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        value: (value != null && value.isNotEmpty)
+            ? value
+            : (itemList.isNotEmpty ? itemList.first : null),
+        items: itemList
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
         onChanged: isReadOnly ? null : (onChanged ?? (_) {}),
-        icon: isReadOnly ? const SizedBox.shrink() : null, // Hide internal icon if readonly
-        style: TextStyle(color: isReadOnly ? AppColors.gray600 : AppColors.foreground),
+        icon: isReadOnly
+            ? const SizedBox.shrink()
+            : null, // Hide internal icon if readonly
+        style: TextStyle(
+          color: isReadOnly ? AppColors.gray600 : AppColors.foreground,
+        ),
         decoration: InputDecoration(
-          filled: true, fillColor: isReadOnly ? AppColors.gray100 : AppColors.gray50,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          filled: true,
+          fillColor: isReadOnly ? AppColors.gray100 : AppColors.gray50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gray300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     ],
   );
 }
 
-Widget _buildFormButtons(BuildContext context, bool loading, VoidCallback onSave) {
+Widget _buildFormButtons(
+  BuildContext context,
+  bool loading,
+  VoidCallback onSave,
+) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
@@ -1543,7 +3330,9 @@ Widget _buildFormButtons(BuildContext context, bool loading, VoidCallback onSave
           foregroundColor: AppColors.gray600,
           side: const BorderSide(color: AppColors.gray300),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: const Text('Batal'),
       ),
@@ -1554,14 +3343,22 @@ Widget _buildFormButtons(BuildContext context, bool loading, VoidCallback onSave
           backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
         child: loading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
             : const Text('Simpan'),
       ),
     ],
   );
 }
-

@@ -72,7 +72,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: isWarning ? const Color(0xFFD97706) : AppColors.destructive,
+        backgroundColor: isWarning
+            ? const Color(0xFFD97706)
+            : AppColors.destructive,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -88,7 +90,11 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
@@ -107,25 +113,31 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _rombelList = items.map<Map<String, dynamic>>((item) => ({
-            'id': item['id'] ?? '',
-            'name': item['masterKelasName'] ?? '',
-            'masterKelasId': item['masterKelasId'] ?? '',
-            'tahunAjaran': item['tahunAjaranCode'] ?? '',
-            'ruangKelasId': item['ruangKelasId'] ?? '',
-            'ruangKelasCode': item['ruangKelasCode'] ?? '-',
-            'ruangKelasCapacity': item['ruangKelasCapacity'] ?? 0,
-            'waliKelas': item['waliKelasName'] ?? '-',
-            'waliKelasId': item['waliKelasId'],
-            'totalSiswa': item['siswaCount'] ?? 0,
-          })).toList();
+          _rombelList = items
+              .map<Map<String, dynamic>>(
+                (item) => ({
+                  'id': item['id'] ?? '',
+                  'name': item['masterKelasName'] ?? '',
+                  'masterKelasId': item['masterKelasId'] ?? '',
+                  'tahunAjaran': item['tahunAjaranCode'] ?? '',
+                  'ruangKelasId': item['ruangKelasId'] ?? '',
+                  'ruangKelasCode': item['ruangKelasCode'] ?? '-',
+                  'ruangKelasCapacity': item['ruangKelasCapacity'] ?? 0,
+                  'waliKelas': item['waliKelasName'] ?? '-',
+                  'waliKelasId': item['waliKelasId'],
+                  'totalSiswa': item['siswaCount'] ?? 0,
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        _showAlert('Gagal memuat daftar rombel. Periksa koneksi internet Anda.');
+        _showAlert(
+          'Gagal memuat daftar rombel. Periksa koneksi internet Anda.',
+        );
       }
     }
   }
@@ -146,7 +158,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
       if (result == true) {
         _loadRombelList();
         setState(() {
-          _successMessage = isEdit ? 'Rombel berhasil diperbarui' : 'Rombel baru berhasil ditambahkan';
+          _successMessage = isEdit
+              ? 'Rombel berhasil diperbarui'
+              : 'Rombel baru berhasil ditambahkan';
           _showSuccessToast = true;
           if (!isEdit) _selectedRombelId = null;
         });
@@ -163,7 +177,8 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     DeleteConfirmationModal.show(
       context,
       title: 'Hapus Rombongan Belajar',
-      message: 'Apakah Anda yakin ingin menghapus rombongan belajar ini? Aksi ini akan menghapus semua pemetaan siswa di dalamnya secara permanen.',
+      message:
+          'Apakah Anda yakin ingin menghapus rombongan belajar ini? Aksi ini akan menghapus semua pemetaan siswa di dalamnya secara permanen.',
       itemName: '${r['name']} • ${r['tahunAjaran']}',
       onConfirm: () async {
         try {
@@ -203,19 +218,29 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
 
       if (mounted) {
         setState(() {
-          _assignedStudents = assignedItems.map<Map<String, dynamic>>((s) => ({
-            'id': s['id'] ?? '',
-            'name': s['name'] ?? '',
-            'nisn': s['nisn'] ?? '-',
-          })).toList();
+          _assignedStudents = assignedItems
+              .map<Map<String, dynamic>>(
+                (s) => ({
+                  'id': s['id'] ?? '',
+                  'name': s['name'] ?? '',
+                  'nisn': s['nisn'] ?? '-',
+                }),
+              )
+              .toList();
 
-          _availableStudents = availableItems.map<Map<String, dynamic>>((s) => ({
-            'id': s['id'] ?? '',
-            'name': s['name'] ?? '',
-            'nisn': s['nisn'] ?? '-',
-          })).toList();
+          _availableStudents = availableItems
+              .map<Map<String, dynamic>>(
+                (s) => ({
+                  'id': s['id'] ?? '',
+                  'name': s['name'] ?? '',
+                  'nisn': s['nisn'] ?? '-',
+                }),
+              )
+              .toList();
 
-          _originalAssignedIds = _assignedStudents.map((s) => s['id'] as String).toSet();
+          _originalAssignedIds = _assignedStudents
+              .map((s) => s['id'] as String)
+              .toSet();
           _leftSelected.clear();
           _availableCurrentPage = 1;
           _assignedCurrentPage = 1;
@@ -225,7 +250,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingStudents = false);
-        _showAlert('Gagal memuat data siswa untuk rombel ini. Coba pilih rombel kembali.');
+        _showAlert(
+          'Gagal memuat data siswa untuk rombel ini. Coba pilih rombel kembali.',
+        );
       }
     }
   }
@@ -234,7 +261,13 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     var list = _availableStudents;
     if (_leftSearch.isNotEmpty) {
       final q = _leftSearch.toLowerCase();
-      list = list.where((s) => (s['name'] ?? '').toLowerCase().contains(q) || (s['nisn'] ?? '').contains(q)).toList();
+      list = list
+          .where(
+            (s) =>
+                (s['name'] ?? '').toLowerCase().contains(q) ||
+                (s['nisn'] ?? '').contains(q),
+          )
+          .toList();
     }
     return list;
   }
@@ -242,7 +275,13 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
   List<Map<String, dynamic>> get _filteredAssigned {
     if (_rightSearch.isEmpty) return _assignedStudents;
     final q = _rightSearch.toLowerCase();
-    return _assignedStudents.where((s) => (s['name'] ?? '').toLowerCase().contains(q) || (s['nisn'] ?? '').contains(q)).toList();
+    return _assignedStudents
+        .where(
+          (s) =>
+              (s['name'] ?? '').toLowerCase().contains(q) ||
+              (s['nisn'] ?? '').contains(q),
+        )
+        .toList();
   }
 
   void _addSelected() {
@@ -257,7 +296,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     final sisaKursi = capacity > 0 ? capacity - _assignedStudents.length : null;
 
     if (capacity > 0 && _assignedStudents.length >= capacity) {
-      _showAlert('Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} (${capacity} siswa) sudah tercapai.');
+      _showAlert(
+        'Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} (${capacity} siswa) sudah tercapai.',
+      );
       return;
     }
 
@@ -270,7 +311,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     }
 
     setState(() {
-      final selectedStudents = _availableStudents.where((s) => _leftSelected.contains(s['id'])).toList();
+      final selectedStudents = _availableStudents
+          .where((s) => _leftSelected.contains(s['id']))
+          .toList();
       _assignedStudents.addAll(selectedStudents);
       _availableStudents.removeWhere((s) => _leftSelected.contains(s['id']));
       _leftSelected.clear();
@@ -281,14 +324,20 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
 
     // Warn if now full
     if (capacity > 0 && _assignedStudents.length >= capacity) {
-      _showAlert('Rombel sekarang penuh (${capacity}/${capacity}). Tidak bisa menambahkan siswa lagi.', isWarning: true);
+      _showAlert(
+        'Rombel sekarang penuh (${capacity}/${capacity}). Tidak bisa menambahkan siswa lagi.',
+        isWarning: true,
+      );
     }
   }
 
   void _addAll() {
     if (_selectedRombelId == null) return;
     if (_filteredAvailable.isEmpty) {
-      _showAlert('Tidak ada siswa tersedia untuk ditambahkan.', isWarning: true);
+      _showAlert(
+        'Tidak ada siswa tersedia untuk ditambahkan.',
+        isWarning: true,
+      );
       return;
     }
     final rombel = _rombelList.firstWhere((r) => r['id'] == _selectedRombelId);
@@ -298,7 +347,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     final sisaKursi = capacity > 0 ? capacity - _assignedStudents.length : null;
 
     if (capacity > 0 && _assignedStudents.length >= capacity) {
-      _showAlert('Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} ($capacity siswa) sudah tercapai.');
+      _showAlert(
+        'Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} ($capacity siswa) sudah tercapai.',
+      );
       return;
     }
 
@@ -324,7 +375,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     setState(() {
       _assignedStudents.removeWhere((s) => s['id'] == student['id']);
       _availableStudents.add(student);
-      _availableStudents.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+      _availableStudents.sort(
+        (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+      );
     });
   }
 
@@ -356,7 +409,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.destructive,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Ya, Keluarkan Semua'),
           ),
@@ -366,7 +421,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
       if (confirmed == true) {
         setState(() {
           _availableStudents.addAll(_assignedStudents);
-          _availableStudents.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+          _availableStudents.sort(
+            (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+          );
           _assignedStudents.clear();
         });
         _showAlert(
@@ -378,7 +435,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
   }
 
   bool get _hasChanges {
-    final currentAssignedIds = _assignedStudents.map((s) => s['id'] as String).toSet();
+    final currentAssignedIds = _assignedStudents
+        .map((s) => s['id'] as String)
+        .toSet();
     if (currentAssignedIds.length != _originalAssignedIds.length) return true;
     return currentAssignedIds.difference(_originalAssignedIds).isNotEmpty;
   }
@@ -388,10 +447,16 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     setState(() => _savingChanges = true);
 
     try {
-      final currentAssignedIds = _assignedStudents.map((s) => s['id'] as String).toSet();
-      
-      final studentsToAdd = currentAssignedIds.difference(_originalAssignedIds).toList();
-      final studentsToRemove = _originalAssignedIds.difference(currentAssignedIds).toList();
+      final currentAssignedIds = _assignedStudents
+          .map((s) => s['id'] as String)
+          .toSet();
+
+      final studentsToAdd = currentAssignedIds
+          .difference(_originalAssignedIds)
+          .toList();
+      final studentsToRemove = _originalAssignedIds
+          .difference(currentAssignedIds)
+          .toList();
 
       for (String id in studentsToRemove) {
         await ApiService.removeSiswaFromRombel(_selectedRombelId!, id);
@@ -408,7 +473,8 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
         final addedCount = studentsToAdd.length;
         final removedCount = studentsToRemove.length;
         setState(() {
-          _successMessage = 'Perubahan disimpan! (+$addedCount masuk, -$removedCount keluar)';
+          _successMessage =
+              'Perubahan disimpan! (+$addedCount masuk, -$removedCount keluar)';
           _showSuccessToast = true;
           _savingChanges = false;
         });
@@ -437,8 +503,8 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-
-    return Stack(
+    final isNarrow = MediaQuery.sizeOf(context).width < 960;
+    final content = Stack(
       children: [
         SingleChildScrollView(
           child: Padding(
@@ -446,222 +512,435 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            // ── Page Title ──
-            const Text(
-              'Manajemen Rombongan Belajar',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: AppColors.primary),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Kelola pemetaan siswa ke dalam rombongan belajar',
-              style: TextStyle(color: AppColors.gray600),
-            ),
-            const SizedBox(height: 32),
-
-            // ── Rombel Selector Cards ──
-            SizedBox(
-              height: 140,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _rombelList.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(width: 16),
-                itemBuilder: (ctx, i) {
-                  if (i == _rombelList.length) {
-                    return _buildAddRombelCard();
-                  }
-                  final r = _rombelList[i];
-                  final isSelected = _selectedRombelId == r['id'];
-                  return _buildRombelCard(r, isSelected);
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Capacity Info & Actions ──
-            if (_selectedRombelId != null)
-              Builder(builder: (context) {
-                final r = _rombelList.firstWhere((x) => x['id'] == _selectedRombelId);
-                final capacity = r['ruangKelasCapacity'] as int;
-                final current = _assignedStudents.length;
-                final ratio = capacity > 0 ? (current / capacity) : 1.0;
-                final color = ratio >= 1.0 ? const Color(0xFFDC2626) : (ratio > 0.8 ? const Color(0xFFD97706) : AppColors.green600);
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))],
+                // ── Page Title ──
+                const Text(
+                  'Manajemen Rombongan Belajar',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                        child: Icon(Icons.people, color: color, size: 24),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Kapasitas Ruang ${r['ruangKelasCode']}', style: const TextStyle(fontSize: 13, color: AppColors.gray600)),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: LinearProgressIndicator(
-                                      value: ratio, minHeight: 8,
-                                      backgroundColor: AppColors.gray200,
-                                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Text('$current / $capacity Siswa', style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 32),
-                      Row(
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Kelola pemetaan siswa ke dalam rombongan belajar',
+                  style: TextStyle(color: AppColors.gray600),
+                ),
+                const SizedBox(height: 32),
+
+                // ── Rombel Selector Cards ──
+                SizedBox(
+                  height: 140,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _rombelList.length + 1,
+                    separatorBuilder: (_, __) => const SizedBox(width: 16),
+                    itemBuilder: (ctx, i) {
+                      if (i == _rombelList.length) {
+                        return _buildAddRombelCard();
+                      }
+                      final r = _rombelList[i];
+                      final isSelected = _selectedRombelId == r['id'];
+                      return _buildRombelCard(r, isSelected);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Capacity Info & Actions ──
+                if (_selectedRombelId != null)
+                  Builder(
+                    builder: (context) {
+                      final r = _rombelList.firstWhere(
+                        (x) => x['id'] == _selectedRombelId,
+                      );
+                      final capacity = r['ruangKelasCapacity'] as int;
+                      final current = _assignedStudents.length;
+                      final ratio = capacity > 0 ? (current / capacity) : 1.0;
+                      final color = ratio >= 1.0
+                          ? const Color(0xFFDC2626)
+                          : (ratio > 0.8
+                                ? const Color(0xFFD97706)
+                                : AppColors.green600);
+
+                      final actionButtons = Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: isNarrow
+                            ? WrapAlignment.start
+                            : WrapAlignment.end,
                         children: [
                           OutlinedButton.icon(
-                            onPressed: () => _showRombelModal(isEdit: true, data: r),
+                            onPressed: () =>
+                                _showRombelModal(isEdit: true, data: r),
                             icon: const Icon(Icons.edit, size: 18),
                             label: const Text('Edit'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
                           OutlinedButton.icon(
                             onPressed: _deleteRombel,
                             icon: const Icon(Icons.delete, size: 18),
                             label: const Text('Hapus'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.destructive,
-                              side: const BorderSide(color: AppColors.destructive),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              side: const BorderSide(
+                                color: AppColors.destructive,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x0A000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: isNarrow
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.people,
+                                          color: color,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Kapasitas Ruang ${r['ruangKelasCode']}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.gray600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '$current / $capacity Siswa',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                color: color,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(999),
+                                    child: LinearProgressIndicator(
+                                      value: ratio,
+                                      minHeight: 8,
+                                      backgroundColor: AppColors.gray200,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        color,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  actionButtons,
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: color.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.people,
+                                      color: color,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Kapasitas Ruang ${r['ruangKelasCode']}',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppColors.gray600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                                child: LinearProgressIndicator(
+                                                  value: ratio,
+                                                  minHeight: 8,
+                                                  backgroundColor:
+                                                      AppColors.gray200,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(color),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Text(
+                                              '$current / $capacity Siswa',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                color: color,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 32),
+                                  actionButtons,
+                                ],
+                              ),
+                      );
+                    },
+                  ),
+                if (_selectedRombelId != null) const SizedBox(height: 24),
+
+                // ── Dual-Pane Transfer List ──
+                if (_selectedRombelId == null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.class_outlined,
+                            size: 64,
+                            color: AppColors.gray300,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Pilih rombel terlebih dahulu',
+                            style: TextStyle(
+                              color: AppColors.gray500,
+                              fontSize: 16,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  )
+                else if (_loadingStudents)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  isNarrow
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildAvailablePane(),
+                            const SizedBox(height: 16),
+                            Center(
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  _TransferButton(
+                                    icon: Icons.keyboard_double_arrow_right,
+                                    tooltip: 'Tambahkan semua siswa tersedia',
+                                    onPressed: _filteredAvailable.isNotEmpty
+                                        ? _addAll
+                                        : null,
+                                  ),
+                                  _TransferButton(
+                                    icon: Icons.chevron_right,
+                                    tooltip: 'Tambahkan siswa yang dipilih',
+                                    onPressed: _leftSelected.isNotEmpty
+                                        ? _addSelected
+                                        : null,
+                                  ),
+                                  _TransferButton(
+                                    icon: Icons.keyboard_double_arrow_left,
+                                    tooltip:
+                                        'Keluarkan semua siswa dari rombel',
+                                    onPressed: _assignedStudents.isNotEmpty
+                                        ? _removeAll
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildAssignedPane(),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildAvailablePane()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _TransferButton(
+                                    icon: Icons.keyboard_double_arrow_right,
+                                    tooltip: 'Tambahkan semua siswa tersedia',
+                                    onPressed: _filteredAvailable.isNotEmpty
+                                        ? _addAll
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _TransferButton(
+                                    icon: Icons.chevron_right,
+                                    tooltip: 'Tambahkan siswa yang dipilih',
+                                    onPressed: _leftSelected.isNotEmpty
+                                        ? _addSelected
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _TransferButton(
+                                    icon: Icons.keyboard_double_arrow_left,
+                                    tooltip:
+                                        'Keluarkan semua siswa dari rombel',
+                                    onPressed: _assignedStudents.isNotEmpty
+                                        ? _removeAll
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(child: _buildAssignedPane()),
+                          ],
+                        ),
+
+                // ── Save/Cancel Actions ──
+                if (_selectedRombelId != null && !_loadingStudents)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        if (_hasChanges)
+                          const Text(
+                            'Ada perubahan yang belum disimpan',
+                            style: TextStyle(
+                              color: Color(0xFFD97706),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        OutlinedButton(
+                          onPressed: _hasChanges && !_savingChanges
+                              ? _discardRombelChanges
+                              : null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Batal'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _hasChanges && !_savingChanges
+                              ? _saveRombelChanges
+                              : null,
+                          icon: _savingChanges
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save, size: 18),
+                          label: Text(
+                            _savingChanges
+                                ? 'Menyimpan...'
+                                : 'Simpan Perubahan',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }),
-            if (_selectedRombelId != null) const SizedBox(height: 24),
-
-            // ── Dual-Pane Transfer List ──
-            if (_selectedRombelId == null)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.class_outlined, size: 64, color: AppColors.gray300),
-                      const SizedBox(height: 16),
-                      const Text('Pilih rombel terlebih dahulu', style: TextStyle(color: AppColors.gray500, fontSize: 16)),
-                    ],
-                  ),
-                ),
-              )
-            else if (_loadingStudents)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left — Available Students
-                  Expanded(child: _buildAvailablePane()),
-
-                    // Center — Transfer Buttons
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _TransferButton(
-                            icon: Icons.keyboard_double_arrow_right,
-                            tooltip: 'Tambahkan semua siswa tersedia',
-                            onPressed: _filteredAvailable.isNotEmpty ? _addAll : null,
-                          ),
-                          const SizedBox(height: 8),
-                          _TransferButton(
-                            icon: Icons.chevron_right,
-                            tooltip: 'Tambahkan siswa yang dipilih',
-                            onPressed: _leftSelected.isNotEmpty ? _addSelected : null,
-                          ),
-                          const SizedBox(height: 8),
-                          _TransferButton(
-                            icon: Icons.keyboard_double_arrow_left,
-                            tooltip: 'Keluarkan semua siswa dari rombel',
-                            onPressed: _assignedStudents.isNotEmpty ? _removeAll : null,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Right — Assigned Students
-                    Expanded(child: _buildAssignedPane()),
-                  ],
-                ),
-
-            // ── Save/Cancel Actions ──
-            if (_selectedRombelId != null && !_loadingStudents)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (_hasChanges)
-                      const Text('Ada perubahan yang belum disimpan', style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w500)),
-                    if (_hasChanges) const SizedBox(width: 16),
-                    OutlinedButton(
-                      onPressed: _hasChanges && !_savingChanges ? _discardRombelChanges : null,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Batal'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _hasChanges && !_savingChanges ? _saveRombelChanges : null,
-                      icon: _savingChanges 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.save, size: 18),
-                      label: Text(_savingChanges ? 'Menyimpan...' : 'Simpan Perubahan'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
 
         if (_showSuccessToast)
           Positioned(
-            top: 16, right: 16,
+            top: 16,
+            right: 16,
             child: SuccessToast(
               isVisible: true,
               message: _successMessage,
@@ -670,6 +949,8 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
           ),
       ],
     );
+
+    return content;
   }
 
   Widget _buildRombelCard(Map<String, dynamic> r, bool isSelected) {
@@ -685,10 +966,25 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.gray200, width: 2),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.gray200,
+            width: 2,
+          ),
           boxShadow: isSelected
-              ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))]
-              : [const BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 4))],
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [
+                  const BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,19 +995,32 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                 Expanded(
                   child: Text(
                     r['name'] ?? '',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : AppColors.foreground),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : AppColors.foreground,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.1),
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     r['tahunAjaran'] ?? '',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.primary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : AppColors.primary,
+                    ),
                   ),
                 ),
               ],
@@ -719,12 +1028,19 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             const Spacer(),
             Row(
               children: [
-                Icon(Icons.person, size: 14, color: isSelected ? Colors.white70 : AppColors.gray500),
+                Icon(
+                  Icons.person,
+                  size: 14,
+                  color: isSelected ? Colors.white70 : AppColors.gray500,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     r['waliKelas'] ?? 'Belum ada wali',
-                    style: TextStyle(fontSize: 12, color: isSelected ? Colors.white70 : AppColors.gray600),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected ? Colors.white70 : AppColors.gray600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -733,11 +1049,19 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.sensor_door, size: 14, color: isSelected ? Colors.white70 : AppColors.gray500),
+                Icon(
+                  Icons.sensor_door,
+                  size: 14,
+                  color: isSelected ? Colors.white70 : AppColors.gray500,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   '${r['totalSiswa']}/${r['ruangKelasCapacity']} Siswa',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.gray700),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : AppColors.gray700,
+                  ),
                 ),
               ],
             ),
@@ -755,14 +1079,24 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
         decoration: BoxDecoration(
           color: AppColors.gray50,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray300, style: BorderStyle.solid),
+          border: Border.all(
+            color: AppColors.gray300,
+            style: BorderStyle.solid,
+          ),
         ),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add_circle_outline, size: 32, color: AppColors.gray500),
             SizedBox(height: 12),
-            Text('Tambah\nRombel', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.gray600)),
+            Text(
+              'Tambah\nRombel',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.gray600,
+              ),
+            ),
           ],
         ),
       ),
@@ -775,16 +1109,27 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     final total = allFiltered.length;
     // Clamp start so it never exceeds total (prevents RangeError when data shrinks)
     final start = total > 0
-        ? ((_availableCurrentPage - 1) * _availableItemsPerPage).clamp(0, total - 1)
+        ? ((_availableCurrentPage - 1) * _availableItemsPerPage).clamp(
+            0,
+            total - 1,
+          )
         : 0;
     final end = (start + _availableItemsPerPage).clamp(0, total);
-    final pageData = total > 0 ? allFiltered.sublist(start, end) : <Map<String, dynamic>>[];
+    final pageData = total > 0
+        ? allFiltered.sublist(start, end)
+        : <Map<String, dynamic>>[];
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x15000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -796,7 +1141,13 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
             ),
             child: Column(
               children: [
-                Text('Daftar Siswa Tersedia (${allFiltered.length})', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.foreground)),
+                Text(
+                  'Daftar Siswa Tersedia (${allFiltered.length})',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   onChanged: (v) => setState(() {
@@ -805,50 +1156,91 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                   }),
                   decoration: InputDecoration(
                     hintText: 'Cari siswa...',
-                    prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.gray400),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 18,
+                      color: AppColors.gray400,
+                    ),
                     isDense: true,
-                    filled: true, fillColor: Colors.white,
+                    filled: true,
+                    fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gray300)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gray300)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           pageData.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: Text('Tidak ada siswa tersedia', style: TextStyle(color: AppColors.gray500))),
-              )
-            : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: pageData.length,
-              itemBuilder: (_, i) {
-                  final s = pageData[i];
-                  final id = s['id'] as String;
-                  final selected = _leftSelected.contains(id);
-                  return ListTile(
-                    dense: true,
-                    leading: Checkbox(
-                      value: selected,
-                      onChanged: (v) => setState(() {
-                        if (v == true) { _leftSelected.add(id); } else { _leftSelected.remove(id); }
-                      }),
-                      activeColor: AppColors.accent,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ? const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(
+                    child: Text(
+                      'Tidak ada siswa tersedia',
+                      style: TextStyle(color: AppColors.gray500),
                     ),
-                    title: Text(s['name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    subtitle: Text('NISN: ${s['nisn'] ?? '-'}', style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
-                    trailing: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.gray200,
-                      child: Text((s['name'] ?? '?')[0], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gray600)),
-                    ),
-                  );
-                },
-              ),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pageData.length,
+                  itemBuilder: (_, i) {
+                    final s = pageData[i];
+                    final id = s['id'] as String;
+                    final selected = _leftSelected.contains(id);
+                    return ListTile(
+                      dense: true,
+                      leading: Checkbox(
+                        value: selected,
+                        onChanged: (v) => setState(() {
+                          if (v == true) {
+                            _leftSelected.add(id);
+                          } else {
+                            _leftSelected.remove(id);
+                          }
+                        }),
+                        activeColor: AppColors.accent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      title: Text(
+                        s['name'] ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'NISN: ${s['nisn'] ?? '-'}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                      trailing: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.gray200,
+                        child: Text(
+                          (s['name'] ?? '?')[0],
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
           TablePagination(
             currentPage: _availableCurrentPage,
             totalItems: total,
@@ -871,16 +1263,27 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     final total = allFiltered.length;
     // Clamp start so it never exceeds total (prevents RangeError when data shrinks)
     final start = total > 0
-        ? ((_assignedCurrentPage - 1) * _assignedItemsPerPage).clamp(0, total - 1)
+        ? ((_assignedCurrentPage - 1) * _assignedItemsPerPage).clamp(
+            0,
+            total - 1,
+          )
         : 0;
     final end = (start + _assignedItemsPerPage).clamp(0, total);
-    final pageData = total > 0 ? allFiltered.sublist(start, end) : <Map<String, dynamic>>[];
+    final pageData = total > 0
+        ? allFiltered.sublist(start, end)
+        : <Map<String, dynamic>>[];
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x15000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -897,16 +1300,22 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 8, height: 8,
+                      width: 8,
+                      height: 8,
                       decoration: BoxDecoration(
-                        color: _assignedStudents.isNotEmpty ? AppColors.primary : AppColors.gray300,
+                        color: _assignedStudents.isNotEmpty
+                            ? AppColors.primary
+                            : AppColors.gray300,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Siswa di Rombel Ini (${_assignedStudents.length})',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.foreground),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.foreground,
+                      ),
                     ),
                   ],
                 ),
@@ -918,7 +1327,11 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                   }),
                   decoration: InputDecoration(
                     hintText: 'Cari siswa di rombel...',
-                    prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.gray400),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 18,
+                      color: AppColors.gray400,
+                    ),
                     isDense: true,
                     filled: true,
                     fillColor: Colors.white,
@@ -946,7 +1359,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _rightSearch.isNotEmpty ? Icons.search_off : Icons.inbox_outlined,
+                          _rightSearch.isNotEmpty
+                              ? Icons.search_off
+                              : Icons.inbox_outlined,
                           size: 48,
                           color: AppColors.gray300,
                         ),
@@ -972,7 +1387,9 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                       dense: true,
                       leading: CircleAvatar(
                         radius: 18,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.1,
+                        ),
                         child: Text(
                           (s['name'] ?? '?')[0].toUpperCase(),
                           style: const TextStyle(
@@ -984,16 +1401,26 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                       ),
                       title: Text(
                         '$nomor. ${s['name'] ?? ''}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       subtitle: Text(
                         'NISN: ${s['nisn'] ?? '-'}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
                       ),
                       trailing: Tooltip(
                         message: 'Keluarkan dari rombel',
                         child: IconButton(
-                          icon: const Icon(Icons.close, size: 18, color: AppColors.gray400),
+                          icon: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: AppColors.gray400,
+                          ),
                           hoverColor: AppColors.red50,
                           onPressed: () => _removeStudent(s),
                         ),
@@ -1027,7 +1454,11 @@ class _TransferButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
-  const _TransferButton({required this.icon, required this.tooltip, this.onPressed});
+  const _TransferButton({
+    required this.icon,
+    required this.tooltip,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1096,11 +1527,13 @@ class _RombelFormModalState extends State<_RombelFormModal> {
 
       if (!mounted) return;
       setState(() {
-        _masterKelasList = (results[0]['data'] as List?)
+        _masterKelasList =
+            (results[0]['data'] as List?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
-        _ruangKelasList = (results[1]['data'] as List?)
+        _ruangKelasList =
+            (results[1]['data'] as List?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
@@ -1141,7 +1574,9 @@ class _RombelFormModalState extends State<_RombelFormModal> {
     );
     final waliId = kelas['homeroomTeacherId'];
     _hasWali = waliId != null;
-    _derivedWaliName = _hasWali ? (kelas['homeroomTeacher'] ?? '-') : 'Belum ditambahkan';
+    _derivedWaliName = _hasWali
+        ? (kelas['homeroomTeacher'] ?? '-')
+        : 'Belum ditambahkan';
   }
 
   Future<void> _save() async {
@@ -1182,18 +1617,20 @@ class _RombelFormModalState extends State<_RombelFormModal> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(msg)),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: AppColors.destructive,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      backgroundColor: AppColors.destructive,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ));
+    );
   }
 
   @override
@@ -1217,7 +1654,9 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      widget.isEdit ? Icons.edit_outlined : Icons.add_circle_outline,
+                      widget.isEdit
+                          ? Icons.edit_outlined
+                          : Icons.add_circle_outline,
                       color: AppColors.primary,
                       size: 20,
                     ),
@@ -1259,18 +1698,26 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF2F2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.destructive.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.destructive.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.error_outline, color: AppColors.destructive),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(_loadError!, style: const TextStyle(color: AppColors.destructive)),
+                    child: Text(
+                      _loadError!,
+                      style: const TextStyle(color: AppColors.destructive),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
-                      setState(() { _loading = true; _loadError = null; });
+                      setState(() {
+                        _loading = true;
+                        _loadError = null;
+                      });
                       _loadFormData();
                     },
                     child: const Text('Coba Lagi'),
@@ -1286,7 +1733,10 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               // In edit mode: read-only display
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.gray100,
                   borderRadius: BorderRadius.circular(12),
@@ -1297,20 +1747,34 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.class_outlined, size: 18, color: AppColors.gray500),
+                        const Icon(
+                          Icons.class_outlined,
+                          size: 18,
+                          color: AppColors.gray500,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           _masterKelasList
-                              .where((k) => k['id'] == _selectedMasterKelasId)
-                              .map((k) => '${k['grade']} — ${k['name']}')
-                              .firstOrNull ?? 'Tidak ditemukan',
-                          style: const TextStyle(color: AppColors.gray600, fontSize: 15),
+                                  .where(
+                                    (k) => k['id'] == _selectedMasterKelasId,
+                                  )
+                                  .map((k) => '${k['grade']} — ${k['name']}')
+                                  .firstOrNull ??
+                              'Tidak ditemukan',
+                          style: const TextStyle(
+                            color: AppColors.gray600,
+                            fontSize: 15,
+                          ),
                         ),
                       ],
                     ),
                     const Tooltip(
                       message: 'Kelas tidak dapat diubah setelah rombel dibuat',
-                      child: Icon(Icons.lock_outline, size: 16, color: AppColors.gray400),
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: AppColors.gray400,
+                      ),
                     ),
                   ],
                 ),
@@ -1320,14 +1784,23 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                 value: _selectedMasterKelasId,
                 isExpanded: true,
                 items: _masterKelasList.isEmpty
-                    ? [const DropdownMenuItem(value: '', child: Text('Belum ada data master kelas'))]
-                    : _masterKelasList.map((e) => DropdownMenuItem<String>(
-                        value: e['id'] as String,
-                        child: Text(
-                          '${e['grade'] ?? ''} — ${e['name'] ?? ''}',
-                          overflow: TextOverflow.ellipsis,
+                    ? [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('Belum ada data master kelas'),
                         ),
-                      )).toList(),
+                      ]
+                    : _masterKelasList
+                          .map(
+                            (e) => DropdownMenuItem<String>(
+                              value: e['id'] as String,
+                              child: Text(
+                                '${e['grade'] ?? ''} — ${e['name'] ?? ''}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
                 onChanged: _masterKelasList.isEmpty
                     ? null
                     : (v) {
@@ -1346,7 +1819,10 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: _hasWali ? AppColors.blue50 : const Color(0xFFFFFBEB),
                   borderRadius: BorderRadius.circular(12),
@@ -1360,7 +1836,9 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      _hasWali ? Icons.person_pin_circle_outlined : Icons.person_off_outlined,
+                      _hasWali
+                          ? Icons.person_pin_circle_outlined
+                          : Icons.person_off_outlined,
                       color: _hasWali ? AppColors.blue600 : AppColors.amber600,
                       size: 20,
                     ),
@@ -1374,14 +1852,19 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: _hasWali ? AppColors.blue600 : AppColors.amber600,
+                              color: _hasWali
+                                  ? AppColors.blue600
+                                  : AppColors.amber600,
                             ),
                           ),
                           if (!_hasWali)
                             const Text(
                               'Wali kelas belum diisi pada Master Kelas ini. '
                               'Tambahkan melalui menu Master Akademik.',
-                              style: TextStyle(fontSize: 11, color: AppColors.gray600),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.gray600,
+                              ),
                             ),
                         ],
                       ),
@@ -1389,7 +1872,11 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                     const SizedBox(width: 8),
                     const Tooltip(
                       message: 'Ubah wali kelas melalui menu Master Akademik',
-                      child: Icon(Icons.info_outline, size: 16, color: AppColors.gray400),
+                      child: Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: AppColors.gray400,
+                      ),
                     ),
                   ],
                 ),
@@ -1399,7 +1886,6 @@ class _RombelFormModalState extends State<_RombelFormModal> {
 
             // Spacer between section 2 and Ruangan
 
-
             // ── 4. Ruang Kelas ──
             _buildLabel('Ruangan', required: !widget.isEdit),
             const SizedBox(height: 8),
@@ -1407,14 +1893,23 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               value: _selectedRuangKelasId,
               isExpanded: true,
               items: _ruangKelasList.isEmpty
-                  ? [const DropdownMenuItem(value: '', child: Text('Belum ada data ruangan'))]
-                  : _ruangKelasList.map((e) => DropdownMenuItem<String>(
-                      value: e['id'] as String,
-                      child: Text(
-                        '${e['code'] ?? e['kode'] ?? ''}  •  Kapasitas: ${e['capacity'] ?? e['kapasitas'] ?? 0} siswa',
-                        overflow: TextOverflow.ellipsis,
+                  ? [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text('Belum ada data ruangan'),
                       ),
-                    )).toList(),
+                    ]
+                  : _ruangKelasList
+                        .map(
+                          (e) => DropdownMenuItem<String>(
+                            value: e['id'] as String,
+                            child: Text(
+                              '${e['code'] ?? e['kode'] ?? ''}  •  Kapasitas: ${e['capacity'] ?? e['kapasitas'] ?? 0} siswa',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
               onChanged: _ruangKelasList.isEmpty
                   ? null
                   : (v) => setState(() => _selectedRuangKelasId = v),
@@ -1431,8 +1926,13 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gray600,
                     side: const BorderSide(color: AppColors.gray300),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text('Batal'),
                 ),
@@ -1440,14 +1940,31 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                 ElevatedButton.icon(
                   onPressed: _saving ? null : _save,
                   icon: _saving
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Icon(widget.isEdit ? Icons.save_outlined : Icons.add, size: 18),
-                  label: Text(widget.isEdit ? 'Simpan Perubahan' : 'Buat Rombel'),
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Icon(
+                          widget.isEdit ? Icons.save_outlined : Icons.add,
+                          size: 18,
+                        ),
+                  label: Text(
+                    widget.isEdit ? 'Simpan Perubahan' : 'Buat Rombel',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1460,42 +1977,44 @@ class _RombelFormModalState extends State<_RombelFormModal> {
   }
 
   Widget _buildLabel(String text, {bool required = false}) => Padding(
-        padding: const EdgeInsets.only(bottom: 2),
-        child: RichText(
-          text: TextSpan(
-            text: text,
-            style: const TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground,
-            ),
-            children: required
-                ? const [
-                    TextSpan(
-                      text: ' *',
-                      style: TextStyle(color: AppColors.destructive),
-                    )
-                  ]
-                : [],
-          ),
+    padding: const EdgeInsets.only(bottom: 2),
+    child: RichText(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.foreground,
         ),
-      );
+        children: required
+            ? const [
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.destructive),
+                ),
+              ]
+            : [],
+      ),
+    ),
+  );
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.gray400, fontSize: 13),
-        filled: true,
-        fillColor: AppColors.gray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.gray300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.gray300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(color: AppColors.gray400, fontSize: 13),
+    filled: true,
+    fillColor: AppColors.gray50,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.gray300),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.gray300),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  );
 }

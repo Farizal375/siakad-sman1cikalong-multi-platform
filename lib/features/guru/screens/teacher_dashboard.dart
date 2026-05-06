@@ -241,6 +241,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     final rawSchedule = _dashboardData['jadwalHariIni'] as List? ?? [];
     final totalKelas = _dashboardData['totalKelas'] ?? 0;
     final totalJadwal = _dashboardData['totalJadwal'] ?? 0;
+    final isNarrow = MediaQuery.sizeOf(context).width < 720;
 
     return Stack(
       children: [
@@ -265,39 +266,72 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               const SizedBox(height: 24),
 
               // ── KPI Cards ──
-              Row(
-                children: [
-                  _kpiCard(
-                    'Kelas Hari Ini',
-                    '${rawSchedule.length}',
-                    'Pertemuan',
-                    const Color(0xFF3B82F6),
-                    const Color(0xFF2563EB),
-                    Icons.calendar_today,
-                  ),
-                  _kpiCard(
-                    'Total Kelas Diampu',
-                    '$totalKelas',
-                    'Kelas',
-                    const Color(0xFF10B981),
-                    const Color(0xFF059669),
-                    Icons.people,
-                  ),
-                ],
-              ),
+              isNarrow
+                  ? Column(
+                      children: [
+                        _kpiCard(
+                          'Kelas Hari Ini',
+                          '${rawSchedule.length}',
+                          'Pertemuan',
+                          const Color(0xFF3B82F6),
+                          const Color(0xFF2563EB),
+                          Icons.calendar_today,
+                          expanded: false,
+                        ),
+                        const SizedBox(height: 12),
+                        _kpiCard(
+                          'Total Kelas Diampu',
+                          '$totalKelas',
+                          'Kelas',
+                          const Color(0xFF10B981),
+                          const Color(0xFF059669),
+                          Icons.people,
+                          expanded: false,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _kpiCard(
+                          'Kelas Hari Ini',
+                          '${rawSchedule.length}',
+                          'Pertemuan',
+                          const Color(0xFF3B82F6),
+                          const Color(0xFF2563EB),
+                          Icons.calendar_today,
+                        ),
+                        _kpiCard(
+                          'Total Kelas Diampu',
+                          '$totalKelas',
+                          'Kelas',
+                          const Color(0xFF10B981),
+                          const Color(0xFF059669),
+                          Icons.people,
+                        ),
+                      ],
+                    ),
               const SizedBox(height: 24),
 
               // ── Main Content ──
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // LEFT 70%
-                  Expanded(flex: 7, child: _buildScheduleSection(rawSchedule)),
-                  const SizedBox(width: 20),
-                  // RIGHT 30%
-                  Expanded(flex: 3, child: _buildJournalSection()),
-                ],
-              ),
+              isNarrow
+                  ? Column(
+                      children: [
+                        _buildScheduleSection(rawSchedule, isNarrow),
+                        const SizedBox(height: 16),
+                        _buildJournalSection(),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: _buildScheduleSection(rawSchedule, isNarrow),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(flex: 3, child: _buildJournalSection()),
+                      ],
+                    ),
             ],
           ),
         ),
@@ -313,82 +347,83 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     String sub,
     Color c1,
     Color c2,
-    IconData icon,
-  ) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.gray600,
-                    ),
+    IconData icon, {
+    bool expanded = true,
+  }) {
+    final card = Container(
+      margin: EdgeInsets.only(right: expanded ? 16 : 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.gray600,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.foreground,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        sub,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.gray500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [c1, c2],
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      sub,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [c1, c2],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+        ],
       ),
     );
+
+    return expanded ? Expanded(child: card) : card;
   }
 
-  Widget _buildScheduleSection(List rawSchedule) {
+  Widget _buildScheduleSection(List rawSchedule, bool isNarrow) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -405,49 +440,89 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Jadwal Mengajar Hari Ini',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.foreground,
+          isNarrow
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Jadwal Mengajar Hari Ini',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.foreground,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_dashboardData['hari'] ?? '-'}, ${_currentTime.day} ${_monthName(_currentTime.month)} ${_currentTime.year}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.gray600,
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_dashboardData['hari'] ?? '-'}, ${_currentTime.day} ${_monthName(_currentTime.month)} ${_currentTime.year}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.gray600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: AppColors.gray600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatTime(_currentTime),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.gray600,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: AppColors.gray600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(_currentTime),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Jadwal Mengajar Hari Ini',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_dashboardData['hari'] ?? '-'}, ${_currentTime.day} ${_monthName(_currentTime.month)} ${_currentTime.year}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: AppColors.gray600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(_currentTime),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
           const SizedBox(height: 20),
           if (rawSchedule.isEmpty)
             const Padding(
@@ -461,14 +536,14 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             )
           else
             ...rawSchedule.map(
-              (j) => _buildScheduleCard(j as Map<String, dynamic>),
+              (j) => _buildScheduleCard(j as Map<String, dynamic>, isNarrow),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildScheduleCard(Map<String, dynamic> j) {
+  Widget _buildScheduleCard(Map<String, dynamic> j, bool isNarrow) {
     final status = _scheduleStatus(j);
     final isActive = status == 'active';
     final isPast = status == 'past';
@@ -489,15 +564,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           width: 2,
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: isNarrow
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    // Time badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -518,8 +590,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         ),
                       ),
                     ),
-                    if (isActive) ...[
-                      const SizedBox(width: 8),
+                    const Spacer(),
+                    if (isActive)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -529,32 +601,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(99),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF22C55E),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'Berlangsung',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF15803D),
-                              ),
-                            ),
-                          ],
+                        child: const Text(
+                          'Berlangsung',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF15803D),
+                          ),
                         ),
-                      ),
-                    ],
-                    if (isPast) ...[
-                      const SizedBox(width: 8),
+                      )
+                    else if (isPast)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -573,7 +629,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           ),
                         ),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -586,101 +641,321 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
                   children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 16,
-                      color: isPast ? AppColors.gray300 : AppColors.gray500,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 16,
+                          color: isPast ? AppColors.gray300 : AppColors.gray500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          j['className'] ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isPast
+                                ? AppColors.gray400
+                                : AppColors.gray600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      j['className'] ?? '',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isPast ? AppColors.gray400 : AppColors.gray600,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: isPast ? AppColors.gray300 : AppColors.gray500,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      j['room'] ?? '-',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isPast ? AppColors.gray400 : AppColors.gray600,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: isPast ? AppColors.gray300 : AppColors.gray500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          j['room'] ?? '-',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isPast
+                                ? AppColors.gray400
+                                : AppColors.gray600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                if (isActive)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isOpeningSession
+                          ? null
+                          : () => _onBukaPertemuan(j),
+                      icon: _isOpeningSession
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.qr_code_2, size: 18),
+                      label: Text(
+                        _isOpeningSession ? 'Memproses...' : 'Buka Pertemuan',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isPast ? 'Selesai' : 'Belum Dimulai',
+                        style: const TextStyle(
+                          color: AppColors.gray400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // Time badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? AppColors.accent
+                                  : const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isActive
+                                    ? Colors.white
+                                    : AppColors.gray700,
+                              ),
+                            ),
+                          ),
+                          if (isActive) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCFCE7),
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF22C55E),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'Berlangsung',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF15803D),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (isPast) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: const Text(
+                                'Selesai',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        j['subject'] ?? '',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: isPast
+                              ? AppColors.gray400
+                              : AppColors.foreground,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 16,
+                            color: isPast
+                                ? AppColors.gray300
+                                : AppColors.gray500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            j['className'] ?? '',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isPast
+                                  ? AppColors.gray400
+                                  : AppColors.gray600,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: isPast
+                                ? AppColors.gray300
+                                : AppColors.gray500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            j['room'] ?? '-',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isPast
+                                  ? AppColors.gray400
+                                  : AppColors.gray600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Button logic
+                if (isActive)
+                  ElevatedButton.icon(
+                    onPressed: _isOpeningSession
+                        ? null
+                        : () => _onBukaPertemuan(j),
+                    icon: _isOpeningSession
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.qr_code_2, size: 18),
+                    label: Text(
+                      _isOpeningSession ? 'Memproses...' : 'Buka Pertemuan',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  )
+                else if (isPast)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Selesai',
+                      style: TextStyle(
+                        color: AppColors.gray400,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Belum Dimulai',
+                      style: TextStyle(
+                        color: AppColors.gray400,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
-          // Button logic
-          if (isActive)
-            ElevatedButton.icon(
-              onPressed: _isOpeningSession ? null : () => _onBukaPertemuan(j),
-              icon: _isOpeningSession
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.qr_code_2, size: 18),
-              label: Text(
-                _isOpeningSession ? 'Memproses...' : 'Buka Pertemuan',
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            )
-          else if (isPast)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Selesai',
-                style: TextStyle(
-                  color: AppColors.gray400,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Belum Dimulai',
-                style: TextStyle(
-                  color: AppColors.gray400,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -777,6 +1052,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
   // ── QR Modal (overlay langsung di Dashboard) ──
   Widget _buildQrModal() {
+    final width = MediaQuery.sizeOf(context).width;
     final mins = (_qrCountdown ~/ 60).toString().padLeft(2, '0');
     final secs = (_qrCountdown % 60).toString().padLeft(2, '0');
     final isUrgent = _qrCountdown <= 30;
@@ -790,7 +1066,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         color: Colors.black.withValues(alpha: 0.55),
         child: Center(
           child: Container(
-            width: 440,
+            width: width < 520 ? width * 0.92 : 440,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),

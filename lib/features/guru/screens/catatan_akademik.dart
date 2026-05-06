@@ -170,6 +170,7 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
 
     if (_students.isEmpty) {
       return const Center(
@@ -207,7 +208,7 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
                 style: const TextStyle(color: AppColors.gray600),
               ),
               const SizedBox(height: 24),
-              _buildControlCard(),
+              _buildControlCard(isNarrow),
               const SizedBox(height: 20),
               ..._students.asMap().entries.map(
                 (e) => _buildStudentCard(e.key, e.value),
@@ -230,7 +231,7 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
     );
   }
 
-  Widget _buildControlCard() {
+  Widget _buildControlCard(bool isNarrow) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -244,10 +245,8 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: isNarrow
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -266,38 +265,100 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
                     color: AppColors.gray600,
                   ),
                 ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveAll,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save, size: 18),
+                    label: Text(
+                      _saving ? 'Menyimpan...' : 'Simpan Semua Catatan',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Evaluasi Karakter Siswa $_semesterLabel',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$_filledCount dari ${_students.length} siswa telah diisi',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.gray600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _saving ? null : _saveAll,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save, size: 18),
+                  label: Text(
+                    _saving ? 'Menyimpan...' : 'Simpan Semua Catatan',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
-          ),
-          ElevatedButton.icon(
-            onPressed: _saving ? null : _saveAll,
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save, size: 18),
-            label: Text(_saving ? 'Menyimpan...' : 'Simpan Semua Catatan'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              textStyle: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildStudentCard(int idx, Map<String, dynamic> s) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
     final filled = (s['note'] as String).trim().isNotEmpty;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -316,66 +377,148 @@ class _CatatanAkademikState extends ConsumerState<CatatanAkademik> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, Color(0xFF3B82F6)],
-                  ),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: const Icon(Icons.person, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+          isNarrow
+              ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      s['name'] as String,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.foreground,
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [AppColors.primary, Color(0xFF3B82F6)],
+                            ),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s['name'] as String,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                              Text(
+                                'NISN: ${s['nisn']}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.gray600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: filled
+                              ? const Color(0xFFDCFCE7)
+                              : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          filled ? 'Terisi' : 'Belum Diisi',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: filled
+                                ? const Color(0xFF15803D)
+                                : AppColors.gray600,
+                          ),
+                        ),
                       ),
                     ),
-                    Text(
-                      'NISN: ${s['nisn']}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.gray600,
+                  ],
+                )
+              : Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.primary, Color(0xFF3B82F6)],
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s['name'] as String,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.foreground,
+                            ),
+                          ),
+                          Text(
+                            'NISN: ${s['nisn']}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.gray600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: filled
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        filled ? 'Terisi' : 'Belum Diisi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: filled
+                              ? const Color(0xFF15803D)
+                              : AppColors.gray600,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: filled
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  filled ? 'Terisi' : 'Belum Diisi',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: filled ? const Color(0xFF15803D) : AppColors.gray600,
-                  ),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 16),
           Stack(
             children: [

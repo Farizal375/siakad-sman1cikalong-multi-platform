@@ -53,6 +53,12 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   html: ^0.15.6
+  tray_manager: ^0.5.2
+  hotkey_manager: ^0.2.3
+  window_manager: ^0.5.1
+  desktop_multi_window: ^0.3.0
+  path_provider: ^2.1.5
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

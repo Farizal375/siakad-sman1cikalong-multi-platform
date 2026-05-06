@@ -94,6 +94,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   Widget build(BuildContext context) {
     final state = ref.watch(migrasiProvider);
     final notifier = ref.read(migrasiProvider.notifier);
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +132,9 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
             child: state.isDone
                 ? _buildSuccessScreen(notifier)
                 : Stepper(
-                    type: StepperType.horizontal,
+                    type: isNarrow
+                        ? StepperType.vertical
+                        : StepperType.horizontal,
                     currentStep: _currentStep,
                     onStepCancel: _prevStep,
                     onStepContinue: () {
@@ -177,7 +180,13 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                     controlsBuilder: (context, details) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 32),
-                        child: Row(
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          alignment: isNarrow
+                              ? WrapAlignment.start
+                              : WrapAlignment.end,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             if (_currentStep > 0)
                               OutlinedButton(
@@ -193,7 +202,6 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                                 ),
                                 child: const Text('Kembali'),
                               ),
-                            if (_currentStep > 0) const SizedBox(width: 16),
                             ElevatedButton(
                               onPressed: state.isProcessing
                                   ? null
@@ -272,6 +280,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
 
   // ── Step 1 UI ──
   Widget _buildStep1(MigrasiState state, MigrasiNotifier notifier) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
     final tas = state.tahunAjaranList;
     final rombels = state.tahunAjaranLamaId != null
         ? state.rombelList
@@ -307,81 +316,121 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
           style: TextStyle(color: AppColors.gray600),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        isNarrow
+            ? Column(
                 children: [
-                  const Text(
+                  _fieldGroup(
                     'Tahun Ajaran Asal',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: state.tahunAjaranLamaId,
-                    items: tas
-                        .map(
-                          (e) => DropdownMenuItem<String>(
-                            value: e['id'].toString(),
-                            child: Text(
-                              (e['code'] ?? e['kode'] ?? '').toString(),
+                    DropdownButtonFormField<String>(
+                      initialValue: state.tahunAjaranLamaId,
+                      items: tas
+                          .map(
+                            (e) => DropdownMenuItem<String>(
+                              value: e['id'].toString(),
+                              child: Text(
+                                (e['code'] ?? e['kode'] ?? '').toString(),
+                              ),
                             ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => notifier.setTahunAjaranLama(v!),
-                    decoration: _inputDeco('Pilih Tahun Ajaran Asal'),
+                          )
+                          .toList(),
+                      onChanged: (v) => notifier.setTahunAjaranLama(v!),
+                      decoration: _inputDeco('Pilih Tahun Ajaran Asal'),
+                    ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
+                  const SizedBox(height: 16),
+                  _fieldGroup(
                     'Rombel Asal',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: state.rombelAsalId,
-                    items: rombels.isEmpty && state.tahunAjaranLamaId != null
-                        ? [
-                            const DropdownMenuItem<String>(
-                              value: '',
-                              child: Text('Belum ada data rombel'),
-                            ),
-                          ]
-                        : rombels
-                              .map(
-                                (e) => DropdownMenuItem<String>(
-                                  value: e['id'].toString(),
-                                  child: Text(
-                                    '${e['masterKelasName']} (${e['siswaCount']} Siswa)',
+                    DropdownButtonFormField<String>(
+                      initialValue: state.rombelAsalId,
+                      items: rombels.isEmpty && state.tahunAjaranLamaId != null
+                          ? [
+                              const DropdownMenuItem<String>(
+                                value: '',
+                                child: Text('Belum ada data rombel'),
+                              ),
+                            ]
+                          : rombels
+                                .map(
+                                  (e) => DropdownMenuItem<String>(
+                                    value: e['id'].toString(),
+                                    child: Text(
+                                      '${e['masterKelasName']} (${e['siswaCount']} Siswa)',
+                                    ),
                                   ),
+                                )
+                                .toList(),
+                      onChanged:
+                          state.tahunAjaranLamaId == null || rombels.isEmpty
+                          ? null
+                          : (v) => notifier.setRombelAsal(v!),
+                      decoration: _inputDeco('Pilih Rombel Asal'),
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: _fieldGroup(
+                      'Tahun Ajaran Asal',
+                      DropdownButtonFormField<String>(
+                        initialValue: state.tahunAjaranLamaId,
+                        items: tas
+                            .map(
+                              (e) => DropdownMenuItem<String>(
+                                value: e['id'].toString(),
+                                child: Text(
+                                  (e['code'] ?? e['kode'] ?? '').toString(),
                                 ),
-                              )
-                              .toList(),
-                    onChanged:
-                        state.tahunAjaranLamaId == null || rombels.isEmpty
-                        ? null
-                        : (v) => notifier.setRombelAsal(v!),
-                    decoration: _inputDeco('Pilih Rombel Asal'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => notifier.setTahunAjaranLama(v!),
+                        decoration: _inputDeco('Pilih Tahun Ajaran Asal'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: _fieldGroup(
+                      'Rombel Asal',
+                      DropdownButtonFormField<String>(
+                        initialValue: state.rombelAsalId,
+                        items:
+                            rombels.isEmpty && state.tahunAjaranLamaId != null
+                            ? [
+                                const DropdownMenuItem<String>(
+                                  value: '',
+                                  child: Text('Belum ada data rombel'),
+                                ),
+                              ]
+                            : rombels
+                                  .map(
+                                    (e) => DropdownMenuItem<String>(
+                                      value: e['id'].toString(),
+                                      child: Text(
+                                        '${e['masterKelasName']} (${e['siswaCount']} Siswa)',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                        onChanged:
+                            state.tahunAjaranLamaId == null || rombels.isEmpty
+                            ? null
+                            : (v) => notifier.setRombelAsal(v!),
+                        decoration: _inputDeco('Pilih Rombel Asal'),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ],
     );
   }
 
   // ── Step 2 UI ──
   Widget _buildStep2(MigrasiState state) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
     if (state.siswaList.isEmpty) return const SizedBox();
 
     return Column(
@@ -402,34 +451,37 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
           style: TextStyle(color: AppColors.gray600),
         ),
         const SizedBox(height: 24),
-        Row(
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
           children: [
             _buildStatCard(
               'Total Siswa',
               '${state.siswaList.length}',
               AppColors.blue50,
               AppColors.blue600,
+              wide: !isNarrow,
             ),
-            const SizedBox(width: 16),
             _buildStatCard(
               'Siap Naik Kelas',
               '${state.siswaNaik.length}',
               AppColors.green50,
               AppColors.green600,
+              wide: !isNarrow,
             ),
-            const SizedBox(width: 16),
             _buildStatCard(
               'Tinggal Kelas',
               '${state.siswaTinggal.length}',
               AppColors.red50,
               AppColors.destructive,
+              wide: !isNarrow,
             ),
-            const SizedBox(width: 16),
             _buildStatCard(
               'Perlu Cek',
               '${state.siswaList.where((s) => s.status == StatusKenaikan.perluCek).length}',
               AppColors.amber50,
               AppColors.accent,
+              wide: !isNarrow,
             ),
           ],
         ),
@@ -499,6 +551,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
 
   // ── Step 3 UI ──
   Widget _buildStep3(MigrasiState state, MigrasiNotifier notifier) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 780;
     final tas = state.tahunAjaranList;
     final rombels = state.tahunAjaranBaruId != null
         ? state.rombelList
@@ -525,75 +578,114 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
           style: TextStyle(color: AppColors.gray600),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        isNarrow
+            ? Column(
                 children: [
-                  const Text(
+                  _fieldGroup(
                     'Tahun Ajaran Baru',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: state.tahunAjaranBaruId,
-                    items: tas
-                        .map(
-                          (e) => DropdownMenuItem<String>(
-                            value: e['id'].toString(),
-                            child: Text(
-                              (e['code'] ?? e['kode'] ?? '').toString(),
+                    DropdownButtonFormField<String>(
+                      initialValue: state.tahunAjaranBaruId,
+                      items: tas
+                          .map(
+                            (e) => DropdownMenuItem<String>(
+                              value: e['id'].toString(),
+                              child: Text(
+                                (e['code'] ?? e['kode'] ?? '').toString(),
+                              ),
                             ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => notifier.setTahunAjaranBaru(v!),
-                    decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
+                          )
+                          .toList(),
+                      onChanged: (v) => notifier.setTahunAjaranBaru(v!),
+                      decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
+                    ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
+                  const SizedBox(height: 16),
+                  _fieldGroup(
                     'Rombel Tujuan',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: state.rombelTujuanId,
-                    items: rombels.isEmpty && state.tahunAjaranBaruId != null
-                        ? [
-                            const DropdownMenuItem<String>(
-                              value: '',
-                              child: Text('Belum ada data rombel'),
-                            ),
-                          ]
-                        : rombels
-                              .map(
-                                (e) => DropdownMenuItem<String>(
-                                  value: e['id'].toString(),
-                                  child: Text(
-                                    '${e['masterKelasName']} (${e['siswaCount']} Siswa saat ini)',
+                    DropdownButtonFormField<String>(
+                      initialValue: state.rombelTujuanId,
+                      items: rombels.isEmpty && state.tahunAjaranBaruId != null
+                          ? [
+                              const DropdownMenuItem<String>(
+                                value: '',
+                                child: Text('Belum ada data rombel'),
+                              ),
+                            ]
+                          : rombels
+                                .map(
+                                  (e) => DropdownMenuItem<String>(
+                                    value: e['id'].toString(),
+                                    child: Text(
+                                      '${e['masterKelasName']} (${e['siswaCount']} Siswa saat ini)',
+                                    ),
                                   ),
+                                )
+                                .toList(),
+                      onChanged:
+                          state.tahunAjaranBaruId == null || rombels.isEmpty
+                          ? null
+                          : (v) => notifier.setRombelTujuan(v!),
+                      decoration: _inputDeco('Pilih Rombel Tujuan'),
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: _fieldGroup(
+                      'Tahun Ajaran Baru',
+                      DropdownButtonFormField<String>(
+                        initialValue: state.tahunAjaranBaruId,
+                        items: tas
+                            .map(
+                              (e) => DropdownMenuItem<String>(
+                                value: e['id'].toString(),
+                                child: Text(
+                                  (e['code'] ?? e['kode'] ?? '').toString(),
                                 ),
-                              )
-                              .toList(),
-                    onChanged:
-                        state.tahunAjaranBaruId == null || rombels.isEmpty
-                        ? null
-                        : (v) => notifier.setRombelTujuan(v!),
-                    decoration: _inputDeco('Pilih Rombel Tujuan'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => notifier.setTahunAjaranBaru(v!),
+                        decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: _fieldGroup(
+                      'Rombel Tujuan',
+                      DropdownButtonFormField<String>(
+                        initialValue: state.rombelTujuanId,
+                        items:
+                            rombels.isEmpty && state.tahunAjaranBaruId != null
+                            ? [
+                                const DropdownMenuItem<String>(
+                                  value: '',
+                                  child: Text('Belum ada data rombel'),
+                                ),
+                              ]
+                            : rombels
+                                  .map(
+                                    (e) => DropdownMenuItem<String>(
+                                      value: e['id'].toString(),
+                                      child: Text(
+                                        '${e['masterKelasName']} (${e['siswaCount']} Siswa saat ini)',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                        onChanged:
+                            state.tahunAjaranBaruId == null || rombels.isEmpty
+                            ? null
+                            : (v) => notifier.setRombelTujuan(v!),
+                        decoration: _inputDeco('Pilih Rombel Tujuan'),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -786,8 +878,15 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, Color bg, Color color) {
-    return Expanded(
+  Widget _buildStatCard(
+    String title,
+    String value,
+    Color bg,
+    Color color, {
+    bool wide = true,
+  }) {
+    return SizedBox(
+      width: wide ? null : 160,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -817,6 +916,17 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _fieldGroup(String label, Widget child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        child,
+      ],
     );
   }
 

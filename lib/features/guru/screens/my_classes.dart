@@ -29,7 +29,10 @@ class _MyClassesState extends State<MyClasses> {
 
   Future<void> _loadClasses() async {
     if (!mounted) return;
-    setState(() { _loading = true; _error = false; });
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
     try {
       final response = await ApiService.getGuruDashboard();
       final data = response['data'] ?? {};
@@ -51,7 +54,8 @@ class _MyClassesState extends State<MyClasses> {
               'id': j['id'] ?? key,
               'subject': j['subject'] ?? '-',
               'className': j['class'] ?? j['className'] ?? '-',
-              'scheduleSummary': '${j['startTime'] ?? ''} - ${j['endTime'] ?? ''}',
+              'scheduleSummary':
+                  '${j['startTime'] ?? ''} - ${j['endTime'] ?? ''}',
               'studentCount': 0,
               'rombelId': null,
               '_color': AppColors.primary,
@@ -115,7 +119,11 @@ class _MyClassesState extends State<MyClasses> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = true; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = true;
+        });
     }
   }
 
@@ -128,15 +136,25 @@ class _MyClassesState extends State<MyClasses> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_outlined, size: 56, color: AppColors.gray400),
+            const Icon(
+              Icons.wifi_off_outlined,
+              size: 56,
+              color: AppColors.gray400,
+            ),
             const SizedBox(height: 12),
-            const Text('Gagal memuat data kelas', style: TextStyle(color: AppColors.gray500, fontSize: 16)),
+            const Text(
+              'Gagal memuat data kelas',
+              style: TextStyle(color: AppColors.gray500, fontSize: 16),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadClasses,
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -150,7 +168,11 @@ class _MyClassesState extends State<MyClasses> {
           // Header
           const Text(
             'Daftar Kelas Anda',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary),
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -165,9 +187,16 @@ class _MyClassesState extends State<MyClasses> {
               alignment: Alignment.center,
               child: const Column(
                 children: [
-                  Icon(Icons.class_outlined, size: 64, color: AppColors.gray400),
+                  Icon(
+                    Icons.class_outlined,
+                    size: 64,
+                    color: AppColors.gray400,
+                  ),
                   SizedBox(height: 16),
-                  Text('Belum ada kelas yang ditugaskan', style: TextStyle(color: AppColors.gray500, fontSize: 16)),
+                  Text(
+                    'Belum ada kelas yang ditugaskan',
+                    style: TextStyle(color: AppColors.gray500, fontSize: 16),
+                  ),
                 ],
               ),
             )
@@ -252,7 +281,9 @@ class _ClassCardState extends State<_ClassCard> {
                 height: 6,
                 decoration: BoxDecoration(
                   color: widget.accentColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                 ),
               ),
               Padding(
@@ -262,21 +293,39 @@ class _ClassCardState extends State<_ClassCard> {
                   children: [
                     Text(
                       widget.subject,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: widget.accentColor),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: widget.accentColor,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(widget.className, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray600)),
+                    Text(
+                      widget.className,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.gray600,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.accent),
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 14,
+                          color: AppColors.accent,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             widget.scheduleSummary,
-                            style: const TextStyle(fontSize: 12, color: AppColors.gray600),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.gray600,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -286,9 +335,19 @@ class _ClassCardState extends State<_ClassCard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.people_outline, size: 14, color: AppColors.gray500),
+                        Icon(
+                          Icons.people_outline,
+                          size: 14,
+                          color: AppColors.gray500,
+                        ),
                         const SizedBox(width: 6),
-                        Text('${widget.studentCount} Siswa', style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+                        Text(
+                          '${widget.studentCount} Siswa',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -302,13 +361,17 @@ class _ClassCardState extends State<_ClassCard> {
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
-                            color: _hovered ? AppColors.accent : widget.accentColor,
+                            color: _hovered
+                                ? AppColors.accent
+                                : widget.accentColor,
                           ),
                         ),
                         Icon(
                           Icons.arrow_forward,
                           size: 16,
-                          color: _hovered ? AppColors.accent : widget.accentColor,
+                          color: _hovered
+                              ? AppColors.accent
+                              : widget.accentColor,
                         ),
                       ],
                     ),

@@ -41,21 +41,30 @@ class _MasterMapelState extends State<MasterMapel> {
       final items = response['data'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _subjectsData = items.map<Map<String, String>>((item) => ({
-            'id': (item['id'] ?? '').toString(),
-            'code': (item['code'] ?? '').toString(),
-            'name': (item['name'] ?? '').toString(),
-            'category': (item['category'] ?? 'Wajib').toString(),
-            'kkm': (item['kkm'] ?? '75').toString(),
-            'description': (item['description'] ?? '').toString(),
-          })).toList();
+          _subjectsData = items
+              .map<Map<String, String>>(
+                (item) => ({
+                  'id': (item['id'] ?? '').toString(),
+                  'code': (item['code'] ?? '').toString(),
+                  'name': (item['name'] ?? '').toString(),
+                  'category': (item['category'] ?? 'Wajib').toString(),
+                  'kkm': (item['kkm'] ?? '75').toString(),
+                  'description': (item['description'] ?? '').toString(),
+                }),
+              )
+              .toList();
           _loading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Load Mapel error: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Load Mapel error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -64,10 +73,12 @@ class _MasterMapelState extends State<MasterMapel> {
     if (_searchQuery.isEmpty) return _subjectsData;
     final q = _searchQuery.toLowerCase();
     return _subjectsData
-        .where((s) =>
-            s['code']!.toLowerCase().contains(q) ||
-            s['name']!.toLowerCase().contains(q) ||
-            s['category']!.toLowerCase().contains(q))
+        .where(
+          (s) =>
+              s['code']!.toLowerCase().contains(q) ||
+              s['name']!.toLowerCase().contains(q) ||
+              s['category']!.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -103,7 +114,8 @@ class _MasterMapelState extends State<MasterMapel> {
     DeleteConfirmationModal.show(
       context,
       title: 'Konfirmasi Penghapusan',
-      message: 'Apakah Anda yakin ingin menghapus mata pelajaran ini? Tindakan ini tidak dapat dibatalkan.',
+      message:
+          'Apakah Anda yakin ingin menghapus mata pelajaran ini? Tindakan ini tidak dapat dibatalkan.',
       itemName: name,
       onConfirm: () async {
         try {
@@ -120,6 +132,7 @@ class _MasterMapelState extends State<MasterMapel> {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 920;
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     final filtered = _filteredData;
@@ -128,7 +141,7 @@ class _MasterMapelState extends State<MasterMapel> {
     final end = (start + _itemsPerPage).clamp(0, total);
     final pageData = filtered.sublist(start, end);
 
-    return Stack(
+    final content = Stack(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +149,11 @@ class _MasterMapelState extends State<MasterMapel> {
             // ── Page Title ──
             const Text(
               'Master Mata Pelajaran',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: AppColors.primary),
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -158,12 +175,34 @@ class _MasterMapelState extends State<MasterMapel> {
                       }),
                       decoration: InputDecoration(
                         hintText: 'Cari mapel...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.gray400),
-                        filled: true, fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.gray400,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.gray300,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.gray300,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -176,8 +215,13 @@ class _MasterMapelState extends State<MasterMapel> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -191,7 +235,13 @@ class _MasterMapelState extends State<MasterMapel> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Color(0x15000000), blurRadius: 10, offset: Offset(0, 4))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x15000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Column(
@@ -199,15 +249,78 @@ class _MasterMapelState extends State<MasterMapel> {
                     // Header
                     Container(
                       color: AppColors.gray50,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                       child: const Row(
                         children: [
-                          Expanded(flex: 2, child: Text('Kode Mapel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(flex: 3, child: Text('Nama Mapel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(flex: 2, child: Text('Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(flex: 1, child: Text('KKM', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          Expanded(flex: 3, child: Text('Deskripsi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
-                          SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground))),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Kode Mapel',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'Nama Mapel',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Kategori',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Text(
+                              'KKM',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'Deskripsi',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 80,
+                            child: Text(
+                              'Aksi',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -215,51 +328,114 @@ class _MasterMapelState extends State<MasterMapel> {
                     Expanded(
                       child: ListView.separated(
                         itemCount: pageData.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.gray200),
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: AppColors.gray200),
                         itemBuilder: (_, i) {
                           final s = pageData[i];
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
                             child: Row(
                               children: [
-                                Expanded(flex: 2, child: Text(s['code']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'monospace', color: AppColors.foreground))),
-                                Expanded(flex: 3, child: Text(s['name']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    s['code']!,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'monospace',
+                                      color: AppColors.foreground,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    s['name']!,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.foreground,
+                                    ),
+                                  ),
+                                ),
                                 Expanded(
                                   flex: 2,
                                   child: Align(
                                     alignment: Alignment.centerLeft,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: _categoryColor(s['category']!),
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: Text(
                                         s['category']!,
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
-                                          color: _categoryTextColor(s['category']!),
+                                          color: _categoryTextColor(
+                                            s['category']!,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                Expanded(flex: 1, child: Text(s['kkm']!, style: const TextStyle(fontSize: 14, color: AppColors.foreground))),
-                                Expanded(flex: 3, child: Text(s['description'] ?? '-', style: const TextStyle(fontSize: 14, color: AppColors.gray600), overflow: TextOverflow.ellipsis, maxLines: 1)),
+                                Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    s['kkm']!,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.foreground,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    s['description'] ?? '-',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.gray600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
                                 SizedBox(
                                   width: 80,
                                   child: Row(
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.gray600),
-                                        onPressed: () => _showSubjectModal(isEdit: true, data: s),
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () => _showSubjectModal(
+                                          isEdit: true,
+                                          data: s,
+                                        ),
 
                                         tooltip: 'Edit',
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.gray600),
-                                        onPressed: () => _handleDelete(s['id']!, s['name']!),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppColors.gray600,
+                                        ),
+                                        onPressed: () =>
+                                            _handleDelete(s['id']!, s['name']!),
 
                                         tooltip: 'Hapus',
                                       ),
@@ -277,7 +453,10 @@ class _MasterMapelState extends State<MasterMapel> {
                       totalItems: total,
                       itemsPerPage: _itemsPerPage,
                       onPageChange: (p) => setState(() => _currentPage = p),
-                      onItemsPerPageChange: (n) => setState(() { _itemsPerPage = n; _currentPage = 1; }),
+                      onItemsPerPageChange: (n) => setState(() {
+                        _itemsPerPage = n;
+                        _currentPage = 1;
+                      }),
                       itemName: 'mata pelajaran',
                     ),
                   ],
@@ -289,10 +468,29 @@ class _MasterMapelState extends State<MasterMapel> {
 
         if (_showSuccessToast)
           Positioned(
-            top: 16, right: 16,
-            child: SuccessToast(isVisible: true, message: _successMessage, onClose: () => setState(() => _showSuccessToast = false)),
+            top: 16,
+            right: 16,
+            child: SuccessToast(
+              isVisible: true,
+              message: _successMessage,
+              onClose: () => setState(() => _showSuccessToast = false),
+            ),
           ),
       ],
+    );
+
+    if (!isNarrow) return content;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: 1100,
+            height: constraints.maxHeight,
+            child: content,
+          ),
+        );
+      },
     );
   }
 }
@@ -323,7 +521,9 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
     _codeCtrl = TextEditingController(text: widget.initialData?['code'] ?? '');
     _nameCtrl = TextEditingController(text: widget.initialData?['name'] ?? '');
     _kkmCtrl = TextEditingController(text: widget.initialData?['kkm'] ?? '75');
-    _descCtrl = TextEditingController(text: widget.initialData?['description'] ?? '');
+    _descCtrl = TextEditingController(
+      text: widget.initialData?['description'] ?? '',
+    );
     _selectedCategory = widget.initialData?['category'];
   }
 
@@ -347,7 +547,10 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
     };
     try {
       if (widget.isEdit && widget.initialData != null) {
-        await ApiService.updateMataPelajaran(widget.initialData!['id']!, payload);
+        await ApiService.updateMataPelajaran(
+          widget.initialData!['id']!,
+          payload,
+        );
       } else {
         await ApiService.createMataPelajaran(payload);
       }
@@ -359,7 +562,9 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
         if (e is DioException && e.response?.data != null) {
           msg = e.response!.data['message'] ?? msg;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -377,10 +582,19 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                widget.isEdit ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+                widget.isEdit
+                    ? 'Edit Mata Pelajaran'
+                    : 'Tambah Mata Pelajaran Baru',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
               ),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -411,8 +625,14 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
             items: const [
               DropdownMenuItem(value: 'Wajib', child: Text('Wajib')),
               DropdownMenuItem(value: 'Peminatan', child: Text('Peminatan')),
-              DropdownMenuItem(value: 'Muatan Lokal', child: Text('Muatan Lokal')),
-              DropdownMenuItem(value: 'Ekstrakurikuler', child: Text('Ekstrakurikuler')),
+              DropdownMenuItem(
+                value: 'Muatan Lokal',
+                child: Text('Muatan Lokal'),
+              ),
+              DropdownMenuItem(
+                value: 'Ekstrakurikuler',
+                child: Text('Ekstrakurikuler'),
+              ),
             ],
             onChanged: (v) => setState(() => _selectedCategory = v),
             decoration: _inputDeco('Pilih kategori'),
@@ -448,8 +668,13 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.gray600,
                   side: const BorderSide(color: AppColors.gray300),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Batal'),
               ),
@@ -459,12 +684,24 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   textStyle: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 child: _loading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : Text(widget.isEdit ? 'Simpan Perubahan' : 'Tambah Mapel'),
               ),
             ],
@@ -474,17 +711,34 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
     );
   }
 
-  Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground));
+  Widget _buildLabel(String text) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      color: AppColors.foreground,
+    ),
+  );
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.gray400),
-        filled: true, fillColor: AppColors.gray50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gray300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(color: AppColors.gray400),
+    filled: true,
+    fillColor: AppColors.gray50,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.gray300),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.gray300),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  );
 }
 
 // ═══════════════════════════════════════════════
@@ -492,23 +746,32 @@ class _SubjectFormModalState extends State<_SubjectFormModal> {
 // ═══════════════════════════════════════════════
 Color _categoryColor(String category) {
   switch (category) {
-    case 'Wajib': return const Color(0xFFDBEAFE);
-    case 'Peminatan': return const Color(0xFFF3E8FF);
-    case 'Muatan Lokal': return const Color(0xFFDCFCE7);
-    case 'Ekstrakurikuler': return const Color(0xFFFFEDD5);
-    default: return AppColors.gray100;
+    case 'Wajib':
+      return const Color(0xFFDBEAFE);
+    case 'Peminatan':
+      return const Color(0xFFF3E8FF);
+    case 'Muatan Lokal':
+      return const Color(0xFFDCFCE7);
+    case 'Ekstrakurikuler':
+      return const Color(0xFFFFEDD5);
+    default:
+      return AppColors.gray100;
   }
 }
 
 Color _categoryTextColor(String category) {
   switch (category) {
-    case 'Wajib': return const Color(0xFF1D4ED8);
-    case 'Peminatan': return const Color(0xFF7C3AED);
-    case 'Muatan Lokal': return const Color(0xFF16A34A);
-    case 'Ekstrakurikuler': return const Color(0xFFEA580C);
-    default: return AppColors.gray700;
+    case 'Wajib':
+      return const Color(0xFF1D4ED8);
+    case 'Peminatan':
+      return const Color(0xFF7C3AED);
+    case 'Muatan Lokal':
+      return const Color(0xFF16A34A);
+    case 'Ekstrakurikuler':
+      return const Color(0xFFEA580C);
+    default:
+      return AppColors.gray700;
   }
 }
 
 // Static data removed — loaded from API via _loadData()
-

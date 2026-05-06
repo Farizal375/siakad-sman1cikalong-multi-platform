@@ -146,172 +146,212 @@ class _UserManagementState extends State<UserManagement> {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 720;
+
     return Stack(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Top Action Bar ──
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Manajemen Pengguna',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 760;
+                final title = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Manajemen Pengguna',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Kelola akses siswa, guru mata pelajaran, wali kelas, dan kurikulum',
+                      style: TextStyle(color: AppColors.gray600),
+                    ),
+                  ],
+                );
+                final actions = Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _importing ? null : _handleImport,
+                        icon: const Icon(Icons.upload_file, size: 20),
+                        label: Text(
+                          _importing ? 'Mengimport...' : 'Import CSV/Excel',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Kelola akses siswa, guru mata pelajaran, wali kelas, dan kurikulum',
-                        style: TextStyle(color: AppColors.gray600),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Import CSV
-                SizedBox(
-                  height: 48,
-                  child: OutlinedButton.icon(
-                    onPressed: _importing ? null : _handleImport,
-                    icon: const Icon(Icons.upload_file, size: 20),
-                    label: Text(
-                      _importing ? 'Mengimport...' : 'Import CSV/Excel',
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  height: 48,
-                  child: PopupMenuButton<String>(
-                    enabled: !_exporting,
-                    onSelected: _handleExport,
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'csv', child: Text('Export CSV')),
-                      PopupMenuItem(value: 'xlsx', child: Text('Export Excel')),
-                    ],
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: _exporting
-                            ? AppColors.primaryHover
-                            : AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.download_outlined,
-                            size: 20,
-                            color: Colors.white,
+                    SizedBox(
+                      height: 48,
+                      child: PopupMenuButton<String>(
+                        enabled: !_exporting,
+                        onSelected: _handleExport,
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'csv',
+                            child: Text('Export CSV'),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _exporting ? 'Mengexport...' : 'Export',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 18,
-                            color: Colors.white,
+                          PopupMenuItem(
+                            value: 'xlsx',
+                            child: Text('Export Excel'),
                           ),
                         ],
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: _exporting
+                                ? AppColors.primaryHover
+                                : AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.download_outlined,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _exporting ? 'Mengexport...' : 'Export',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Add User
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      UserFormModal.show(
-                        context,
-                        onSave: (data) {
-                          setState(() {
-                            _successMessage = 'Pengguna berhasil ditambahkan.';
-                            _showSuccessToast = true;
-                          });
-                          _loadUsers();
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          UserFormModal.show(
+                            context,
+                            onSave: (data) {
+                              setState(() {
+                                _successMessage =
+                                    'Pengguna berhasil ditambahkan.';
+                                _showSuccessToast = true;
+                              });
+                              _loadUsers();
+                            },
+                          );
                         },
-                      );
-                    },
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text('Tambah Pengguna'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: const Text('Tambah Pengguna'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+
+                if (narrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [title, const SizedBox(height: 16), actions],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: title),
+                    const SizedBox(width: 16),
+                    actions,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
 
             // ── Search Bar ──
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 448),
-              child: TextField(
-                onChanged: (v) {
-                  _searchQuery = v;
-                  _currentPage = 1;
-                  _loadUsers();
-                },
-                decoration: InputDecoration(
-                  hintText: 'Cari pengguna berdasarkan nama, ID, atau NIP...',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.gray400,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.gray300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.gray300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 2,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final searchField = TextField(
+                  onChanged: (v) {
+                    _searchQuery = v;
+                    _currentPage = 1;
+                    _loadUsers();
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Cari pengguna berdasarkan nama, ID, atau NIP...',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.gray400,
                     ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+                );
+
+                if (constraints.maxWidth < 420) {
+                  return searchField;
+                }
+
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 448),
+                  child: searchField,
+                );
+              },
             ),
             const SizedBox(height: 24),
 
@@ -333,38 +373,40 @@ class _UserManagementState extends State<UserManagement> {
                 child: Column(
                   children: [
                     // Table Header
-                    Container(
-                      color: AppColors.gray50,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
+                    if (!isNarrow)
+                      Container(
+                        color: AppColors.gray50,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: const Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text('Nama', style: _headerStyle),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('ID / NIP', style: _headerStyle),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('Peran', style: _headerStyle),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text('Status', style: _headerStyle),
+                            ),
+                            SizedBox(
+                              width: 120,
+                              child: Text('Aksi', style: _headerStyle),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text('Nama', style: _headerStyle),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text('ID / NIP', style: _headerStyle),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text('Peran', style: _headerStyle),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Text('Status', style: _headerStyle),
-                          ),
-                          SizedBox(
-                            width: 120,
-                            child: Text('Aksi', style: _headerStyle),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1, color: AppColors.gray200),
+                    if (!isNarrow)
+                      const Divider(height: 1, color: AppColors.gray200),
 
                     // Table Body
                     Expanded(
@@ -380,6 +422,7 @@ class _UserManagementState extends State<UserManagement> {
                                 final user = _paginatedData[index];
                                 return _UserRow(
                                   user: user,
+                                  compact: isNarrow,
                                   onEdit: () {
                                     UserFormModal.show(
                                       context,
@@ -486,12 +529,14 @@ class _UserManagementState extends State<UserManagement> {
 // ── User Row Widget ──
 class _UserRow extends StatelessWidget {
   final Map<String, dynamic> user;
+  final bool compact;
   final VoidCallback onEdit;
   final VoidCallback onResetPassword;
   final VoidCallback onDelete;
 
   const _UserRow({
     required this.user,
+    required this.compact,
     required this.onEdit,
     required this.onResetPassword,
     required this.onDelete,
@@ -506,6 +551,121 @@ class _UserRow extends StatelessWidget {
         .join()
         .toUpperCase();
     final isActive = user['status'] == 'Aktif';
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.gray200),
+            borderRadius: BorderRadius.circular(14),
+            color: Colors.white,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF2563EB)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user['name'],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          user['email'],
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _MiniInfo(label: 'ID', value: user['idNumber']),
+                  _RoleChip(
+                    role: user['role'],
+                    textColor: _getRoleBadgeTextColor(user['role']),
+                    bgColor: _getRoleBadgeColor(user['role']),
+                  ),
+                  _StatusChip(label: user['status'], isActive: isActive),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: AppColors.gray600,
+                    ),
+                    tooltip: 'Edit',
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: onResetPassword,
+                    icon: const Icon(
+                      Icons.vpn_key_outlined,
+                      size: 18,
+                      color: AppColors.gray600,
+                    ),
+                    tooltip: 'Reset Password',
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: AppColors.gray600,
+                    ),
+                    tooltip: 'Hapus',
+                    splashRadius: 20,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return InkWell(
       onTap: () {},
@@ -699,6 +859,82 @@ class _UserRow extends StatelessWidget {
       default:
         return AppColors.gray700;
     }
+  }
+}
+
+class _MiniInfo extends StatelessWidget {
+  final String label;
+  final String value;
+  const _MiniInfo({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(fontSize: 12, color: AppColors.foreground),
+      ),
+    );
+  }
+}
+
+class _RoleChip extends StatelessWidget {
+  final String role;
+  final Color bgColor;
+  final Color textColor;
+  const _RoleChip({
+    required this.role,
+    required this.bgColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        role,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  const _StatusChip({required this.label, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive ? AppColors.green50 : AppColors.gray100,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: isActive ? AppColors.green700 : AppColors.gray700,
+        ),
+      ),
+    );
   }
 }
 

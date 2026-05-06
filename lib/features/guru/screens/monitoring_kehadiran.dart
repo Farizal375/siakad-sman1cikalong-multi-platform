@@ -237,6 +237,7 @@ class _MonitoringKehadiranState extends ConsumerState<MonitoringKehadiran> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final isNarrow = MediaQuery.sizeOf(context).width < 860;
     final className = _homeroom?.kelas ?? 'Kelas Wali';
 
     final filtered = _students.where((s) {
@@ -250,7 +251,7 @@ class _MonitoringKehadiranState extends ConsumerState<MonitoringKehadiran> {
         ? _students[_selectedStudentIdx]
         : null;
 
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -762,6 +763,12 @@ class _MonitoringKehadiranState extends ConsumerState<MonitoringKehadiran> {
             ),
         ],
       ),
+    );
+
+    if (!isNarrow) return content;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(width: 1260, child: content),
     );
   }
 

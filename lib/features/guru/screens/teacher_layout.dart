@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/network/api_service.dart';
+import '../../../core/providers/active_semester_provider.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 import '../../../shared_widgets/responsive_helper.dart';
 import '../providers/homeroom_provider.dart';
@@ -26,28 +26,11 @@ class TeacherLayout extends ConsumerStatefulWidget {
 class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
   final SidebarController _sidebarController = SidebarController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
-  String _activeSemesterLabel = 'Memuat...';
 
   @override
   void initState() {
     super.initState();
     _sidebarController.addListener(() => setState(() {}));
-    _loadActiveSemester();
-  }
-
-  Future<void> _loadActiveSemester() async {
-    try {
-      final res = await ApiService.getActiveSemester();
-      final data = res['data'];
-      if (data != null) {
-        final label = data['label'] as String? ?? '';
-        if (mounted) setState(() => _activeSemesterLabel = 'Aktif: $label');
-      } else {
-        if (mounted) setState(() => _activeSemesterLabel = 'Tidak ada semester aktif');
-      }
-    } catch (_) {
-      if (mounted) setState(() => _activeSemesterLabel = 'Aktif: -');
-    }
   }
 
   @override
@@ -66,7 +49,9 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
     if (path == '/guru' || path == '/guru/dashboard') return 'Dashboard';
     if (path == '/guru/kelas') return 'Daftar Kelas';
     if (path.startsWith('/guru/kelas/')) return 'Detail Kelas';
-    if (path == '/guru/kelas-wali' || path == '/guru/homeroom') return 'Dashboard $waliKelas';
+    if (path == '/guru/kelas-wali' || path == '/guru/homeroom') {
+      return 'Dashboard $waliKelas';
+    }
     if (path == '/guru/monitoring-kehadiran') return 'Monitoring Kehadiran';
     if (path == '/guru/catatan-akademik') return 'Catatan Akademik';
     if (path == '/guru/penentuan-promosi') return 'Penentuan Promosi';
@@ -77,8 +62,10 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
   }
 
   String _getSectionLabel(String path) {
-    if (path.contains('/kelas-wali') || path.contains('/monitoring-kehadiran') ||
-        path.contains('/catatan-akademik') || path.contains('/cetak-rapor') ||
+    if (path.contains('/kelas-wali') ||
+        path.contains('/monitoring-kehadiran') ||
+        path.contains('/catatan-akademik') ||
+        path.contains('/cetak-rapor') ||
         path.contains('/rapor-detail')) {
       return 'Wali Kelas';
     }
@@ -94,20 +81,55 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
     final homeroom = homeroomState.valueOrNull;
     final hasHomeroom = homeroom?.hasClass == true;
     final userName = authUser?.name ?? 'Guru';
-    final userInitials = userName.trim().split(' ')
-        .where((w) => w.isNotEmpty).take(2)
-        .map((w) => w[0].toUpperCase()).join();
+    final userInitials = userName
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
     final mobile = context.isMobile;
+    final activeSemesterLabel =
+        ref.watch(activeSemesterLabelProvider).valueOrNull ?? 'Memuat...';
 
     final menuItems = <SidebarMenuItem>[
-      SidebarMenuItem(icon: Icons.dashboard, label: 'Dashboard', route: '/guru/dashboard'),
-      SidebarMenuItem(icon: Icons.menu_book, label: 'Daftar Kelas', route: '/guru/kelas'),
+      SidebarMenuItem(
+        icon: Icons.dashboard,
+        label: 'Dashboard',
+        route: '/guru/dashboard',
+      ),
+      SidebarMenuItem(
+        icon: Icons.menu_book,
+        label: 'Daftar Kelas',
+        route: '/guru/kelas',
+      ),
       if (hasHomeroom) ...[
-        SidebarMenuItem(icon: Icons.assignment, label: 'Dashboard Kelas', route: '/guru/kelas-wali', sectionLabel: 'WALI KELAS'),
-        SidebarMenuItem(icon: Icons.how_to_reg, label: 'Monitoring Kehadiran', route: '/guru/monitoring-kehadiran'),
-        SidebarMenuItem(icon: Icons.description, label: 'Catatan Akademik', route: '/guru/catatan-akademik'),
-        SidebarMenuItem(icon: Icons.verified_user, label: 'Penentuan Promosi', route: '/guru/penentuan-promosi'),
-        SidebarMenuItem(icon: Icons.print, label: 'Cetak e-Rapor', route: '/guru/cetak-rapor'),
+        SidebarMenuItem(
+          icon: Icons.assignment,
+          label: 'Dashboard Kelas',
+          route: '/guru/kelas-wali',
+          sectionLabel: 'WALI KELAS',
+        ),
+        SidebarMenuItem(
+          icon: Icons.how_to_reg,
+          label: 'Monitoring Kehadiran',
+          route: '/guru/monitoring-kehadiran',
+        ),
+        SidebarMenuItem(
+          icon: Icons.description,
+          label: 'Catatan Akademik',
+          route: '/guru/catatan-akademik',
+        ),
+        SidebarMenuItem(
+          icon: Icons.verified_user,
+          label: 'Penentuan Promosi',
+          route: '/guru/penentuan-promosi',
+        ),
+        SidebarMenuItem(
+          icon: Icons.print,
+          label: 'Cetak e-Rapor',
+          route: '/guru/cetak-rapor',
+        ),
       ],
     ];
 
@@ -122,7 +144,11 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
       controller: _sidebarController,
       menuItems: menuItems,
       bottomMenuItems: [
-        SidebarMenuItem(icon: Icons.settings, label: 'Pengaturan', route: '/guru/profile'),
+        SidebarMenuItem(
+          icon: Icons.settings,
+          label: 'Pengaturan',
+          route: '/guru/profile',
+        ),
         SidebarMenuItem(icon: Icons.logout, label: 'Keluar', onTap: _logout),
       ],
     );
@@ -138,9 +164,11 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
           onProfileTap: () => context.go('/guru/profile'),
         ),
         drawer: Drawer(width: 280, child: SafeArea(child: sidebar)),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: widget.child,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: widget.child,
+          ),
         ),
       );
     }
@@ -154,7 +182,14 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
           Expanded(
             child: Column(
               children: [
-                _buildHeader(context, path, userName, userInitials, homeroom),
+                _buildHeader(
+                  context,
+                  path,
+                  userName,
+                  userInitials,
+                  homeroom,
+                  activeSemesterLabel,
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -169,14 +204,27 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String path, String userName, String userInitials, HomeroomContext? homeroom) {
+  Widget _buildHeader(
+    BuildContext context,
+    String path,
+    String userName,
+    String userInitials,
+    HomeroomContext? homeroom,
+    String activeSemesterLabel,
+  ) {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-        boxShadow: [BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -189,19 +237,32 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
             ),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.gray50,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
           const SizedBox(width: 16),
-          Text(_getSectionLabel(path), style: const TextStyle(color: AppColors.gray500, fontSize: 14)),
+          Text(
+            _getSectionLabel(path),
+            style: const TextStyle(color: AppColors.gray500, fontSize: 14),
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(Icons.chevron_right, size: 16, color: AppColors.gray400),
+            child: Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: AppColors.gray400,
+            ),
           ),
           Flexible(
             child: Text(
               _getBreadcrumb(path, homeroom),
-              style: const TextStyle(color: AppColors.foreground, fontWeight: FontWeight.w600, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.foreground,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -209,10 +270,19 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF2563EB)]),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF2563EB)],
+              ),
               borderRadius: BorderRadius.circular(99),
             ),
-            child: Text(_activeSemesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(
+              activeSemesterLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           GestureDetector(
@@ -223,10 +293,22 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.foreground)),
                     Text(
-                      homeroom?.hasClass == true ? 'Guru / Wali Kelas' : 'Guru Mata Pelajaran',
-                      style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+                      userName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    Text(
+                      homeroom?.hasClass == true
+                          ? 'Guru / Wali Kelas'
+                          : 'Guru Mata Pelajaran',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
                     ),
                   ],
                 ),
@@ -269,7 +351,14 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onMenuTap,
         icon: const Icon(Icons.menu, color: AppColors.foreground),
       ),
-      title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: AppColors.foreground,
+        ),
+      ),
       actions: [
         GestureDetector(
           onTap: onProfileTap,

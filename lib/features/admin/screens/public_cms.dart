@@ -47,6 +47,8 @@ class _PublicCMSState extends State<PublicCMS>
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 720;
+
     return Stack(
       children: [
         Column(
@@ -56,7 +58,7 @@ class _PublicCMSState extends State<PublicCMS>
             const Text(
               'Manajemen Konten Publik',
               style: TextStyle(
-                fontSize: 30,
+                fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primary,
               ),
@@ -78,6 +80,8 @@ class _PublicCMSState extends State<PublicCMS>
               padding: const EdgeInsets.all(4),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: isNarrow,
+                tabAlignment: isNarrow ? TabAlignment.start : null,
                 indicator: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(8),
@@ -97,75 +101,44 @@ class _PublicCMSState extends State<PublicCMS>
             const SizedBox(height: 24),
 
             // ── Action Bar ──
-            Row(
-              children: [
-                Expanded(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 448),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Cari konten...',
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: AppColors.gray400,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.gray300,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.gray300,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final search = TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Cari konten...',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.gray400,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.gray300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
                       ),
                     ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    final index = _tabController.index;
-                    if (index == 0) {
-                      NewsFormModal.show(
-                        context,
-                        onSaved: () => _handleSaved('Berita berhasil disimpan'),
-                      );
-                    } else if (index == 1) {
-                      AchievementFormModal.show(
-                        context,
-                        onSaved: () =>
-                            _handleSaved('Prestasi berhasil disimpan'),
-                      );
-                    } else if (index == 2) {
-                      VideoFormModal.show(
-                        context,
-                        onSaved: () => _handleSaved('Video berhasil disimpan'),
-                      );
-                    }
-                  },
+                );
+                final button = ElevatedButton.icon(
+                  onPressed: _openCreateModal,
                   icon: const Icon(Icons.add, size: 20),
                   label: const Text('Tambah Konten Baru'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
+                      horizontal: 20,
                       vertical: 14,
                     ),
                     shape: RoundedRectangleBorder(
@@ -173,8 +146,28 @@ class _PublicCMSState extends State<PublicCMS>
                     ),
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                ),
-              ],
+                );
+
+                if (constraints.maxWidth < 620) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [search, const SizedBox(height: 12), button],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 448),
+                        child: search,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    button,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
 
@@ -234,6 +227,26 @@ class _PublicCMSState extends State<PublicCMS>
           ),
       ],
     );
+  }
+
+  void _openCreateModal() {
+    final index = _tabController.index;
+    if (index == 0) {
+      NewsFormModal.show(
+        context,
+        onSaved: () => _handleSaved('Berita berhasil disimpan'),
+      );
+    } else if (index == 1) {
+      AchievementFormModal.show(
+        context,
+        onSaved: () => _handleSaved('Prestasi berhasil disimpan'),
+      );
+    } else if (index == 2) {
+      VideoFormModal.show(
+        context,
+        onSaved: () => _handleSaved('Video berhasil disimpan'),
+      );
+    }
   }
 
   void _handleSaved(String message) {
@@ -354,6 +367,7 @@ class _CmsContentTabState extends State<_CmsContentTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final isNarrow = MediaQuery.sizeOf(context).width < 720;
 
     if (_loading) return const Center(child: CircularProgressIndicator());
 
@@ -365,47 +379,54 @@ class _CmsContentTabState extends State<_CmsContentTab>
     return Column(
       children: [
         // Header row
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 64 + 32, // Thumbnail width (64) + spacing (32)
-                child: Text('Thumbnail', style: _hdrStyle),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  widget.type == 'PRESTASI'
-                      ? 'Nama Prestasi'
-                      : (widget.type == 'VIDEO'
-                            ? 'Judul Video'
-                            : 'Judul Berita'),
-                  style: _hdrStyle,
+        if (!isNarrow)
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 64 + 32,
+                  child: Text('Thumbnail', style: _hdrStyle),
                 ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Text(
-                  widget.type == 'PRESTASI'
-                      ? 'Penerima'
-                      : (widget.type == 'VIDEO'
-                            ? 'YouTube URL / Link'
-                            : 'Kategori'),
-                  style: _hdrStyle,
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    widget.type == 'PRESTASI'
+                        ? 'Nama Prestasi'
+                        : (widget.type == 'VIDEO'
+                              ? 'Judul Video'
+                              : 'Judul Berita'),
+                    style: _hdrStyle,
+                  ),
                 ),
-              ),
-              const Expanded(
-                flex: 1,
-                child: Text('Tanggal Posting', style: _hdrStyle),
-              ),
-              const Expanded(flex: 1, child: Text('Status', style: _hdrStyle)),
-              const SizedBox(width: 120, child: Text('Aksi', style: _hdrStyle)),
-            ],
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    widget.type == 'PRESTASI'
+                        ? 'Penerima'
+                        : (widget.type == 'VIDEO'
+                              ? 'YouTube URL / Link'
+                              : 'Kategori'),
+                    style: _hdrStyle,
+                  ),
+                ),
+                const Expanded(
+                  flex: 1,
+                  child: Text('Tanggal Posting', style: _hdrStyle),
+                ),
+                const Expanded(
+                  flex: 1,
+                  child: Text('Status', style: _hdrStyle),
+                ),
+                const SizedBox(
+                  width: 120,
+                  child: Text('Aksi', style: _hdrStyle),
+                ),
+              ],
+            ),
           ),
-        ),
-        const Divider(height: 1, color: AppColors.gray200),
+        if (!isNarrow) const Divider(height: 1, color: AppColors.gray200),
         Expanded(
           child: pageData.isEmpty
               ? const Center(
@@ -428,179 +449,190 @@ class _CmsContentTabState extends State<_CmsContentTab>
                         ? 'Prestasi'
                         : (widget.type == 'VIDEO' ? 'Video' : 'Berita');
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Thumbnail
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              color: AppColors.gray200,
-                              borderRadius: BorderRadius.circular(8),
-                              image: imageUrl.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(imageUrl),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
+                    return isNarrow
+                        ? _CompactCmsCard(
+                            item: item,
+                            type: widget.type,
+                            imageUrl: imageUrl,
+                            onPreview: () => _showPreview(item),
+                            onEdit: () => _openForm(item),
+                            onDelete: () {
+                              widget.onDelete(item['id'], item['title'] ?? '-');
+                              Future.delayed(
+                                const Duration(seconds: 1),
+                                () => _loadData(),
+                              );
+                            },
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
                             ),
-                            child: imageUrl.isNotEmpty
-                                ? null
-                                : Icon(
-                                    widget.type == 'VIDEO'
-                                        ? Icons.play_circle_fill_rounded
-                                        : widget.type == 'PRESTASI'
-                                        ? Icons.emoji_events
-                                        : Icons.image_outlined,
-                                    color: AppColors.gray400,
-                                    size: 28,
-                                  ),
-                          ),
-                          const SizedBox(
-                            width: 32,
-                          ), // Increased spacing from 24 to 32
-                          // Judul Berita / Video / Prestasi
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item['title'] ?? '-',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.foreground,
-                                    fontSize: 15,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  widget.type == 'PRESTASI'
-                                      ? (item['videoUrl'] ?? '-')
-                                      : _stripHtml(
-                                          item['content']?.toString() ?? '-',
-                                        ),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.gray500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Kategori / Penerima / URL
-                          Expanded(
-                            flex: 1,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: widget.type == 'VIDEO'
-                                  ? Text(
-                                      item['videoUrl'] ?? '-',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : widget.type == 'PRESTASI'
-                                  ? Text(
-                                      item['videoUrl'] ?? '-',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.foreground,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : _CategoryBadge(category: cat),
-                            ),
-                          ),
-                          // Tanggal Posting / Tahun
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              _formatDate(item['createdAt'] ?? ''),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.foreground,
-                              ),
-                            ),
-                          ),
-                          // Status
-                          Expanded(
-                            flex: 1,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _StatusBadge(
-                                label: isActive ? 'Terpublikasi' : 'Draft',
-                                isActive: isActive,
-                              ),
-                            ),
-                          ),
-                          // Actions
-                          SizedBox(
-                            width: 120,
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.visibility_outlined,
-                                    size: 20,
-                                    color: AppColors.gray500,
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.gray200,
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: imageUrl.isNotEmpty
+                                        ? DecorationImage(
+                                            image: NetworkImage(imageUrl),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
                                   ),
-                                  onPressed: () => _showPreview(item),
-                                  splashRadius: 20,
-                                  tooltip: 'Lihat',
+                                  child: imageUrl.isNotEmpty
+                                      ? null
+                                      : Icon(
+                                          widget.type == 'VIDEO'
+                                              ? Icons.play_circle_fill_rounded
+                                              : widget.type == 'PRESTASI'
+                                              ? Icons.emoji_events
+                                              : Icons.image_outlined,
+                                          color: AppColors.gray400,
+                                          size: 28,
+                                        ),
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 20,
-                                    color: AppColors.gray500,
+                                const SizedBox(width: 32),
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        item['title'] ?? '-',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.foreground,
+                                          fontSize: 15,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        widget.type == 'PRESTASI'
+                                            ? (item['videoUrl'] ?? '-')
+                                            : _stripHtml(
+                                                item['content']?.toString() ??
+                                                    '-',
+                                              ),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.gray500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                  onPressed: () => _openForm(item),
-                                  splashRadius: 20,
-                                  tooltip: 'Edit',
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: AppColors.gray500,
+                                Expanded(
+                                  flex: 1,
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: widget.type == 'VIDEO'
+                                        ? Text(
+                                            item['videoUrl'] ?? '-',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : widget.type == 'PRESTASI'
+                                        ? Text(
+                                            item['videoUrl'] ?? '-',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.foreground,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : _CategoryBadge(category: cat),
                                   ),
-                                  onPressed: () {
-                                    widget.onDelete(
-                                      item['id'],
-                                      item['title'] ?? '-',
-                                    );
-                                    Future.delayed(
-                                      const Duration(seconds: 1),
-                                      () => _loadData(),
-                                    );
-                                  },
-                                  splashRadius: 20,
-                                  tooltip: 'Hapus',
+                                ),
+                                Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    _formatDate(item['createdAt'] ?? ''),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.foreground,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 1,
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _StatusBadge(
+                                      label: isActive
+                                          ? 'Terpublikasi'
+                                          : 'Draft',
+                                      isActive: isActive,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 120,
+                                  child: Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.visibility_outlined,
+                                          size: 20,
+                                          color: AppColors.gray500,
+                                        ),
+                                        onPressed: () => _showPreview(item),
+                                        splashRadius: 20,
+                                        tooltip: 'Lihat',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 20,
+                                          color: AppColors.gray500,
+                                        ),
+                                        onPressed: () => _openForm(item),
+                                        splashRadius: 20,
+                                        tooltip: 'Edit',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 20,
+                                          color: AppColors.gray500,
+                                        ),
+                                        onPressed: () {
+                                          widget.onDelete(
+                                            item['id'],
+                                            item['title'] ?? '-',
+                                          );
+                                          Future.delayed(
+                                            const Duration(seconds: 1),
+                                            () => _loadData(),
+                                          );
+                                        },
+                                        splashRadius: 20,
+                                        tooltip: 'Hapus',
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    );
+                          );
                   },
                 ),
         ),
@@ -1243,6 +1275,185 @@ class _CmsImagePickerFieldState extends State<_CmsImagePickerField> {
         ],
       ],
     );
+  }
+}
+
+class _CompactCmsCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final String type;
+  final String imageUrl;
+  final VoidCallback onPreview;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _CompactCmsCard({
+    required this.item,
+    required this.type,
+    required this.imageUrl,
+    required this.onPreview,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = item['isActive'] == true;
+    final subtitle = type == 'PRESTASI'
+        ? (item['videoUrl'] ?? '-')
+        : (type == 'VIDEO'
+              ? (item['videoUrl'] ?? '-')
+              : item['content']?.toString() ?? '-');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.gray200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray200,
+                    borderRadius: BorderRadius.circular(10),
+                    image: imageUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: imageUrl.isNotEmpty
+                      ? null
+                      : Icon(
+                          type == 'VIDEO'
+                              ? Icons.play_circle_fill_rounded
+                              : type == 'PRESTASI'
+                              ? Icons.emoji_events
+                              : Icons.image_outlined,
+                          color: AppColors.gray400,
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['title']?.toString() ?? '-',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.gray500,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _StatusBadge(
+                  label: isActive ? 'Terpublikasi' : 'Draft',
+                  isActive: isActive,
+                ),
+                _CategoryBadge(
+                  category: type == 'PRESTASI'
+                      ? 'Prestasi'
+                      : type == 'VIDEO'
+                      ? 'Video'
+                      : 'Berita',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _formatMobileDate(item['createdAt']?.toString() ?? ''),
+              style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    size: 20,
+                    color: AppColors.gray500,
+                  ),
+                  onPressed: onPreview,
+                  splashRadius: 20,
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppColors.gray500,
+                  ),
+                  onPressed: onEdit,
+                  splashRadius: 20,
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: AppColors.gray500,
+                  ),
+                  onPressed: onDelete,
+                  splashRadius: 20,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatMobileDate(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Ags',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
   }
 }
 

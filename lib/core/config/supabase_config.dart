@@ -9,6 +9,10 @@ class SupabaseConfig {
     defaultValue: 'google',
   );
   static const redirectUrl = String.fromEnvironment('SUPABASE_REDIRECT_URL');
+  static const persistSsoSession = bool.fromEnvironment(
+    'SUPABASE_PERSIST_SESSION',
+    defaultValue: false,
+  );
 
   static bool get isConfigured => url.isNotEmpty && anonKey.isNotEmpty;
 
@@ -33,6 +37,12 @@ class SupabaseConfig {
   static Future<void> initialize() async {
     if (!isConfigured) return;
 
-    await Supabase.initialize(url: url, anonKey: anonKey);
+    await Supabase.initialize(
+      url: url,
+      anonKey: anonKey,
+      authOptions: FlutterAuthClientOptions(
+        localStorage: persistSsoSession ? null : const EmptyLocalStorage(),
+      ),
+    );
   }
 }

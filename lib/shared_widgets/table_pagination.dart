@@ -30,84 +30,82 @@ class TablePagination extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int startItem = ((currentPage - 1) * itemsPerPage) + 1;
-    final int endItem =
-        (currentPage * itemsPerPage).clamp(0, totalItems);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final int endItem = (currentPage * itemsPerPage).clamp(0, totalItems);
+    final isNarrow = MediaQuery.sizeOf(context).width < 560;
+    final info = Text(
+      'Menampilkan $startItem-$endItem dari $totalItems $itemName',
+      style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+    );
+    final buttons = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Item count info
-          Text(
-            'Menampilkan $startItem-$endItem dari $totalItems $itemName',
-            style: const TextStyle(
-              fontSize: 14, // text-sm
-              color: AppColors.textMuted,
-            ),
+          _PageButton(
+            onPressed: currentPage > 1
+                ? () => onPageChange(currentPage - 1)
+                : null,
+            child: const Icon(Icons.chevron_left, size: 20),
           ),
+          const SizedBox(width: 4),
+          ...List.generate(totalPages, (index) {
+            final page = index + 1;
+            final isActive = page == currentPage;
 
-          // Page buttons
-          Row(
-            children: [
-              // Previous
-              _PageButton(
-                onPressed:
-                    currentPage > 1 ? () => onPageChange(currentPage - 1) : null,
-                child: const Icon(Icons.chevron_left, size: 20),
-              ),
-              const SizedBox(width: 4),
-
-              // Page numbers
-              ...List.generate(totalPages, (index) {
-                final page = index + 1;
-                final isActive = page == currentPage;
-
-                // Show limited page numbers (ellipsis logic)
-                if (totalPages > 7) {
-                  if (page != 1 &&
-                      page != totalPages &&
-                      (page < currentPage - 1 || page > currentPage + 1)) {
-                    if (page == currentPage - 2 || page == currentPage + 2) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text('...', style: TextStyle(color: AppColors.textMuted)),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: _PageButton(
-                    isActive: isActive,
-                    onPressed: () => onPageChange(page),
+            if (totalPages > 7) {
+              if (page != 1 &&
+                  page != totalPages &&
+                  (page < currentPage - 1 || page > currentPage + 1)) {
+                if (page == currentPage - 2 || page == currentPage + 2) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      '$page',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                        color: isActive ? Colors.white : AppColors.foreground,
-                      ),
+                      '...',
+                      style: TextStyle(color: AppColors.textMuted),
                     ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: _PageButton(
+                isActive: isActive,
+                onPressed: () => onPageChange(page),
+                child: Text(
+                  '$page',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    color: isActive ? Colors.white : AppColors.foreground,
                   ),
-                );
-              }),
-
-              const SizedBox(width: 4),
-
-              // Next
-              _PageButton(
-                onPressed: currentPage < totalPages
-                    ? () => onPageChange(currentPage + 1)
-                    : null,
-                child: const Icon(Icons.chevron_right, size: 20),
+                ),
               ),
-            ],
+            );
+          }),
+          const SizedBox(width: 4),
+          _PageButton(
+            onPressed: currentPage < totalPages
+                ? () => onPageChange(currentPage + 1)
+                : null,
+            child: const Icon(Icons.chevron_right, size: 20),
           ),
         ],
       ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: isNarrow
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [info, const SizedBox(height: 8), buttons],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [info, buttons],
+            ),
     );
   }
 }
@@ -140,8 +138,8 @@ class _PageButton extends StatelessWidget {
                 color: isActive
                     ? Colors.white
                     : onPressed != null
-                        ? AppColors.foreground
-                        : AppColors.textMuted,
+                    ? AppColors.foreground
+                    : AppColors.textMuted,
               ),
               child: child,
             ),

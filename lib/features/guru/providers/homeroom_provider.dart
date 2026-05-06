@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_service.dart';
+import '../../../core/providers/active_semester_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 
 class HomeroomSemester {
@@ -94,16 +95,9 @@ final homeroomContextProvider = FutureProvider<HomeroomContext>((ref) async {
   if (user == null) return const HomeroomContext(hasClass: false);
 
   final dashboardResponse = await ApiService.getWaliKelasDashboard();
-  Map<String, dynamic>? activeSemester;
-
-  try {
-    final activeResponse = await ApiService.getActiveSemester();
-    if (activeResponse['data'] is Map) {
-      activeSemester = Map<String, dynamic>.from(activeResponse['data'] as Map);
-    }
-  } catch (_) {
-    activeSemester = null;
-  }
+  final activeSemester = await ref
+      .watch(activeSemesterProvider.future)
+      .catchError((_) => null);
 
   final data = dashboardResponse['data'] is Map
       ? Map<String, dynamic>.from(dashboardResponse['data'] as Map)

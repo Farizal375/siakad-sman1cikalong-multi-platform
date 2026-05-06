@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/network/api_service.dart';
+import '../../../core/providers/active_semester_provider.dart';
 import '../../../shared_widgets/collapsed_sidebar.dart';
 import '../../../shared_widgets/responsive_helper.dart';
 
@@ -39,34 +39,56 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
   }
 
   List<SidebarMenuItem> get _menuItems => [
-        SidebarMenuItem(icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/dashboard'),
-        SidebarMenuItem(icon: Icons.article_outlined, label: 'Public CMS', route: '/dashboard/cms'),
-        SidebarMenuItem(icon: Icons.people_outline, label: 'User Management', route: '/dashboard/users'),
-        SidebarMenuItem(icon: Icons.storage_outlined, label: 'Master Data', route: '/dashboard/master-data'),
-      ];
+    SidebarMenuItem(
+      icon: Icons.dashboard_outlined,
+      label: 'Dashboard',
+      route: '/dashboard',
+    ),
+    SidebarMenuItem(
+      icon: Icons.article_outlined,
+      label: 'Public CMS',
+      route: '/dashboard/cms',
+    ),
+    SidebarMenuItem(
+      icon: Icons.people_outline,
+      label: 'User Management',
+      route: '/dashboard/users',
+    ),
+    SidebarMenuItem(
+      icon: Icons.storage_outlined,
+      label: 'Master Data',
+      route: '/dashboard/master-data',
+    ),
+  ];
 
   List<SidebarMenuItem> _bottomMenuItems(BuildContext context) => [
-        SidebarMenuItem(icon: Icons.settings_outlined, label: 'Pengaturan'),
-        SidebarMenuItem(
-          icon: Icons.logout,
-          label: 'Keluar',
-          onTap: () async {
-            await ref.read(authProvider.notifier).logout();
-            if (context.mounted) context.go('/login');
-          },
-        ),
-      ];
+    SidebarMenuItem(icon: Icons.settings_outlined, label: 'Pengaturan'),
+    SidebarMenuItem(
+      icon: Icons.logout,
+      label: 'Keluar',
+      onTap: () async {
+        await ref.read(authProvider.notifier).logout();
+        if (context.mounted) context.go('/login');
+      },
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final currentRoute = GoRouterState.of(context).uri.toString();
     final authUser = ref.watch(authProvider).valueOrNull;
     final userName = authUser?.name ?? 'Admin';
-    final userInitials = userName.trim().split(' ')
-        .where((w) => w.isNotEmpty).take(2)
-        .map((w) => w[0].toUpperCase()).join();
+    final userInitials = userName
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
     final userRole = authUser?.role.displayName ?? 'Super Admin';
     final mobile = context.isMobile;
+    final semesterLabel =
+        ref.watch(activeSemesterLabelProvider).valueOrNull ?? 'Memuat...';
 
     final sidebar = CollapsibleSidebar(
       title: 'Panel Admin',
@@ -91,13 +113,12 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
           onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
           onProfileTap: () => context.go('/dashboard/profile'),
         ),
-        drawer: Drawer(
-          width: 280,
-          child: SafeArea(child: sidebar),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: widget.child,
+        drawer: Drawer(width: 280, child: SafeArea(child: sidebar)),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: widget.child,
+          ),
         ),
       );
     }
@@ -115,6 +136,7 @@ class _DashboardLayoutState extends ConsumerState<DashboardLayout> {
                   currentRoute: currentRoute,
                   sidebarController: _sidebarController,
                   roleName: 'Admin',
+                  semesterLabel: semesterLabel,
                   userName: userName,
                   userRole: userRole,
                   userInitials: userInitials,
@@ -201,10 +223,11 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
 // ═════════════════════════════════════
 // DESKTOP TOP BAR
 // ═════════════════════════════════════
-class _TopBar extends StatefulWidget {
+class _TopBar extends StatelessWidget {
   final String currentRoute;
   final SidebarController sidebarController;
   final String roleName;
+  final String semesterLabel;
   final String userName;
   final String userRole;
   final String userInitials;
@@ -214,44 +237,18 @@ class _TopBar extends StatefulWidget {
     required this.currentRoute,
     required this.sidebarController,
     required this.roleName,
+    required this.semesterLabel,
     required this.userName,
     required this.userRole,
     required this.userInitials,
     required this.onProfileTap,
   });
 
-  @override
-  State<_TopBar> createState() => _TopBarState();
-}
-
-class _TopBarState extends State<_TopBar> {
-  String _semesterLabel = 'Memuat...';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSemester();
-  }
-
-  Future<void> _loadSemester() async {
-    try {
-      final res = await ApiService.getActiveSemester();
-      final data = res['data'];
-      if (mounted) {
-        setState(() => _semesterLabel = data != null
-            ? 'Aktif: ${data['label']}'
-            : 'Tidak ada semester aktif');
-      }
-    } catch (_) {
-      if (mounted) setState(() => _semesterLabel = 'Aktif: -');
-    }
-  }
-
   String get _pageTitle {
-    if (widget.currentRoute.contains('/users')) return 'Manajemen Pengguna';
-    if (widget.currentRoute.contains('/cms')) return 'CMS Publik';
-    if (widget.currentRoute.contains('/master-data')) return 'Master Data';
-    if (widget.currentRoute.contains('/profile')) return 'Profil Pengguna';
+    if (currentRoute.contains('/users')) return 'Manajemen Pengguna';
+    if (currentRoute.contains('/cms')) return 'CMS Publik';
+    if (currentRoute.contains('/master-data')) return 'Master Data';
+    if (currentRoute.contains('/profile')) return 'Profil Pengguna';
     return 'Beranda';
   }
 
@@ -262,46 +259,82 @@ class _TopBarState extends State<_TopBar> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.borderLight, width: 1)),
-        boxShadow: [BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           IconButton(
-            onPressed: () => widget.sidebarController.toggle(),
+            onPressed: () => sidebarController.toggle(),
             icon: AnimatedRotation(
-              turns: widget.sidebarController.isCollapsed ? 0.5 : 0,
+              turns: sidebarController.isCollapsed ? 0.5 : 0,
               duration: const Duration(milliseconds: 250),
               child: const Icon(Icons.menu_open, size: 22),
             ),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.gray50,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
           const SizedBox(width: 16),
-          Text(widget.roleName, style: const TextStyle(fontSize: 14, color: AppColors.gray500)),
+          Text(
+            roleName,
+            style: const TextStyle(fontSize: 14, color: AppColors.gray500),
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(Icons.chevron_right, size: 16, color: AppColors.gray400),
+            child: Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: AppColors.gray400,
+            ),
           ),
           Text(
             _pageTitle,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.foreground,
+            ),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF2563EB)]),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF2563EB)],
+              ),
               borderRadius: BorderRadius.circular(999),
-              boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 6, offset: Offset(0, 2))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x30000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-            child: Text(_semesterLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+            child: Text(
+              semesterLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           InkWell(
-            onTap: widget.onProfileTap,
+            onTap: onProfileTap,
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -311,12 +344,25 @@ class _TopBarState extends State<_TopBar> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(widget.userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.foreground)),
-                      Text(widget.userRole, style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+                      Text(
+                        userName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      Text(
+                        userRole,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(width: 12),
-                  UserAvatar(initials: widget.userInitials, size: 40),
+                  UserAvatar(initials: userInitials, size: 40),
                 ],
               ),
             ),

@@ -25,8 +25,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
       (data) async {
         final session = data.session;
         if (session == null) {
-          final legacyUser = await _restoreLegacySession();
-          state = AsyncValue.data(legacyUser);
+          await _clearSession();
+          state = const AsyncValue.data(null);
           return;
         }
 
@@ -70,7 +70,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
   Future<User?> _restoreSupabaseSession() async {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
-      return _restoreLegacySession();
+      await _clearSession();
+      return null;
     }
 
     try {
@@ -82,8 +83,6 @@ class AuthNotifier extends AsyncNotifier<User?> {
   }
 
   Future<User> _loadUserFromBackend(Session session) async {
-    await ApiClient.saveToken(session.accessToken);
-
     final response = await ApiService.getMe();
     final userData = response['data'];
     final user = User.fromJson(userData);
@@ -110,9 +109,12 @@ class AuthNotifier extends AsyncNotifier<User?> {
 
     state = const AsyncValue.loading();
     try {
+      await _clearSession();
+      await Supabase.instance.client.auth.signOut(scope: SignOutScope.local);
       await Supabase.instance.client.auth.signInWithOAuth(
         SupabaseConfig.provider,
         redirectTo: SupabaseConfig.effectiveRedirectUrl,
+        queryParams: const {'prompt': 'select_account', 'max_age': '0'},
       );
 
       state = AsyncValue.data(state.valueOrNull);
@@ -156,7 +158,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
 
     try {
       if (SupabaseConfig.isConfigured) {
-        await Supabase.instance.client.auth.signOut();
+        await Supabase.instance.client.auth.signOut(scope: SignOutScope.global);
       }
     } catch (_) {
       // Keep logout resilient when Supabase is not initialized in tests.
