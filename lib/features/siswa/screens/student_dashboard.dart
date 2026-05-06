@@ -39,14 +39,19 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
           children: [
             const Icon(Icons.cloud_off, size: 48, color: AppColors.gray300),
             const SizedBox(height: 16),
-            const Text('Gagal memuat data', style: TextStyle(color: AppColors.gray600)),
+            const Text(
+              'Gagal memuat data',
+              style: TextStyle(color: AppColors.gray600),
+            ),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => ref.invalidate(studentDashboardProvider),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Coba Lagi'),
             ),
@@ -58,7 +63,6 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
   }
 
   Widget _buildContent(BuildContext context, Map<String, dynamic> data) {
-
     final kelas = data['kelas'] ?? '-';
     final hari = data['hari'] ?? '-';
     final todaySchedule = (data['jadwalHariIni'] as List? ?? [])
@@ -136,304 +140,360 @@ class _StudentDashboardState extends ConsumerState<StudentDashboard> {
       },
     ];
 
-    return SingleChildScrollView(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1100;
+
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Selamat Datang, Siswa!',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Kelas $kelas • Hari: $hari',
+                style: const TextStyle(color: AppColors.gray600),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (compact)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Jadwal Pelajaran Hari Ini',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => context.go('/siswa/jadwal'),
+                              icon: const Icon(Icons.calendar_month, size: 18),
+                              label: const Text('Lihat Semua'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Jadwal Pelajaran Hari Ini',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => context.go('/siswa/jadwal'),
+                            icon: const Icon(Icons.calendar_month, size: 18),
+                            label: const Text('Lihat Semua'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 20),
+                    if (todaySchedule.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'Tidak ada jadwal hari ini',
+                            style: TextStyle(color: AppColors.gray500),
+                          ),
+                        ),
+                      )
+                    else
+                      ...todaySchedule.map((s) => _buildScheduleItem(s)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (compact)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildAnnouncementsSection(announcements),
+                    const SizedBox(height: 20),
+                    _buildQuickInfoSection(quickInfo, periodeLabel, totalAll),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 7,
+                      child: _buildAnnouncementsSection(announcements),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 3,
+                      child: _buildQuickInfoSection(
+                        quickInfo,
+                        periodeLabel,
+                        totalAll,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAnnouncementsSection(List<Map<String, dynamic>> announcements) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Greeting
           const Text(
-            'Selamat Datang, Siswa!',
+            'Berita Sekolah',
             style: TextStyle(
-              fontSize: 32,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Kelas $kelas • Hari: $hari',
-            style: const TextStyle(color: AppColors.gray600),
-          ),
-          const SizedBox(height: 24),
-
-          // Jadwal Hari Ini
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Jadwal Pelajaran Hari Ini',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => context.go('/siswa/jadwal'),
-                      icon: const Icon(Icons.calendar_month, size: 18),
-                      label: const Text('Lihat Semua'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (todaySchedule.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        'Tidak ada jadwal hari ini',
-                        style: TextStyle(color: AppColors.gray500),
-                      ),
-                    ),
-                  )
-                else
-                  ...todaySchedule.map((s) => _buildScheduleItem(s)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Bottom Split
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left – Announcements (70%)
-              Expanded(
-                flex: 7,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Berita Sekolah',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (announcements.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: Text(
-                              'Belum ada berita sekolah',
-                              style: TextStyle(color: AppColors.gray500),
-                            ),
-                          ),
-                        )
-                      else
-                        ...announcements.map(
-                          (a) => Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0xFFE5E7EB),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        a['title'] as String,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.foreground,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      a['date'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.gray500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  a['preview'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.gray600,
-                                  ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                GestureDetector(
-                                  onTap: () {},
-                                  child: const Text(
-                                    'Baca Selengkapnya →',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+          const SizedBox(height: 20),
+          if (announcements.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Belum ada berita sekolah',
+                  style: TextStyle(color: AppColors.gray500),
                 ),
               ),
-              const SizedBox(width: 20),
-
-              // Right – Quick Info (30%)
-              Expanded(
-                flex: 3,
+            )
+          else
+            ...announcements.map(
+              (a) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Info Cepat',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            a['title'] as String,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.foreground,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          a['date'] as String,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ],
                     ),
-                    if (periodeLabel.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Presensi $periodeLabel',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.gray500,
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      a['preview'] as String,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.gray600,
                       ),
-                    ],
-                    if (totalAll == 0) ...[
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Belum ada data presensi bulan ini',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () {},
+                      child: const Text(
+                        'Baca Selengkapnya →',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.gray500,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    ...quickInfo.map(
-                      (info) => Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    info['title'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.gray600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        info['value'] as String,
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w700,
-                                          color: info['color'] as Color,
-                                        ),
-                                      ),
-                                      if (info.containsKey('subtitle')) ...[
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          info['subtitle'] as String,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.gray500,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: info['cardColor'] as Color,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                info['icon'] as IconData,
-                                color: info['color'] as Color,
-                                size: 20,
-                              ),
-                            ),
-                          ],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickInfoSection(
+    List<Map<String, dynamic>> quickInfo,
+    String periodeLabel,
+    int totalAll,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Info Cepat',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+          if (periodeLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Presensi $periodeLabel',
+              style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+            ),
+          ],
+          if (totalAll == 0) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'Belum ada data presensi bulan ini',
+              style: TextStyle(fontSize: 12, color: AppColors.gray500),
+            ),
+          ],
+          const SizedBox(height: 12),
+          ...quickInfo.map(
+            (info) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          info['title'] as String,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              info['value'] as String,
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: info['color'] as Color,
+                              ),
+                            ),
+                            if (info.containsKey('subtitle')) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                info['subtitle'] as String,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: info['cardColor'] as Color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      info['icon'] as IconData,
+                      color: info['color'] as Color,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

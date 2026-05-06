@@ -278,18 +278,20 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
     final izin = _count('IZIN');
     final alpa = _count('ALPA');
 
-    return Stack(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1100;
+
+        return Stack(
           children: [
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: Column(
+                if (compact)
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Riwayat Presensi',
                         style: TextStyle(
                           fontSize: 28,
@@ -297,144 +299,228 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
                           color: AppColors.primary,
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
+                      const SizedBox(height: 6),
+                      const Text(
                         'Rekap kehadiran dan materi pembelajaran per semester',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.gray600,
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _semesterPicker(),
+                          ElevatedButton.icon(
+                            onPressed: () => _openQRScanner(context),
+                            icon: const Icon(Icons.qr_code_scanner, size: 18),
+                            label: const Text('Scan QR'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Riwayat Presensi',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Rekap kehadiran dan materi pembelajaran per semester',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.gray600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _semesterPicker(),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _openQRScanner(context),
+                        icon: const Icon(Icons.qr_code_scanner, size: 18),
+                        label: const Text('Scan QR'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 22),
+                if (compact)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _summaryCardTile(
+                        '$hadir',
+                        'Hadir',
+                        const Color(0xFF16A34A),
+                        Icons.check_circle_outline,
+                      ),
+                      _summaryCardTile(
+                        '$sakit',
+                        'Sakit',
+                        const Color(0xFFD97706),
+                        Icons.sick_outlined,
+                      ),
+                      _summaryCardTile(
+                        '$izin',
+                        'Izin',
+                        const Color(0xFF2563EB),
+                        Icons.assignment_outlined,
+                      ),
+                      _summaryCardTile(
+                        '$alpa',
+                        'Alpa',
+                        const Color(0xFFDC2626),
+                        Icons.cancel_outlined,
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _summaryCardTile(
+                        '$hadir',
+                        'Hadir',
+                        const Color(0xFF16A34A),
+                        Icons.check_circle_outline,
+                      ),
+                      const SizedBox(width: 12),
+                      _summaryCardTile(
+                        '$sakit',
+                        'Sakit',
+                        const Color(0xFFD97706),
+                        Icons.sick_outlined,
+                      ),
+                      const SizedBox(width: 12),
+                      _summaryCardTile(
+                        '$izin',
+                        'Izin',
+                        const Color(0xFF2563EB),
+                        Icons.assignment_outlined,
+                      ),
+                      const SizedBox(width: 12),
+                      _summaryCardTile(
+                        '$alpa',
+                        'Alpa',
+                        const Color(0xFFDC2626),
+                        Icons.cancel_outlined,
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 22),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TabBar(
+                    controller: _tabCtrl,
+                    isScrollable: compact,
+                    indicator: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorPadding: const EdgeInsets.all(4),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: AppColors.gray500,
+                    labelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    dividerColor: Colors.transparent,
+                    tabs: [
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.menu_book, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Mata Pelajaran (${_groupedMapel.length})'),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.history, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Riwayat (${_allMeetings.length})'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                _semesterPicker(),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: () => _openQRScanner(context),
-                  icon: const Icon(Icons.qr_code_scanner, size: 18),
-                  label: const Text('Scan QR'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _loading
+                      ? _buildSkeleton()
+                      : TabBarView(
+                          controller: _tabCtrl,
+                          children: [
+                            _groupedMapel.isEmpty
+                                ? _emptyList('Belum ada data mata pelajaran')
+                                : _buildMapelList(),
+                            _allMeetings.isEmpty
+                                ? _emptyList('Belum ada riwayat kehadiran')
+                                : _buildHistoryList(),
+                          ],
+                        ),
                 ),
               ],
-            ),
-            const SizedBox(height: 22),
-            Row(
-              children: [
-                _summaryCard(
-                  '$hadir',
-                  'Hadir',
-                  const Color(0xFF16A34A),
-                  Icons.check_circle_outline,
-                ),
-                const SizedBox(width: 12),
-                _summaryCard(
-                  '$sakit',
-                  'Sakit',
-                  const Color(0xFFD97706),
-                  Icons.sick_outlined,
-                ),
-                const SizedBox(width: 12),
-                _summaryCard(
-                  '$izin',
-                  'Izin',
-                  const Color(0xFF2563EB),
-                  Icons.assignment_outlined,
-                ),
-                const SizedBox(width: 12),
-                _summaryCard(
-                  '$alpa',
-                  'Alpa',
-                  const Color(0xFFDC2626),
-                  Icons.cancel_outlined,
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TabBar(
-                controller: _tabCtrl,
-                indicator: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding: const EdgeInsets.all(4),
-                labelColor: Colors.white,
-                unselectedLabelColor: AppColors.gray500,
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                dividerColor: Colors.transparent,
-                tabs: [
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.menu_book, size: 16),
-                        const SizedBox(width: 8),
-                        Text('Mata Pelajaran (${_groupedMapel.length})'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.history, size: 16),
-                        const SizedBox(width: 8),
-                        Text('Riwayat (${_allMeetings.length})'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _loading
-                  ? _buildSkeleton()
-                  : TabBarView(
-                      controller: _tabCtrl,
-                      children: [
-                        _groupedMapel.isEmpty
-                            ? _emptyList('Belum ada data mata pelajaran')
-                            : _buildMapelList(),
-                        _allMeetings.isEmpty
-                            ? _emptyList('Belum ada riwayat kehadiran')
-                            : _buildHistoryList(),
-                      ],
-                    ),
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -491,8 +577,14 @@ class _RiwayatKehadiranState extends ConsumerState<RiwayatKehadiran>
     );
   }
 
-  Widget _summaryCard(String value, String label, Color color, IconData icon) {
-    return Expanded(
+  Widget _summaryCardTile(
+    String value,
+    String label,
+    Color color,
+    IconData icon,
+  ) {
+    return SizedBox(
+      width: 170,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(

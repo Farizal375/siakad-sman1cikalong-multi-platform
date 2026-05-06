@@ -211,99 +211,118 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hasil Studi',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Riwayat performa akademik dan nilai',
-                  style: TextStyle(color: AppColors.gray600),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1100;
 
-          // Tab Bar
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hasil Studi',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Riwayat performa akademik dan nilai',
+                      style: TextStyle(color: AppColors.gray600),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(child: _tabBtn('aktivitas', 'Nilai Semester')),
-                const SizedBox(width: 8),
-                Expanded(child: _tabBtn('transkrip', 'Transkrip Nilai')),
-                const SizedBox(width: 8),
-                Expanded(child: _tabBtn('visualisasi', 'Visualisasi Data')),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: _allGrades.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Column(
+                child: compact
+                    ? Column(
                         children: [
-                          Icon(
-                            Icons.school_outlined,
-                            size: 64,
-                            color: AppColors.gray300,
+                          _tabBtn('aktivitas', 'Nilai Semester'),
+                          const SizedBox(height: 8),
+                          _tabBtn('transkrip', 'Transkrip Nilai'),
+                          const SizedBox(height: 8),
+                          _tabBtn('visualisasi', 'Visualisasi Data'),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: _tabBtn('aktivitas', 'Nilai Semester'),
                           ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Belum ada data nilai',
-                            style: TextStyle(
-                              color: AppColors.gray600,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _tabBtn('transkrip', 'Transkrip Nilai'),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _tabBtn('visualisasi', 'Visualisasi Data'),
                           ),
                         ],
                       ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  )
-                : _buildTabContent(),
+                  ],
+                ),
+                child: _allGrades.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(48),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                size: 64,
+                                color: AppColors.gray300,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'Belum ada data nilai',
+                                style: TextStyle(
+                                  color: AppColors.gray600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _buildTabContent(compact),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -331,24 +350,24 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     );
   }
 
-  Widget _buildTabContent() {
+  Widget _buildTabContent(bool compact) {
     switch (_activeTab) {
       case 'aktivitas':
-        return _buildNilaiTab();
+        return _buildNilaiTab(compact);
       case 'transkrip':
-        return _buildTranscriptTab();
+        return _buildTranscriptTab(compact);
       case 'visualisasi':
-        return _buildVisualisasiTab();
+        return _buildVisualisasiTab(compact);
       default:
         return const SizedBox();
     }
   }
 
-  Widget _buildNilaiTab() {
+  Widget _buildNilaiTab(bool compact) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLatestSummaryCards(),
+        _buildLatestSummaryCards(compact),
         const SizedBox(height: 24),
         const Text(
           'Rincian Nilai Mata Pelajaran',
@@ -377,7 +396,7 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     );
   }
 
-  Widget _buildLatestSummaryCards() {
+  Widget _buildLatestSummaryCards(bool compact) {
     final latestGrades = _latestSemesterGrades;
     final avg =
         (_summary?['latestAverage'] as num?)?.toDouble() ??
@@ -385,35 +404,31 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     final rank = _summary?['latestRank'];
     final classSize = _summary?['latestClassSize'];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _infoCard(
-                'Rata-rata Semester Terakhir',
-                avg.toStringAsFixed(1),
-                _latestSemesterLabel,
-                Icons.bar_chart_rounded,
-                AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _infoCard(
-                'Peringkat Kelas Terakhir',
-                rank == null ? '-' : '$rank',
-                classSize == null
-                    ? _latestSemesterLabel
-                    : 'dari $classSize siswa • $_latestSemesterLabel',
-                Icons.emoji_events_outlined,
-                AppColors.accent,
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _infoCard(
+            'Rata-rata Semester Terakhir',
+            avg.toStringAsFixed(1),
+            _latestSemesterLabel,
+            Icons.bar_chart_rounded,
+            AppColors.primary,
+          ),
+          const SizedBox(height: 12),
+          _infoCard(
+            'Peringkat Kelas Terakhir',
+            rank == null ? '-' : '$rank',
+            classSize == null
+                ? _latestSemesterLabel
+                : 'dari $classSize siswa • $_latestSemesterLabel',
+            Icons.emoji_events_outlined,
+            AppColors.accent,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
               onPressed: _downloadingRapor ? null : _downloadSemesterPdf,
               icon: _downloadingRapor
                   ? const SizedBox(
@@ -439,7 +454,58 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
                 textStyle: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-          ],
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _infoCard(
+            'Rata-rata Semester Terakhir',
+            avg.toStringAsFixed(1),
+            _latestSemesterLabel,
+            Icons.bar_chart_rounded,
+            AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _infoCard(
+            'Peringkat Kelas Terakhir',
+            rank == null ? '-' : '$rank',
+            classSize == null
+                ? _latestSemesterLabel
+                : 'dari $classSize siswa • $_latestSemesterLabel',
+            Icons.emoji_events_outlined,
+            AppColors.accent,
+          ),
+        ),
+        const SizedBox(width: 12),
+        ElevatedButton.icon(
+          onPressed: _downloadingRapor ? null : _downloadSemesterPdf,
+          icon: _downloadingRapor
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.download, size: 18),
+          label: const Text('Unduh PDF Rapor'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );
@@ -712,7 +778,7 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     );
   }
 
-  Widget _buildTranscriptTab() {
+  Widget _buildTranscriptTab(bool compact) {
     final semesterKeys = _gradesBySemester.keys.toList()
       ..sort(
         (a, b) => _semesterOrderValue(a).compareTo(_semesterOrderValue(b)),
@@ -722,10 +788,11 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
+        if (compact)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
                 'Transkrip Nilai Akumulatif',
                 style: TextStyle(
                   fontSize: 22,
@@ -733,40 +800,90 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
                   color: AppColors.primary,
                 ),
               ),
-            ),
-            ElevatedButton.icon(
-              onPressed: _downloadingTranskrip ? null : _downloadTranscriptPdf,
-              icon: _downloadingTranskrip
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.download, size: 18),
-              label: const Text('Unduh Transkrip Resmi (PDF)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _downloadingTranskrip
+                      ? null
+                      : _downloadTranscriptPdf,
+                  icon: _downloadingTranskrip
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download, size: 18),
+                  label: const Text('Unduh Transkrip Resmi (PDF)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w600),
               ),
-            ),
-          ],
+            ],
+          )
+        else
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Transkrip Nilai Akumulatif',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _downloadingTranskrip
+                    ? null
+                    : _downloadTranscriptPdf,
+                icon: _downloadingTranskrip
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.download, size: 18),
+                label: const Text('Unduh Transkrip Resmi (PDF)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 16),
+        _buildTranscriptSummary(kumulatif, semesterKeys.length, compact),
+        const SizedBox(height: 16),
+        ...semesterKeys.map(
+          (semKey) => _buildTranscriptSemesterSection(semKey, compact),
         ),
-        const SizedBox(height: 16),
-        _buildTranscriptSummary(kumulatif, semesterKeys.length),
-        const SizedBox(height: 16),
-        ...semesterKeys.map(_buildTranscriptSemesterSection),
       ],
     );
   }
 
-  Widget _buildTranscriptSummary(double kumulatif, int semesterCount) {
+  Widget _buildTranscriptSummary(
+    double kumulatif,
+    int semesterCount,
+    bool compact,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -782,10 +899,8 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: compact
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -804,23 +919,56 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
                     fontSize: 13,
                   ),
                 ),
+                const SizedBox(height: 12),
+                Text(
+                  kumulatif.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Rata-rata Kumulatif',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_allGrades.length} Mata Pelajaran • $semesterCount Semester',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  kumulatif.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ),
-          ),
-          Text(
-            kumulatif.toStringAsFixed(1),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 42,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildTranscriptSemesterSection(String semKey) {
+  Widget _buildTranscriptSemesterSection(String semKey, bool compact) {
     final grades = _gradesBySemester[semKey] ?? [];
     final avg = _calcAvg(grades);
     final isExpanded = _expandedSemesters.contains(semKey);
@@ -846,28 +994,64 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      semKey,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+              child: compact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              isExpanded
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                semKey,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _headerBadge('Rata: ${avg.toStringAsFixed(1)}'),
+                            _headerBadge('${grades.length} Mapel'),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            semKey,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        _headerBadge('Rata: ${avg.toStringAsFixed(1)}'),
+                        const SizedBox(width: 8),
+                        _headerBadge('${grades.length} Mapel'),
+                      ],
                     ),
-                  ),
-                  _headerBadge('Rata: ${avg.toStringAsFixed(1)}'),
-                  const SizedBox(width: 8),
-                  _headerBadge('${grades.length} Mapel'),
-                ],
-              ),
             ),
           ),
           if (isExpanded) ...[
@@ -898,86 +1082,96 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
   }
 
   Widget _buildTranscriptTable(List<Map<String, dynamic>> grades) {
-    return Table(
-      border: TableBorder.all(
-        color: const Color(0xFFE5E7EB),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      columnWidths: const {
-        0: FixedColumnWidth(86),
-        1: FlexColumnWidth(2.6),
-        2: FixedColumnWidth(110),
-        3: FixedColumnWidth(72),
-        4: FixedColumnWidth(72),
-        5: FixedColumnWidth(96),
-      },
-      children: [
-        TableRow(
-          decoration: const BoxDecoration(
-            color: Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: 680,
+        child: Table(
+          border: TableBorder.all(
+            color: const Color(0xFFE5E7EB),
+            borderRadius: BorderRadius.circular(8),
           ),
-          children:
-              [
-                    'Kode',
-                    'Mata Pelajaran',
-                    'Tahun Ajaran',
-                    'Nilai',
-                    'Huruf',
-                    'Status',
-                  ]
-                  .map(
-                    (h) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      child: Text(
-                        h,
-                        style: const TextStyle(
-                          color: AppColors.gray700,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+          columnWidths: const {
+            0: FixedColumnWidth(86),
+            1: FlexColumnWidth(2.6),
+            2: FixedColumnWidth(110),
+            3: FixedColumnWidth(72),
+            4: FixedColumnWidth(72),
+            5: FixedColumnWidth(96),
+          },
+          children: [
+            TableRow(
+              decoration: const BoxDecoration(
+                color: Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              ),
+              children:
+                  [
+                        'Kode',
+                        'Mata Pelajaran',
+                        'Tahun Ajaran',
+                        'Nilai',
+                        'Huruf',
+                        'Status',
+                      ]
+                      .map(
+                        (h) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            h,
+                            style: const TextStyle(
+                              color: AppColors.gray700,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-        ),
-        ...grades.asMap().entries.map((entry) {
-          final grade = entry.value;
-          final nilai = (grade['nilaiAkhir'] as num?)?.round() ?? 0;
-          final huruf = _getHuruf(grade['nilaiAkhir'] as num?);
-          final kkm = grade['kkm'] ?? 75;
-          final lulus = nilai >= (kkm as num);
-          return TableRow(
-            decoration: BoxDecoration(
-              color: entry.key.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                      )
+                      .toList(),
             ),
-            children: [
-              _tableText(grade['mataPelajaranKode'] ?? '-', bold: true),
-              _tableText(grade['mataPelajaran'] ?? '-'),
-              _tableText(grade['tahunAjaran'] ?? '-'),
-              _tableText(
-                '$nilai',
-                centered: true,
-                bold: true,
-                color: AppColors.primary,
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Center(child: _letterBadge(huruf)),
-              ),
-              _tableText(
-                lulus ? 'Tuntas' : 'Belum',
-                centered: true,
-                color: lulus ? const Color(0xFF15803D) : AppColors.destructive,
-                bold: true,
-              ),
-            ],
-          );
-        }),
-      ],
+            ...grades.asMap().entries.map((entry) {
+              final grade = entry.value;
+              final nilai = (grade['nilaiAkhir'] as num?)?.round() ?? 0;
+              final huruf = _getHuruf(grade['nilaiAkhir'] as num?);
+              final kkm = grade['kkm'] ?? 75;
+              final lulus = nilai >= (kkm as num);
+              return TableRow(
+                decoration: BoxDecoration(
+                  color: entry.key.isEven
+                      ? Colors.white
+                      : const Color(0xFFF9FAFB),
+                ),
+                children: [
+                  _tableText(grade['mataPelajaranKode'] ?? '-', bold: true),
+                  _tableText(grade['mataPelajaran'] ?? '-'),
+                  _tableText(grade['tahunAjaran'] ?? '-'),
+                  _tableText(
+                    '$nilai',
+                    centered: true,
+                    bold: true,
+                    color: AppColors.primary,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Center(child: _letterBadge(huruf)),
+                  ),
+                  _tableText(
+                    lulus ? 'Tuntas' : 'Belum',
+                    centered: true,
+                    color: lulus
+                        ? const Color(0xFF15803D)
+                        : AppColors.destructive,
+                    bold: true,
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1020,7 +1214,7 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
     );
   }
 
-  Widget _buildVisualisasiTab() {
+  Widget _buildVisualisasiTab(bool compact) {
     final semesterKeys = _gradesBySemester.keys.toList()
       ..sort(
         (a, b) => _semesterOrderValue(a).compareTo(_semesterOrderValue(b)),
@@ -1270,40 +1464,66 @@ class _HasilStudiState extends ConsumerState<HasilStudi> {
         ),
         const SizedBox(height: 16),
         Container(
-          height: 360,
+          height: compact ? 440 : 360,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFF9FAFB),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: PieChart(
-                  PieChartData(
-                    sections: pieData,
-                    centerSpaceRadius: 40,
-                    sectionsSpace: 2,
-                  ),
+          child: compact
+              ? Column(
+                  children: [
+                    Expanded(
+                      child: PieChart(
+                        PieChartData(
+                          sections: pieData,
+                          centerSpaceRadius: 40,
+                          sectionsSpace: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: gradeBuckets.map((bucket) {
+                        return _pieLegend(
+                          bucket['color'] as Color,
+                          '${bucket['label']} (${bucket['range']})',
+                          bucket['count'] as int,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: PieChart(
+                        PieChartData(
+                          sections: pieData,
+                          centerSpaceRadius: 40,
+                          sectionsSpace: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    SizedBox(
+                      width: 210,
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: gradeBuckets.map((bucket) {
+                          return _pieLegend(
+                            bucket['color'] as Color,
+                            '${bucket['label']} (${bucket['range']})',
+                            bucket['count'] as int,
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 24),
-              SizedBox(
-                width: 210,
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: gradeBuckets.map((bucket) {
-                    return _pieLegend(
-                      bucket['color'] as Color,
-                      '${bucket['label']} (${bucket['range']})',
-                      bucket['count'] as int,
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );

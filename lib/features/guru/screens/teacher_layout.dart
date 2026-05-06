@@ -61,15 +61,20 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
     return 'Dashboard';
   }
 
-  String _getSectionLabel(String path) {
-    if (path.contains('/kelas-wali') ||
-        path.contains('/monitoring-kehadiran') ||
-        path.contains('/catatan-akademik') ||
-        path.contains('/cetak-rapor') ||
-        path.contains('/rapor-detail')) {
-      return 'Wali Kelas';
+  String _getPageTitle(String path) {
+    if (path == '/guru' || path == '/guru/dashboard') return 'Dashboard';
+    if (path == '/guru/kelas') return 'Daftar Kelas';
+    if (path.startsWith('/guru/kelas/')) return 'Detail Kelas';
+    if (path == '/guru/kelas-wali' || path == '/guru/homeroom') {
+      return 'Dashboard Kelas';
     }
-    return 'Guru';
+    if (path == '/guru/monitoring-kehadiran') return 'Monitoring Kehadiran';
+    if (path == '/guru/catatan-akademik') return 'Catatan Akademik';
+    if (path == '/guru/penentuan-promosi') return 'Penentuan Promosi';
+    if (path == '/guru/cetak-rapor') return 'Cetak e-Rapor';
+    if (path.startsWith('/guru/rapor-detail/')) return 'Detail Hasil Studi';
+    if (path == '/guru/profile') return 'Profil Pengguna';
+    return 'Dashboard';
   }
 
   @override
@@ -244,7 +249,7 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
           ),
           const SizedBox(width: 16),
           Text(
-            _getSectionLabel(path),
+            'Guru',
             style: const TextStyle(color: AppColors.gray500, fontSize: 14),
           ),
           const Padding(
@@ -255,16 +260,14 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
               color: AppColors.gray400,
             ),
           ),
-          Flexible(
-            child: Text(
-              _getBreadcrumb(path, homeroom),
-              style: const TextStyle(
-                color: AppColors.foreground,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              overflow: TextOverflow.ellipsis,
+          Text(
+            _getPageTitle(path),
+            style: const TextStyle(
+              color: AppColors.foreground,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           const Spacer(),
           Container(
@@ -273,7 +276,14 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
               gradient: const LinearGradient(
                 colors: [AppColors.primary, Color(0xFF2563EB)],
               ),
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x30000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
             child: Text(
               activeSemesterLabel,
@@ -285,10 +295,13 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
             ),
           ),
           const SizedBox(width: 16),
-          GestureDetector(
+          InkWell(
             onTap: () => context.go('/guru/profile'),
+            borderRadius: BorderRadius.circular(12),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -314,6 +327,7 @@ class _TeacherLayoutState extends ConsumerState<TeacherLayout> {
                 ),
                 const SizedBox(width: 12),
                 UserAvatar(initials: userInitials, size: 40),
+                const SizedBox(width: 4),
               ],
             ),
           ),
