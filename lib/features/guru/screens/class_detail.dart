@@ -111,10 +111,12 @@ class _ClassDetailState extends State<ClassDetail>
   String _generatedQR = '';
   Timer? _qrTimer;
   Timer? _pollTimer; // polling real-time attendance setiap 10 detik
-  int _qrCountdown = 180; // 3 menit
+  int _sessionCountdown = 180; // 3 menit
+  int _tokenCountdown = 60; // 1 menit
   bool _showQRModal = false;
   // ignore: unused_field
   bool _isGeneratingQR = false;
+  bool _isRefreshingQR = false;
 
   // QR session state
   List<String> _scheduleIds = [];
@@ -125,6 +127,8 @@ class _ClassDetailState extends State<ClassDetail>
   String _activeMateri = '';
   bool _sessionActive = false; // true = sesi absensi sedang terbuka
   DateTime? _sessionStartTime;
+  DateTime? _sessionExpiredAt;
+  DateTime? _tokenExpiredAt;
 
   // Edit History state
   bool _showHistoryModal = false;
@@ -320,7 +324,10 @@ class _ClassDetailState extends State<ClassDetail>
           s.status = 'ALPA';
         }
         _generatedQR = data['qrData'] ?? '';
-        _qrCountdown = 180;
+        _sessionExpiredAt = _parseDateTime(data['sessionExpiredAt'] ?? data['expiredAt']);
+        _tokenExpiredAt = _parseDateTime(data['tokenExpiredAt']);
+        _sessionCountdown = _remainingSeconds(_sessionExpiredAt, fallback: 180);
+        _tokenCountdown = _remainingSeconds(_tokenExpiredAt, fallback: 60);
         _showQRModal = true;
         _sessionActive = true;
         _isGeneratingQR = false;
@@ -329,12 +336,20 @@ class _ClassDetailState extends State<ClassDetail>
       _startPolling(); // mulai polling real-time
     } catch (e) {
       setState(() => _isGeneratingQR = false);
-      _showErrorSnackbar('Gagal generate QR Code. Periksa koneksi.');
+      final message = e is DioException && e.response?.data is Map
+          ? (e.response?.data['message']?.toString() ?? 'Gagal generate QR Code')
+          : 'Gagal generate QR Code. Periksa koneksi.';
+      if (e is DioException && e.response?.statusCode == 410) {
+        _closeExpiredSession(message);
+      } else {
+        _showErrorSnackbar(message);
+      }
     }
   }
 
   Future<void> _refreshQR() async {
-    if (_scheduleIds.isEmpty) return;
+    if (_scheduleIds.isEmpty || _isRefreshingQR) return;
+    _isRefreshingQR = true;
     try {
       final jadwalId = _activeJadwalId.isNotEmpty
           ? _activeJadwalId
@@ -353,23 +368,63 @@ class _ClassDetailState extends State<ClassDetail>
       if (mounted) {
         setState(() {
           _generatedQR = data['qrData'] ?? '';
-          _qrCountdown = 180;
+          _sessionExpiredAt = _parseDateTime(data['sessionExpiredAt'] ?? data['expiredAt']);
+          _tokenExpiredAt = _parseDateTime(data['tokenExpiredAt']);
+          _sessionCountdown = _remainingSeconds(_sessionExpiredAt, fallback: 180);
+          _tokenCountdown = _remainingSeconds(_tokenExpiredAt, fallback: 60);
         });
-        _startCountdownTimer();
       }
     } catch (e) {
-      if (mounted) _showErrorSnackbar('Gagal refresh QR Code');
+      if (mounted) {
+        final message = e is DioException && e.response?.data is Map
+            ? (e.response?.data['message']?.toString() ?? 'Gagal refresh QR Code')
+            : 'Gagal refresh QR Code';
+        final status = e is DioException ? e.response?.statusCode : null;
+        if (status == 410) {
+          _closeExpiredSession(message);
+        } else {
+          _showErrorSnackbar(message);
+        }
+      }
+    } finally {
+      _isRefreshingQR = false;
     }
   }
 
   void _startCountdownTimer() {
     _qrTimer?.cancel();
     _qrTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_qrCountdown <= 1) {
+      if (!mounted || !_sessionActive) {
         t.cancel();
-        _refreshQR(); // auto refresh setiap 3 menit
-      } else {
-        if (mounted) setState(() => _qrCountdown--);
+        return;
+      }
+
+      var shouldRefresh = false;
+      var shouldClose = false;
+
+      setState(() {
+        if (_sessionCountdown > 0) {
+          _sessionCountdown--;
+        }
+        if (_tokenCountdown > 0) {
+          _tokenCountdown--;
+        }
+
+        if (_sessionCountdown <= 0) {
+          shouldClose = true;
+        } else if (_tokenCountdown <= 0) {
+          shouldRefresh = true;
+        }
+      });
+
+      if (shouldClose) {
+        t.cancel();
+        _closeExpiredSession('Sesi QR presensi sudah ditutup');
+        return;
+      }
+
+      if (shouldRefresh) {
+        _refreshQR();
       }
     });
   }
@@ -378,6 +433,21 @@ class _ClassDetailState extends State<ClassDetail>
     _qrTimer?.cancel();
     // Tidak stop polling — session masih aktif, modal hanya diminimize
     setState(() => _showQRModal = false);
+  }
+
+  void _closeExpiredSession([String message = 'Sesi QR presensi sudah ditutup']) {
+    _qrTimer?.cancel();
+    _stopPolling();
+    setState(() {
+      _showQRModal = false;
+      _sessionActive = false;
+      _generatedQR = '';
+      _sessionCountdown = 180;
+      _tokenCountdown = 60;
+      _sessionExpiredAt = null;
+      _tokenExpiredAt = null;
+    });
+    _showErrorSnackbar(message);
   }
 
   // ── Real-time Polling (10 detik) ──────────────────────────────────────────
@@ -449,7 +519,10 @@ class _ClassDetailState extends State<ClassDetail>
       _showQRModal = false;
       _sessionActive = false;
       _generatedQR = '';
-      _qrCountdown = 180;
+      _sessionCountdown = 180;
+      _tokenCountdown = 60;
+      _sessionExpiredAt = null;
+      _tokenExpiredAt = null;
     });
     _showSaveSnackbar('Sesi absensi telah ditutup.');
   }
@@ -595,6 +668,19 @@ class _ClassDetailState extends State<ClassDetail>
       _controllers[key] = TextEditingController(text: value.toStringAsFixed(0));
     }
     return _controllers[key]!;
+  }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    final parsed = DateTime.tryParse(value.toString());
+    return parsed;
+  }
+
+  int _remainingSeconds(DateTime? target, {required int fallback}) {
+    if (target == null) return fallback;
+    final diff = target.difference(DateTime.now()).inSeconds;
+    return diff > 0 ? diff : 0;
   }
 
   Future<void> _saveGrades() async {
@@ -904,7 +990,7 @@ class _ClassDetailState extends State<ClassDetail>
                         onPressed: _openSessionDialog,
                         icon: const Icon(Icons.play_circle_outline, size: 20),
                         label: const Text(
-                          'Buka Presensi',
+                          'Buka Presensi QR',
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -1024,7 +1110,7 @@ class _ClassDetailState extends State<ClassDetail>
                   onPressed: _openSessionDialog,
                   icon: const Icon(Icons.play_circle_outline, size: 20),
                   label: const Text(
-                    'Buka Presensi',
+                    'Buka Presensi QR',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -4681,9 +4767,11 @@ class _ClassDetailState extends State<ClassDetail>
 
   // ══════════════════ QR MODAL ═══════════════════════════════════════════
   Widget _buildQRModal() {
-    final minutes = (_qrCountdown ~/ 60).toString().padLeft(2, '0');
-    final seconds = (_qrCountdown % 60).toString().padLeft(2, '0');
-    final isUrgent = _qrCountdown <= 30;
+    final minutes = (_sessionCountdown ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_sessionCountdown % 60).toString().padLeft(2, '0');
+    final tokenMinutes = (_tokenCountdown ~/ 60).toString().padLeft(2, '0');
+    final tokenSeconds = (_tokenCountdown % 60).toString().padLeft(2, '0');
+    final isUrgent = _sessionCountdown <= 30;
     final timerColor = isUrgent
         ? const Color(0xFFDC2626)
         : const Color(0xFF059669);
@@ -4806,7 +4894,7 @@ class _ClassDetailState extends State<ClassDetail>
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: _qrCountdown / 180,
+                          value: _sessionCountdown / 180,
                           backgroundColor: const Color(0xFFE5E7EB),
                           valueColor: AlwaysStoppedAnimation<Color>(timerColor),
                           minHeight: 5,
@@ -4823,7 +4911,7 @@ class _ClassDetailState extends State<ClassDetail>
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            'QR diperbarui dalam $minutes:$seconds',
+                            'Sesi berakhir dalam $minutes:$seconds',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -4831,6 +4919,24 @@ class _ClassDetailState extends State<ClassDetail>
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Token QR diperbarui otomatis setiap 1 menit selama sesi aktif.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Token aktif saat ini: $tokenMinutes:$tokenSeconds',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray500,
+                        ),
                       ),
                       const SizedBox(height: 20),
 

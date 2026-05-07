@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../controllers/migrasi_controller.dart';
+import 'manajemen_rombel.dart';
 
 class MigrasiKelasWizard extends ConsumerStatefulWidget {
   const MigrasiKelasWizard({super.key});
@@ -50,7 +51,16 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
   }
 
   bool _canProceedToStep4(MigrasiState state) {
-    return state.tahunAjaranBaruId != null && state.rombelTujuanId != null;
+    return state.tahunAjaranBaruId != null &&
+        state.rombelTujuanId != null &&
+        state.rombelAsalId != null &&
+        state.rombelAsalId != state.rombelTujuanId &&
+        state.tahunAjaranLamaId != null &&
+        state.tahunAjaranLamaId != state.tahunAjaranBaruId;
+  }
+
+  bool _canExecutePromotion(MigrasiState state) {
+    return _canProceedToStep4(state) && state.siswaNaik.isNotEmpty;
   }
 
   Future<void> _execute() async {
@@ -88,6 +98,41 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
         );
       }
     }
+  }
+
+  Future<void> _showTambahRombelTujuan(
+    MigrasiState state,
+    MigrasiNotifier notifier,
+  ) async {
+    if (state.tahunAjaranBaruId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih Tahun Ajaran dan Rombel Tujuan'),
+          backgroundColor: AppColors.destructive,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<dynamic>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: RombelFormModal(
+            initialTahunAjaranId: state.tahunAjaranBaruId,
+            lockTahunAjaran: true,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || result == null || result == false) return;
+    final newRombelId = result is Map ? result['id']?.toString() : null;
+    await notifier.refreshRombelTujuan(selectRombelId: newRombelId);
   }
 
   @override
@@ -203,7 +248,12 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                                 child: const Text('Kembali'),
                               ),
                             ElevatedButton(
-                              onPressed: state.isProcessing
+                              onPressed:
+                                  state.isProcessing ||
+                                      (_currentStep == 2 &&
+                                          !_canProceedToStep4(state)) ||
+                                      (_currentStep == 3 &&
+                                          !_canExecutePromotion(state))
                                   ? null
                                   : details.onStepContinue,
                               style: ElevatedButton.styleFrom(
@@ -556,10 +606,15 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
     final rombels = state.tahunAjaranBaruId != null
         ? state.rombelList
               .where(
-                (r) => r['tahunAjaranId'].toString() == state.tahunAjaranBaruId,
+                (r) =>
+                    r['tahunAjaranId'].toString() == state.tahunAjaranBaruId &&
+                    r['id'].toString() != state.rombelAsalId,
               )
               .toList()
         : <dynamic>[];
+    final hasTargetTahunAjaran = state.tahunAjaranBaruId != null;
+    final showTargetEmptyState =
+        hasTargetTahunAjaran && !state.isLoadingRombelTujuan && rombels.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +637,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
             ? Column(
                 children: [
                   _fieldGroup(
-                    'Tahun Ajaran Baru',
+                    'Tahun Ajaran Target',
                     DropdownButtonFormField<String>(
                       initialValue: state.tahunAjaranBaruId,
                       items: tas
@@ -596,7 +651,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                           )
                           .toList(),
                       onChanged: (v) => notifier.setTahunAjaranBaru(v!),
-                      decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
+                      decoration: _inputDeco('Pilih Tahun Ajaran Target'),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -628,13 +683,15 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                       decoration: _inputDeco('Pilih Rombel Tujuan'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _buildTambahRombelTujuanButton(state, notifier),
                 ],
               )
             : Row(
                 children: [
                   Expanded(
                     child: _fieldGroup(
-                      'Tahun Ajaran Baru',
+                      'Tahun Ajaran Target',
                       DropdownButtonFormField<String>(
                         initialValue: state.tahunAjaranBaruId,
                         items: tas
@@ -648,7 +705,7 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                             )
                             .toList(),
                         onChanged: (v) => notifier.setTahunAjaranBaru(v!),
-                        decoration: _inputDeco('Pilih Tahun Ajaran Tujuan'),
+                        decoration: _inputDeco('Pilih Tahun Ajaran Target'),
                       ),
                     ),
                   ),
@@ -686,7 +743,64 @@ class _MigrasiKelasWizardState extends ConsumerState<MigrasiKelasWizard> {
                   ),
                 ],
               ),
+        if (!isNarrow) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildTambahRombelTujuanButton(state, notifier),
+          ),
+        ],
+        if (state.isLoadingRombelTujuan) ...[
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Memuat rombel tahun ajaran target...',
+                style: TextStyle(color: AppColors.gray600),
+              ),
+            ],
+          ),
+        ],
+        if (showTargetEmptyState) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray300),
+            ),
+            child: const Text(
+              'Belum ada rombel untuk tahun ajaran target ini. Buat rombel baru terlebih dahulu.',
+              style: TextStyle(color: AppColors.gray600),
+            ),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildTambahRombelTujuanButton(
+    MigrasiState state,
+    MigrasiNotifier notifier,
+  ) {
+    return OutlinedButton.icon(
+      onPressed: state.tahunAjaranBaruId == null
+          ? null
+          : () => _showTambahRombelTujuan(state, notifier),
+      icon: const Icon(Icons.add_circle_outline, size: 18),
+      label: const Text('Tambah Rombel Tujuan'),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
   }
 

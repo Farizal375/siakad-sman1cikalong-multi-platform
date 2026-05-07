@@ -67,7 +67,11 @@ flutter pub get
 
 ### 3. Konfigurasi Lingkungan (API URL)
 Aplikasi ini berkomunikasi dengan backend melalui URL yang diatur di `lib/core/network/api_client.dart`.
-Secara *default*, aplikasi dikonfigurasi untuk Web (`localhost:3001`). Jika Anda menjalankan aplikasi di emulator Android, pastikan backend Anda dapat diakses (biasanya `10.0.2.2:3001` atau menggunakan IP lokal PC Anda).
+Secara *default*, aplikasi dikonfigurasi untuk lokal:
+- Web: `http://localhost:3001/api`
+- Android emulator: `http://10.0.2.2:3001/api`
+
+Saat mau deploy, cukup aktifkan URL Railway yang sudah disiapkan sebagai komentar di `api_client.dart` dan hapus/komentari URL lokalnya.
 
 Anda dapat menyisipkan `API_BASE_URL` saat kompilasi:
 ```bash

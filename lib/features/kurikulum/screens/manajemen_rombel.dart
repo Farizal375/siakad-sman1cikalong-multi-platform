@@ -119,6 +119,7 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
                   'id': item['id'] ?? '',
                   'name': item['masterKelasName'] ?? '',
                   'masterKelasId': item['masterKelasId'] ?? '',
+                  'tahunAjaranId': item['tahunAjaranId'] ?? '',
                   'tahunAjaran': item['tahunAjaranCode'] ?? '',
                   'ruangKelasId': item['ruangKelasId'] ?? '',
                   'ruangKelasCode': item['ruangKelasCode'] ?? '-',
@@ -151,11 +152,11 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
-          child: _RombelFormModal(isEdit: isEdit, initialData: data),
+          child: RombelFormModal(isEdit: isEdit, initialData: data),
         ),
       ),
     ).then((result) {
-      if (result == true) {
+      if (result != null && result != false) {
         _loadRombelList();
         setState(() {
           _successMessage = isEdit
@@ -297,7 +298,7 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
 
     if (capacity > 0 && _assignedStudents.length >= capacity) {
       _showAlert(
-        'Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} (${capacity} siswa) sudah tercapai.',
+        'Rombel sudah penuh! Kapasitas ruang ${rombel['ruangKelasCode']} ($capacity siswa) sudah tercapai.',
       );
       return;
     }
@@ -325,7 +326,7 @@ class _ManajemenRombelState extends State<ManajemenRombel> {
     // Warn if now full
     if (capacity > 0 && _assignedStudents.length >= capacity) {
       _showAlert(
-        'Rombel sekarang penuh (${capacity}/${capacity}). Tidak bisa menambahkan siswa lagi.',
+        'Rombel sekarang penuh ($capacity/$capacity). Tidak bisa menambahkan siswa lagi.',
         isWarning: true,
       );
     }
@@ -1488,25 +1489,36 @@ class _TransferButton extends StatelessWidget {
 // ═══════════════════════════════════════════════
 // ROMBEL FORM MODAL
 // ═══════════════════════════════════════════════
-class _RombelFormModal extends StatefulWidget {
+class RombelFormModal extends StatefulWidget {
   final bool isEdit;
   final Map<String, dynamic>? initialData;
-  const _RombelFormModal({this.isEdit = false, this.initialData});
+  final String? initialTahunAjaranId;
+  final bool lockTahunAjaran;
+
+  const RombelFormModal({
+    super.key,
+    this.isEdit = false,
+    this.initialData,
+    this.initialTahunAjaranId,
+    this.lockTahunAjaran = false,
+  });
 
   @override
-  State<_RombelFormModal> createState() => _RombelFormModalState();
+  State<RombelFormModal> createState() => _RombelFormModalState();
 }
 
-class _RombelFormModalState extends State<_RombelFormModal> {
+class _RombelFormModalState extends State<RombelFormModal> {
   bool _loading = true;
   bool _saving = false;
   String? _loadError;
 
   List<Map<String, dynamic>> _masterKelasList = [];
   List<Map<String, dynamic>> _ruangKelasList = [];
+  List<Map<String, dynamic>> _tahunAjaranList = [];
 
   String? _selectedMasterKelasId;
   String? _selectedRuangKelasId;
+  String? _selectedTahunAjaranId;
 
   // Wali kelas info (read-only, derived from master kelas)
   String _derivedWaliName = 'Belum ditambahkan';
@@ -1523,6 +1535,7 @@ class _RombelFormModalState extends State<_RombelFormModal> {
       final results = await Future.wait([
         ApiService.getMasterKelas(),
         ApiService.getRuangKelas(),
+        ApiService.getTahunAjaran(),
       ]);
 
       if (!mounted) return;
@@ -1537,6 +1550,22 @@ class _RombelFormModalState extends State<_RombelFormModal> {
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
+        _tahunAjaranList =
+            (results[2]['data'] as List?)
+                ?.map((e) => e as Map<String, dynamic>)
+                .toList() ??
+            [];
+
+        _selectedTahunAjaranId =
+            widget.initialData?['tahunAjaranId'] ??
+            widget.initialTahunAjaranId ??
+            _tahunAjaranList
+                .where((ta) => ta['isActive'] == true)
+                .map((ta) => ta['id']?.toString())
+                .firstOrNull ??
+            (_tahunAjaranList.isNotEmpty
+                ? _tahunAjaranList.first['id']?.toString()
+                : null);
 
         if (widget.isEdit && widget.initialData != null) {
           _selectedMasterKelasId = widget.initialData!['masterKelasId'];
@@ -1579,6 +1608,10 @@ class _RombelFormModalState extends State<_RombelFormModal> {
         : 'Belum ditambahkan';
   }
 
+  String _tahunAjaranCode(Map<String, dynamic> item) {
+    return (item['code'] ?? item['kode'] ?? '').toString();
+  }
+
   Future<void> _save() async {
     // Validation
     if (_selectedMasterKelasId == null) {
@@ -1589,21 +1622,27 @@ class _RombelFormModalState extends State<_RombelFormModal> {
       _showError('Pilih ruangan terlebih dahulu!');
       return;
     }
+    if (!widget.isEdit && _selectedTahunAjaranId == null) {
+      _showError('Pilih tahun ajaran terlebih dahulu!');
+      return;
+    }
 
     setState(() => _saving = true);
 
     final payload = <String, dynamic>{
       if (!widget.isEdit) 'masterKelasId': _selectedMasterKelasId,
+      if (!widget.isEdit) 'tahunAjaranId': _selectedTahunAjaranId,
       'ruangKelasId': _selectedRuangKelasId,
     };
 
     try {
       if (widget.isEdit && widget.initialData != null) {
         await ApiService.updateRombel(widget.initialData!['id'], payload);
+        if (mounted) Navigator.pop(context, true);
       } else {
-        await ApiService.createRombel(payload);
+        final response = await ApiService.createRombel(payload);
+        if (mounted) Navigator.pop(context, response['data'] ?? true);
       }
-      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -1726,7 +1765,41 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               ),
             )
           else ...[
-            // ── 1. Master Kelas Dropdown ──
+            // ── 1. Tahun Ajaran ──
+            _buildLabel('Tahun Ajaran', required: !widget.isEdit),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedTahunAjaranId,
+              isExpanded: true,
+              items: _tahunAjaranList.isEmpty
+                  ? [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text('Belum ada data tahun ajaran'),
+                      ),
+                    ]
+                  : _tahunAjaranList
+                        .map(
+                          (e) => DropdownMenuItem<String>(
+                            value: e['id'].toString(),
+                            child: Text(
+                              _tahunAjaranCode(e),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+              onChanged:
+                  widget.isEdit ||
+                      widget.lockTahunAjaran ||
+                      _tahunAjaranList.isEmpty
+                  ? null
+                  : (v) => setState(() => _selectedTahunAjaranId = v),
+              decoration: _inputDeco('Pilih Tahun Ajaran'),
+            ),
+            const SizedBox(height: 16),
+
+            // ── 2. Master Kelas Dropdown ──
             _buildLabel('Kelas (Master Kelas)', required: !widget.isEdit),
             const SizedBox(height: 8),
             if (widget.isEdit)
@@ -1781,7 +1854,7 @@ class _RombelFormModalState extends State<_RombelFormModal> {
               )
             else
               DropdownButtonFormField<String>(
-                value: _selectedMasterKelasId,
+                initialValue: _selectedMasterKelasId,
                 isExpanded: true,
                 items: _masterKelasList.isEmpty
                     ? [
@@ -1890,7 +1963,7 @@ class _RombelFormModalState extends State<_RombelFormModal> {
             _buildLabel('Ruangan', required: !widget.isEdit),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedRuangKelasId,
+              initialValue: _selectedRuangKelasId,
               isExpanded: true,
               items: _ruangKelasList.isEmpty
                   ? [

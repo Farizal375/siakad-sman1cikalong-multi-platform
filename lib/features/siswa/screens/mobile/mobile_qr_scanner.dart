@@ -187,6 +187,8 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
         return const Color(0xFF059669); // Green — success
       case 409:
         return const Color(0xFFD97706); // Yellow/amber — already attended
+      case 429:
+        return const Color(0xFFD97706); // Yellow/amber — rate limited
       case 410:
         return const Color(0xFFDC2626); // Red — expired
       case 403:
@@ -201,6 +203,8 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
       case 200:
         return const Color(0xFFECFDF5); // Green bg
       case 409:
+        return const Color(0xFFFFFBEB); // Yellow bg
+      case 429:
         return const Color(0xFFFFFBEB); // Yellow bg
       case 410:
         return const Color(0xFFFEE2E2); // Red bg
@@ -217,6 +221,8 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
         return Icons.check_rounded;
       case 409:
         return Icons.info_outline_rounded;
+      case 429:
+        return Icons.hourglass_bottom_rounded;
       case 410:
         return Icons.timer_off_rounded;
       case 403:
@@ -229,11 +235,13 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
   String get _feedbackTitle {
     switch (_resultHttpStatus) {
       case 200:
-        return 'Presensi Berhasil!';
+        return 'Kehadiran Berhasil Dicatat';
       case 409:
-        return 'Sudah Absen';
+        return 'Kehadiran Sudah Tercatat';
+      case 429:
+        return 'Terlalu Banyak Percobaan';
       case 410:
-        return 'QR Expired';
+        return 'Sesi QR Berakhir';
       case 403:
         return 'Akses Ditolak';
       default:
@@ -244,11 +252,13 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
   String get _feedbackStatusLabel {
     switch (_resultHttpStatus) {
       case 200:
-        return 'Status: HADIR';
+        return 'Kehadiran berhasil dicatat';
       case 409:
-        return 'Sudah tercatat di sesi ini';
+        return 'Kehadiran sudah tercatat';
+      case 429:
+        return 'Terlalu banyak percobaan scan. Tunggu beberapa detik.';
       case 410:
-        return 'Minta guru refresh QR Code';
+        return 'QR sudah kedaluwarsa. Minta guru menampilkan QR terbaru.';
       case 403:
         return 'Anda tidak terdaftar di kelas ini';
       default:
@@ -261,6 +271,8 @@ class _MobileQRScannerState extends ConsumerState<MobileQRScanner>
       case 200:
         return const Color(0xFF15803D);
       case 409:
+        return const Color(0xFFB45309);
+      case 429:
         return const Color(0xFFB45309);
       default:
         return const Color(0xFFB91C1C);

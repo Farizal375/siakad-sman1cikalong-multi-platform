@@ -55,15 +55,30 @@ class _GuruMapelFormModalState extends State<GuruMapelFormModal> {
           if (widget.initialData != null) {
             _guruId = widget.initialData!['teacherId'];
             _mapelId = widget.initialData!['subjectId'];
-            final clsStr = widget.initialData!['classes'] as String? ?? '';
             final validNames = _kelasList
                 .map((k) => (k['name'] ?? k['nama'] ?? '') as String)
                 .toSet();
-            _selectedClasses = clsStr
+            final masterKelasIds =
+                (widget.initialData!['masterKelasIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toSet() ??
+                <String>{};
+            final classesById = _kelasList
+                .where(
+                  (k) => masterKelasIds.contains((k['id'] ?? '').toString()),
+                )
+                .map((k) => (k['name'] ?? k['nama'] ?? '') as String)
+                .where((e) => e.isNotEmpty)
+                .toList();
+            final clsStr = widget.initialData!['classes'] as String? ?? '';
+            final classesByName = clsStr
                 .split(',')
                 .map((e) => e.trim())
                 .where((e) => e.isNotEmpty && validNames.contains(e))
                 .toList();
+            _selectedClasses = classesById.isNotEmpty
+                ? classesById
+                : classesByName;
             _quotaCtrl.text = '${widget.initialData!['hoursPerWeek'] ?? 8}';
           }
           _loading = false;
@@ -110,6 +125,14 @@ class _GuruMapelFormModalState extends State<GuruMapelFormModal> {
       final payload = {
         'teacherId': _guruId,
         'subjectId': _mapelId,
+        'masterKelasIds': _kelasList
+            .where(
+              (k) => _selectedClasses.contains(
+                (k['name'] ?? k['nama'] ?? '') as String,
+              ),
+            )
+            .map((k) => k['id'] as String)
+            .toList(),
         'classes': _selectedClasses.join(', '),
         'hoursPerWeek': int.tryParse(_quotaCtrl.text) ?? 8,
       };
