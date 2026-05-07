@@ -11,12 +11,16 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import '../config/supabase_config.dart';
 
 class ApiClient {
-  // Use current machine IP for physical Android device, localhost for web/desktop
-  // Run `hostname -I` to get current IP if login fails on mobile
+  // Toggle URL saat testing lokal vs deploy:
+  // Local dev web: localhost
+  // Local dev Android emulator: 10.0.2.2
+  // Deploy Railway/Vercel: uncomment URL deploy dan matikan URL lokal
   static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
   );
+  // static const String _defaultBaseUrl = 'http://10.0.2.2:3001/api';
   static const String _defaultBaseUrl = 'https://sman1cikalong.up.railway.app/api';
+  // static const String _webBaseUrl = 'http://localhost:3001/api';
   static const String _webBaseUrl = 'https://sman1cikalong.up.railway.app/api';
 
   static final ApiClient _instance = ApiClient._internal();
