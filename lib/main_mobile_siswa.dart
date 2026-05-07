@@ -23,6 +23,7 @@ import 'features/siswa/screens/mobile/mobile_profile.dart';
 import 'features/siswa/screens/mobile/mobile_top_bar.dart';
 import 'shared_widgets/not_found_page.dart';
 import 'core/providers/theme_provider.dart';
+import 'features/guest/screens/landing_page.dart';
 
 final _mobileRouterProvider = Provider<GoRouter>((ref) {
   String? studentRedirect() {
@@ -49,6 +50,13 @@ final _mobileRouterProvider = Provider<GoRouter>((ref) {
         path: '/forgot-password',
         name: 'forgot-password',
         builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/post/:id',
+        name: 'public-post',
+        builder: (context, state) => PublicContentDetailPage(
+          contentId: state.pathParameters['id'] ?? '',
+        ),
       ),
 
       // ── Siswa Routes (BottomNav layout) ──

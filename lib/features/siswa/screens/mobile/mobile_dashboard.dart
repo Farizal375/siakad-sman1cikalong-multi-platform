@@ -314,6 +314,36 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
     );
   }
 
+  String _getScheduleStatus(String startTimeStr, String endTimeStr) {
+    if (startTimeStr.isEmpty || endTimeStr.isEmpty) return 'Akan Datang';
+    try {
+      final now = DateTime.now();
+      final startParts = startTimeStr.split(':');
+      final endParts = endTimeStr.split(':');
+
+      final start = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(startParts[0]),
+        int.parse(startParts[1]),
+      );
+      final end = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(endParts[0]),
+        int.parse(endParts[1]),
+      );
+
+      if (now.isAfter(end)) return 'Sudah Berakhir';
+      if (now.isBefore(start)) return 'Akan Datang';
+      return 'Sedang Berlangsung';
+    } catch (_) {
+      return 'Akan Datang';
+    }
+  }
+
   Widget _buildScheduleItem(
     BuildContext context,
     Map<String, dynamic> schedule,
@@ -325,8 +355,13 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
 
     final subject = schedule['subject'] ?? '-';
     final startTime = schedule['startTime'] ?? '';
+    final endTime = schedule['endTime'] ?? '';
     final teacher = schedule['teacher'] ?? '-';
     final room = schedule['room'] ?? '-';
+
+    final status = _getScheduleStatus(startTime, endTime);
+    final isOngoing = status == 'Sedang Berlangsung';
+    final isFinished = status == 'Sudah Berakhir';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -395,7 +430,7 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
                           ),
                         ),
                       ),
-                      if (isFirst)
+                      if (isOngoing)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -413,6 +448,25 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        )
+                      else if (isFinished)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.gray500.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Sudah Berakhir',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.gray600,
                             ),
                           ),
                         )
@@ -616,111 +670,117 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
       dateStr = createdAt.toString();
     }
 
-    return Container(
-      margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image placeholder
-          Container(
-            height: 130,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+    return GestureDetector(
+      onTap: () {
+        final id = news['id'] ?? '';
+        if (id.isNotEmpty) context.push('/post/$id');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image placeholder
+            Container(
+              height: 130,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.3),
+                    AppColors.accent.withValues(alpha: 0.3),
+                  ],
+                ),
               ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary.withValues(alpha: 0.3),
-                  AppColors.accent.withValues(alpha: 0.3),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Icon(
+                      Icons.article_outlined,
+                      size: 48,
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ],
               ),
             ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Icon(
-                    Icons.article_outlined,
-                    size: 48,
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'BERITA',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: 0.5,
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'BERITA',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: fgColor,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (content.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    content,
+                    title,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.gray500,
-                      height: 1.4,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: fgColor,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (content.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      content,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                        height: 1.4,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(
+                    dateStr,
+                    style: TextStyle(fontSize: 11, color: AppColors.gray400),
+                  ),
                 ],
-                const SizedBox(height: 6),
-                Text(
-                  dateStr,
-                  style: TextStyle(fontSize: 11, color: AppColors.gray400),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
