@@ -389,8 +389,13 @@ class ApiService {
   // ROMBEL
   // ═══════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getRombel() async {
-    final response = await _client.get('/rombel');
+  static Future<Map<String, dynamic>> getRombel({String? tahunAjaranId}) async {
+    final response = await _client.get(
+      '/rombel',
+      queryParameters: tahunAjaranId == null
+          ? null
+          : {'tahunAjaranId': tahunAjaranId},
+    );
     return response.data;
   }
 
@@ -469,6 +474,14 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final response = await _client.post('/promosi/lock', data: data);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> unlockPromosi(String rombelId) async {
+    final response = await _client.post(
+      '/promosi/unlock',
+      data: {'rombelId': rombelId},
+    );
     return response.data;
   }
 

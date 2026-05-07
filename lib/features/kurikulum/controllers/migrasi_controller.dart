@@ -142,10 +142,10 @@ class PromosiStatusNotifier extends StateNotifier<PromosiStatusState> {
   }
 
   /// Lock/validate all decisions (POST to backend)
-  Future<bool> validasiDanKunci() async {
-    if (_currentRombelId == null) return false;
+  Future<String?> validasiDanKunci() async {
+    if (_currentRombelId == null) return 'Rombel belum dipilih.';
     if (state.siswaList.any((s) => s.status == StatusKenaikan.perluCek)) {
-      return false;
+      return 'Masih ada siswa dengan status perlu dicek.';
     }
 
     try {
@@ -164,9 +164,32 @@ class PromosiStatusNotifier extends StateNotifier<PromosiStatusState> {
       });
 
       state = state.copyWith(isLocked: true);
-      return true;
+      return null;
     } catch (e) {
-      return false;
+      if (e is DioException && e.response?.data != null) {
+        return e.response!.data['message']?.toString() ??
+            'Gagal mengunci data promosi';
+      }
+      return 'Gagal mengunci data promosi';
+    }
+  }
+
+  /// Batalkan kunci promosi — wali kelas bisa edit keputusan kembali
+  Future<String?> batalkanKunci() async {
+    if (_currentRombelId == null) return 'Rombel belum dipilih.';
+    if (!state.isLocked) return 'Data belum dikunci.';
+
+    try {
+      await ApiService.unlockPromosi(_currentRombelId!);
+      // Reload data dari server agar status siswa kembali fresh
+      await loadSiswa(_currentRombelId!);
+      return null; // sukses
+    } catch (e) {
+      if (e is DioException && e.response?.data != null) {
+        return e.response!.data['message']?.toString() ??
+            'Gagal membatalkan kunci data promosi';
+      }
+      return 'Gagal membatalkan kunci data promosi';
     }
   }
 
@@ -198,6 +221,7 @@ class MigrasiState {
   final List<dynamic> rombelList;
 
   final bool isLoadingData;
+  final bool isLoadingRombelTujuan;
   final bool isProcessing;
   final bool isDone;
 
@@ -210,6 +234,7 @@ class MigrasiState {
     this.tahunAjaranList = const [],
     this.rombelList = const [],
     this.isLoadingData = false,
+    this.isLoadingRombelTujuan = false,
     this.isProcessing = false,
     this.isDone = false,
   });
@@ -223,6 +248,7 @@ class MigrasiState {
     List<dynamic>? tahunAjaranList,
     List<dynamic>? rombelList,
     bool? isLoadingData,
+    bool? isLoadingRombelTujuan,
     bool? isProcessing,
     bool? isDone,
   }) {
@@ -235,6 +261,8 @@ class MigrasiState {
       tahunAjaranList: tahunAjaranList ?? this.tahunAjaranList,
       rombelList: rombelList ?? this.rombelList,
       isLoadingData: isLoadingData ?? this.isLoadingData,
+      isLoadingRombelTujuan:
+          isLoadingRombelTujuan ?? this.isLoadingRombelTujuan,
       isProcessing: isProcessing ?? this.isProcessing,
       isDone: isDone ?? this.isDone,
     );
@@ -269,24 +297,48 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
     }
   }
 
+  List<dynamic> _replaceRombelByTahunAjaran(
+    List<dynamic> current,
+    String tahunAjaranId,
+    List<dynamic> fetched,
+  ) {
+    final others = current
+        .where((r) => r['tahunAjaranId'].toString() != tahunAjaranId)
+        .toList();
+    return [...others, ...fetched];
+  }
+
   // ── Step 1: Set Source ──
   void setTahunAjaranLama(String id) {
     state = MigrasiState(
       tahunAjaranLamaId: id,
       rombelAsalId: null, // explicitly clear
-      tahunAjaranBaruId: state.tahunAjaranBaruId,
-      rombelTujuanId: state.rombelTujuanId,
+      tahunAjaranBaruId: null,
+      rombelTujuanId: null,
       siswaList: [], // explicitly clear
       tahunAjaranList: state.tahunAjaranList,
       rombelList: state.rombelList,
       isLoadingData: state.isLoadingData,
+      isLoadingRombelTujuan: state.isLoadingRombelTujuan,
       isProcessing: state.isProcessing,
       isDone: state.isDone,
     );
   }
 
   Future<void> setRombelAsal(String id) async {
-    state = state.copyWith(rombelAsalId: id, isLoadingData: true);
+    state = MigrasiState(
+      tahunAjaranLamaId: state.tahunAjaranLamaId,
+      rombelAsalId: id,
+      tahunAjaranBaruId: state.tahunAjaranBaruId,
+      rombelTujuanId: null,
+      siswaList: state.siswaList,
+      tahunAjaranList: state.tahunAjaranList,
+      rombelList: state.rombelList,
+      isLoadingData: true,
+      isLoadingRombelTujuan: state.isLoadingRombelTujuan,
+      isProcessing: state.isProcessing,
+      isDone: state.isDone,
+    );
     try {
       final response = await ApiService.getSiswaPromosi(id);
       final rawData = response['data'] as List;
@@ -299,7 +351,7 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
   }
 
   // ── Step 3: Set Target ──
-  void setTahunAjaranBaru(String id) {
+  Future<void> setTahunAjaranBaru(String id) async {
     state = MigrasiState(
       tahunAjaranLamaId: state.tahunAjaranLamaId,
       rombelAsalId: state.rombelAsalId,
@@ -309,13 +361,58 @@ class MigrasiNotifier extends StateNotifier<MigrasiState> {
       tahunAjaranList: state.tahunAjaranList,
       rombelList: state.rombelList,
       isLoadingData: state.isLoadingData,
+      isLoadingRombelTujuan: true,
       isProcessing: state.isProcessing,
       isDone: state.isDone,
     );
+
+    try {
+      final response = await ApiService.getRombel(tahunAjaranId: id);
+      final fetched = (response['data'] as List?) ?? [];
+      if (state.tahunAjaranBaruId != id) return;
+      state = state.copyWith(
+        rombelList: _replaceRombelByTahunAjaran(state.rombelList, id, fetched),
+        isLoadingRombelTujuan: false,
+      );
+    } catch (e) {
+      if (state.tahunAjaranBaruId == id) {
+        state = state.copyWith(isLoadingRombelTujuan: false);
+      }
+    }
   }
 
   void setRombelTujuan(String id) {
     state = state.copyWith(rombelTujuanId: id);
+  }
+
+  Future<void> refreshRombelTujuan({String? selectRombelId}) async {
+    final tahunAjaranId = state.tahunAjaranBaruId;
+    if (tahunAjaranId == null) return;
+
+    state = state.copyWith(isLoadingRombelTujuan: true);
+    try {
+      final response = await ApiService.getRombel(tahunAjaranId: tahunAjaranId);
+      final fetched = (response['data'] as List?) ?? [];
+      state = MigrasiState(
+        tahunAjaranLamaId: state.tahunAjaranLamaId,
+        rombelAsalId: state.rombelAsalId,
+        tahunAjaranBaruId: state.tahunAjaranBaruId,
+        rombelTujuanId: selectRombelId ?? state.rombelTujuanId,
+        siswaList: state.siswaList,
+        tahunAjaranList: state.tahunAjaranList,
+        rombelList: _replaceRombelByTahunAjaran(
+          state.rombelList,
+          tahunAjaranId,
+          fetched,
+        ),
+        isLoadingData: state.isLoadingData,
+        isLoadingRombelTujuan: false,
+        isProcessing: state.isProcessing,
+        isDone: state.isDone,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingRombelTujuan: false);
+    }
   }
 
   // ── Step 4: Execute Migration ──

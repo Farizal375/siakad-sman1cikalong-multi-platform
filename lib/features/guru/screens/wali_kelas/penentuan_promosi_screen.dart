@@ -61,6 +61,98 @@ class _PenentuanPromosiScreenState
     ref.read(promosiStatusProvider.notifier).toggleStatus(siswaId);
   }
 
+  Future<void> _batalkanKunci() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.red50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.lock_open_outlined,
+                color: AppColors.destructive,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Batalkan Kunci Data?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.foreground,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Semua status kenaikan siswa akan direset dan kunci data akan dibuka.'
+              ' Anda perlu menentukan ulang keputusan kenaikan untuk setiap siswa.',
+              style: TextStyle(fontSize: 14, color: AppColors.gray600),
+            ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.warning_amber, size: 16, color: AppColors.accent),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Tindakan ini tidak dapat dibatalkan secara otomatis.',
+                    style: TextStyle(fontSize: 13, color: AppColors.gray500),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: AppColors.gray600)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.lock_open, size: 18),
+            label: const Text('Ya, Batalkan Kunci'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.destructive,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _saving = true);
+    final result = await ref.read(promosiStatusProvider.notifier).batalkanKunci();
+    if (mounted) {
+      setState(() => _saving = false);
+      if (result == null) {
+        _showFeedback('Kunci dibatalkan. Silakan tentukan ulang status kenaikan siswa.');
+      } else {
+        _showFeedback(result, isError: true);
+      }
+    }
+  }
+
   Future<void> _validasiDanKunci() async {
     final notifier = ref.read(promosiStatusProvider.notifier);
     final jumlahTinggal = notifier.jumlahTinggal;
@@ -208,7 +300,7 @@ class _PenentuanPromosiScreenState
     if (confirmed != true) return;
 
     setState(() => _saving = true);
-    final success = await ref
+    final result = await ref
         .read(promosiStatusProvider.notifier)
         .validasiDanKunci();
 
@@ -216,27 +308,35 @@ class _PenentuanPromosiScreenState
       setState(() {
         _saving = false;
       });
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Text(
-                  'Data kenaikan berhasil dikunci! Kurikulum dapat memproses migrasi.',
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.green600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+      if (result == null) {
+        _showFeedback(
+          'Data kenaikan berhasil dikunci! Kurikulum dapat memproses migrasi.',
         );
+      } else {
+        _showFeedback(result, isError: true);
       }
     }
+  }
+
+  void _showFeedback(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? AppColors.destructive : AppColors.green600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Widget _summaryRow(String label, String value, Color color, IconData icon) {
@@ -340,32 +440,49 @@ class _PenentuanPromosiScreenState
                 ],
               ),
             ),
-            if (state.isLocked)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.green50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.green600),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified, color: AppColors.green600, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Data Terkunci',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.green600,
+            if (state.isLocked) ...
+              [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.green50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.green600),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified, color: AppColors.green600, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Data Terkunci',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green600),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: _saving ? null : _batalkanKunci,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.lock_open_outlined, size: 18),
+                    label: const Text('Batalkan Kunci'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.destructive,
+                      side: const BorderSide(color: AppColors.destructive),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
           ],
         ),
         const SizedBox(height: 24),
@@ -727,6 +844,32 @@ class _PenentuanPromosiScreenState
                         ),
                       ),
                       const Spacer(),
+                      if (state.isLocked)
+                        SizedBox(
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: _saving ? null : _batalkanKunci,
+                            icon: _saving
+                                ? const SizedBox(
+                                    width: 18, height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.lock_open_outlined, size: 20),
+                            label: const Text('Batalkan Kunci'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.destructive,
+                              side: const BorderSide(color: AppColors.destructive),
+                              padding: const EdgeInsets.symmetric(horizontal: 28),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       if (!state.isLocked)
                         SizedBox(
                           height: 48,
@@ -821,6 +964,27 @@ class _PenentuanPromosiScreenState
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _saving ? null : _batalkanKunci,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.lock_open_outlined, size: 18),
+                label: Text(_saving ? 'Memproses...' : 'Batalkan Kunci Data'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.destructive,
+                  side: const BorderSide(color: AppColors.destructive),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],

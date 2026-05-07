@@ -1010,7 +1010,43 @@ class _SemesterTableState extends State<_SemesterTable>
     try {
       await ApiService.toggleSemester(row['id']);
       _loadData();
-    } catch (_) {}
+    } catch (e) {
+      // Ekstrak pesan error dari response backend (DioException)
+      String errorMsg = 'Gagal mengubah status semester.';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          errorMsg = data['message'].toString();
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    errorMsg,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        // Reload agar toggle switch kembali ke posisi semula (tidak berubah)
+        _loadData();
+      }
+    }
   }
 
   Future<void> _deleteItem(Map<String, dynamic> row) async {
