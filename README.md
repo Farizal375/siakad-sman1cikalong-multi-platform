@@ -1,6 +1,6 @@
 # Frontend SIAKAD SMAN 1 Cikalong 🎓
 
-Selamat datang di repositori Frontend **SIAKAD SMAN 1 Cikalong**. Proyek ini adalah aplikasi *multi-platform* (Web dan Android/iOS) yang dibangun dengan menggunakan **Flutter** untuk memfasilitasi interaksi pengguna dengan Sistem Informasi Akademik.
+Selamat datang di repositori Frontend **SIAKAD SMAN 1 Cikalong**. Proyek ini adalah aplikasi *multi-platform* (Web, Android/iOS, dan Desktop Windows/Linux) yang dibangun dengan menggunakan **Flutter** untuk memfasilitasi interaksi pengguna dengan Sistem Informasi Akademik.
 
 Aplikasi ini melayani seluruh kebutuhan civitas akademika SMAN 1 Cikalong dengan portal yang disesuaikan berdasarkan peran (*role-based access*), meliputi Administrator, Staff Kurikulum, Guru (Wali Kelas & Guru Mapel), Siswa, serta portal Tamu (*Guest*).
 
@@ -23,14 +23,17 @@ Aplikasi ini melayani seluruh kebutuhan civitas akademika SMAN 1 Cikalong dengan
 
 ### 4. Guru & Wali Kelas
 - **Dashboard Mengajar:** Akses cepat ke jadwal harian dan jurnal kelas.
-- **Jurnal & Kehadiran:** Pemindaian QR Code (untuk absensi siswa instan) dan pencatatan materi yang diajarkan (Jurnal).
-- **Penilaian:** Memasukkan nilai tugas, ulangan harian, UTS, dan UAS.
-- **Wali Kelas:** Mencetak *E-Rapor*, menambahkan Catatan Akademik siswa, dan melakukan monitoring riwayat absensi.
+- **Jurnal & Kehadiran:** Alur kerja guru dimulai dengan pengisian **Jurnal Mengajar** (Materi/KD) sebelum dapat menghasilkan **Dynamic QR Code** untuk absensi siswa.
+- **Penilaian:** Memasukkan nilai tugas, ulangan harian, UTS, dan UAS dengan pembobotan otomatis.
+- **Wali Kelas:** Monitoring ringkasan kelas, input Catatan Akademik, dan kompilasi *E-Rapor* format PDF secara otomatis.
 
 ### 5. Siswa
 - **Dashboard Siswa:** Jadwal harian personal dan statistik tingkat kehadiran.
 - **QR Scanner Presensi:** Fitur pemindai kode QR kelas untuk merekam absensi secara otomatis.
-- **Riwayat Akademik:** Melihat nilai ujian, laporan rapor semester, dan rekapitulasi absensi.
+- **Hasil Studi (3 Tab):**
+    - **Aktivitas Belajar:** Detail nilai per semester (Angka, Huruf, Predikat).
+    - **Transkrip Nilai:** Akumulasi nilai dari semester awal hingga akhir.
+    - **Visualisasi Data:** Grafik tren nilai, kehadiran, dan sebaran predikat.
 
 ---
 
@@ -39,10 +42,11 @@ Aplikasi ini melayani seluruh kebutuhan civitas akademika SMAN 1 Cikalong dengan
 - **Framework:** [Flutter](https://flutter.dev/) (Dart)
 - **State Management:** [Riverpod](https://riverpod.dev/) (Reactive caching and data binding)
 - **Routing:** [GoRouter](https://pub.dev/packages/go_router) (Declarative URL-based navigation)
-- **Networking:** [Dio](https://pub.dev/packages/dio) (Advanced HTTP Client with Interceptors)
+- **Networking:** [Dio](https://pub.dev/packages/dio) & [Supabase Flutter](https://supabase.com/)
 - **Storage:** `shared_preferences` (Token & session caching)
 - **UI Components:** Material 3 Design, Google Fonts, Lucide Icons, FL Chart (Grafik)
-- **Feature Add-ons:** Mobile Scanner (QR), Flutter Quill (Rich Text Editor CMS), Printing (E-Rapor PDF rendering)
+- **Desktop Features:** `window_manager`, `tray_manager`, `desktop_multi_window`
+- **Feature Add-ons:** Mobile Scanner (QR), Flutter Quill (Rich Text Editor), Printing (PDF Rendering)
 
 Arsitektur menggunakan pola **Feature-First (Domain-Driven)** di mana logika dipisah secara modular berdasarkan fitur (`features/admin`, `features/siswa`, dll).
 
@@ -86,6 +90,12 @@ flutter run -d chrome
 Untuk Perangkat Mobile (Android/iOS) atau Emulator:
 ```bash
 flutter run
+```
+Untuk Platform Desktop (Windows/Linux):
+```bash
+flutter run -d windows
+# atau
+flutter run -d linux
 ```
 
 ---
